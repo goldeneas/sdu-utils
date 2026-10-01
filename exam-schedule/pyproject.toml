@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdu-exam-watch"
+version = "1.0.0"
+description = "Watch SDU (University of Southern Denmark) exam-schedule pages and get notified when they are published or changed."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Nicolas" }]
+keywords = ["sdu", "exam", "schedule", "notifications", "ntfy", "denmark"]
+# Deliberately zero third-party runtime dependencies: stdlib only.
+dependencies = []
+
+[project.scripts]
+sdu-exam-watch = "sdu_exam_watch.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+# Pin the language level so import sorting classifies e.g. ``tomllib`` (stdlib
+# since 3.11) correctly, and teach the first-party resolver about ``src/``.
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "PIE", "S"]
+ignore = [
+  "E501",   # line length — handled by the formatter
+  "B008",   # function call in default argument
+  "SIM108", # ternary operator — readability is subjective
+  "S101",   # asserts are idiomatic outside security code
+  "S311",   # non-cryptographic random is fine here
+  "S603",   # subprocess with a list (no shell) is the safe form
+  "S607",   # partial executable path lookup is standard for CLIs
+]

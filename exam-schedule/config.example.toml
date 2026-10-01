@@ -1,0 +1,49 @@
+# sdu-exam-watch configuration
+# Docs: see README.md
+
+[settings]
+# Where the "have I seen this before?" state is kept (relative to this file).
+state_file          = "state.json"
+timeout_seconds     = 30
+retries             = 3
+# Download and hash each file on every check (slower, maximally reliable).
+# Leave false to rely on the server's ETag/Last-Modified headers.
+hash_files          = false
+# How many exams to list in a notification.
+summary_limit       = 12
+# Send a notification the first time a target is seen (normally silent).
+notify_on_first_run = false
+# Suggested polling interval for the LaunchAgent/cron.
+interval_hours      = 6
+
+[notify]
+# ntfy.sh: install the free "ntfy" app from the App Store, then subscribe to
+# this exact topic. No account or developer certificate required.
+ntfy_topic  = "sdu-exam-CHANGE-ME"
+ntfy_server = "https://ntfy.sh"
+# Optional: only for a protected or self-hosted ntfy topic.
+# ntfy_token = ""
+priority    = "high"
+tags        = ["calendar", "tada"]
+# Attach the actual schedule file (PDF/Excel) to the notification, so the full
+# plan is on your phone — not just the summary of your exams below.
+attach_files = true
+# Optional extra channels (leave empty/false to disable):
+# webhook_url        = ""            # Discord/Slack/custom JSON POST
+# macos_notification = false         # local macOS banner via osascript
+# stdout             = false         # print to the log (handy for testing)
+
+# ── What to watch ──────────────────────────────────────────────────────────
+# Each [[target]] is a page whose links are checked for new/changed files.
+# The MSc Software Engineering page publishes the Faculty of Engineering
+# schedule (PDF + XLSX) once per semester.
+
+[[target]]
+name = "MSc Software Engineering (Odense)"
+url  = "https://mitsdu.dk/da/mit_studie/kandidat/civilingenioer_i_softwareengineering/eksamen/eksamensplan"
+# Only links matching this regex count as schedule artifacts.
+# (Single-quoted TOML literal string, so the backslash is passed through.)
+link_pattern = '\.(xlsx|xls|pdf)([?#]|$)'
+# Show *your* exams in the notification, from the XLSX "Udd" column.
+programmes = ["Kandidat i Software Engineering (MSc)"]
+summary    = true
