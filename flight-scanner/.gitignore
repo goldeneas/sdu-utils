@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Scanner cache (regenerated automatically)
+/cache/
+
+# Local watcher config (holds your ntfy topic) and deal memory
+/config.toml
+/watch-state.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

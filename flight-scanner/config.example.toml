@@ -1,0 +1,39 @@
+# flight-scanner watcher configuration.
+#
+# Copy to `config.toml` next to the repo (or ~/.config/flight-scanner/config.toml)
+# and run:  python3 -m flight_scanner watch --config config.toml --dry-run
+#
+# The watcher always scans a ROLLING window (the next [trip].days days), so
+# there are no dates to maintain. Only notify.ntfy_topic is required.
+# Every setting below has a built-in default; the scanner CLI can still override
+# airports/time-value/ground pricing per run if you ever need to.
+
+[trip]
+days          = 30    # always look this many days ahead
+trip_min      = 5     # fewest nights at home (short trip)
+trip_max      = 9     # most   nights at home (short trip)
+pickup_naples = true  # parents collect you in Naples => NAP transfer free
+
+[deals]
+# Alert when a whole round-trip costs at most this many EUR. 0 disables it.
+max_total = 200
+
+[notify]
+# Install the free "ntfy" app (iOS/Android), subscribe to a long random topic,
+# and put the same name here. Anyone who knows the topic can read it.
+ntfy_topic = "change-me-to-a-long-random-topic"
+
+[watch]
+interval_hours = 6    # used by --loop (and a sensible systemd timer cadence)
+
+[rail]
+# Live train/bus times added to alerts (recommended).
+#   Danish legs  -> DSB / Rejseplanen. Needs a FREE accessId: register at
+#                   https://labs.rejseplanen.dk/ and paste it below.
+#   Italian legs -> the open Transitous router (no key). Trainline's own API is
+#                   blocked by a DataDome captcha, so it cannot be used.
+live = false
+rail_danish = "rejseplanen"
+rail_italian = "transitous"
+rejseplanen_access_id = ""
+timezone = "Europe/Rome"

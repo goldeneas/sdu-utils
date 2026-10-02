@@ -1,0 +1,12 @@
+{
+  "include": ["src", "tests"],
+  "exclude": ["cache", "**/__pycache__"],
+  "extraPaths": ["src"],
+  "executionEnvironments": [
+    { "root": "src" },
+    { "root": "tests", "extraPaths": ["src"] }
+  ],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "error"
+}

@@ -1,0 +1,40 @@
+[project]
+name = "flight-scanner"
+version = "1.0.0"
+description = "Cheap-trip scanner and deal watcher for Odense (DK) <-> Salerno (IT): live Ryanair fares, train/bus transfers, cost/time optimizer, and ntfy alerts."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Nicolas" }]
+keywords = ["flights", "ryanair", "denmark", "italy", "salerno", "travel", "optimizer"]
+# Deliberately zero third-party runtime dependencies: Python standard library only.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+flight-scanner = "flight_scanner.scan:main"
+flight-scanner-watch = "flight_scanner.watch:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+# src/ layout: teach the resolver where first-party code lives.
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "PIE", "S"]
+ignore = [
+  "E501",   # line length — handled by the formatter
+  "B008",   # function call in default argument
+  "SIM108", # ternary operator — readability is subjective
+  "S101",   # asserts are idiomatic outside security code
+  "S310",   # outbound URL open — URLs are hardcoded https with a scheme guard
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

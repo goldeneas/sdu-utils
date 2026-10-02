@@ -1,0 +1,13 @@
+[Unit]
+Description=Check flight-scanner deals every 6 hours
+
+[Timer]
+# First check shortly after login/boot, then every 6h. Persistent=true means a
+# missed run (laptop asleep) fires once on the next wake.
+OnBootSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
