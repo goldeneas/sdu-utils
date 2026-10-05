@@ -10,7 +10,7 @@ Docs: https://support.travelpayouts.com/hc/en-us/articles/203956163
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 
@@ -46,6 +46,11 @@ def parse_offer(item: dict, origin: str, destination: str, currency: str) -> Fli
         price = float(price)
     except (TypeError, ValueError):
         return None
+    # L'API non dà l'ora di arrivo: partenza + durata, nel fuso dell'aeroporto di
+    # partenza (corretto per rotte tra paesi con lo stesso fuso, es. Danimarca-Italia).
+    def _arrival(start, minutes):
+        return start + timedelta(minutes=minutes) if isinstance(minutes, (int, float)) else None
+
     link = item.get("link") or ""
     if link.startswith("/"):
         link = BOOKING_BASE + link
@@ -62,6 +67,8 @@ def parse_offer(item: dict, origin: str, destination: str, currency: str) -> Fli
         duration_back=item.get("duration_back"),
         link=link,
         currency=currency.upper(),
+        arrival_out=_arrival(dep, item.get("duration_to")),
+        arrival_back=_arrival(ret, item.get("duration_back")),
     )
 
 

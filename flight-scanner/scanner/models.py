@@ -23,6 +23,7 @@ class OneWayFare:
     airline: str = "n/d"
     link: str = ""
     currency: str = "EUR"
+    arrival_at: datetime | None = None   # ora locale di arrivo
 
 
 @dataclass
@@ -47,6 +48,8 @@ class FlightOption:
     return_link: str = ""
     price_out: float | None = None    # prezzo della sola andata (se noto)
     price_back: float | None = None   # prezzo del solo ritorno (se noto)
+    arrival_out: datetime | None = None    # ora locale di arrivo dell'andata
+    arrival_back: datetime | None = None   # ora locale di arrivo del ritorno
 
     def __post_init__(self):
         self.return_origin = self.return_origin or self.destination

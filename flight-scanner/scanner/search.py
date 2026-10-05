@@ -83,6 +83,8 @@ def combine_one_way(
                     source="ryanair",
                     return_origin=b.origin,
                     return_destination=b.destination,
+                    arrival_out=a.arrival_at,
+                    arrival_back=b.arrival_at,
                     price_out=a.price,
                     price_back=b.price,
                 )

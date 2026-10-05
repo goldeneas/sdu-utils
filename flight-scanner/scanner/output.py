@@ -18,6 +18,14 @@ def format_date(d) -> str:
     return f"{_DAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]} {d.year}"
 
 
+def _times(dep, arr, origin: str, dest: str) -> str:
+    """'05:50 CPH → 08:10 TRN' (con '(+1)' se l'arrivo è il giorno dopo)."""
+    if arr is None:
+        return f"{dep:%H:%M} {origin} → {dest}"
+    plus = (arr.date() - dep.date()).days
+    return f"{dep:%H:%M} {origin} → {arr:%H:%M}{f' (+{plus})' if plus > 0 else ''} {dest}"
+
+
 def _leg_extra(duration: str, stops: str, price) -> str:
     parts = [stops] + ([] if duration == "n/d" else [duration])
     if price is not None:
@@ -42,14 +50,14 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
         out_extra = _leg_extra(f.duration_out_human, f.stops_human(f.transfers), f.price_out)
         back_extra = _leg_extra(f.duration_back_human, f.stops_human(f.return_transfers), f.price_back)
         print(
-            f"   Andata:  {format_date(f.departure_date)}  {f.departure_at:%H:%M}  "
-            f"{f.origin} → {f.destination}{out_extra}"
+            f"   Andata:  {format_date(f.departure_date)}  "
+            f"{_times(f.departure_at, f.arrival_out, f.origin, f.destination)}{out_extra}"
         )
         if f.return_link:  # biglietti separati: un link per tratta
             print(f"            {f.link}")
         print(
-            f"   Ritorno: {format_date(f.return_date)}  {f.return_at:%H:%M}  "
-            f"{f.return_origin} → {f.return_destination}{back_extra}"
+            f"   Ritorno: {format_date(f.return_date)}  "
+            f"{_times(f.return_at, f.arrival_back, f.return_origin, f.return_destination)}{back_extra}"
         )
         if f.return_link:
             print(f"            {f.return_link}")
@@ -65,7 +73,9 @@ def _as_row(f: FlightOption) -> dict:
         "origin": f.origin,
         "destination": f.destination,
         "departure_at": f.departure_at.isoformat(timespec="minutes"),
+        "arrival_out": f.arrival_out.isoformat(timespec="minutes") if f.arrival_out else "",
         "return_at": f.return_at.isoformat(timespec="minutes"),
+        "arrival_back": f.arrival_back.isoformat(timespec="minutes") if f.arrival_back else "",
         "nights": f.nights,
         "return_origin": f.return_origin,
         "return_destination": f.return_destination,
