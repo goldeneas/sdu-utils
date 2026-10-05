@@ -38,6 +38,7 @@ def offers(*items):
 def test_parse_offer():
     o = parse_offer(item(79), "CPH", "NAP", "EUR")
     assert o.price == 79 and o.nights == 5 and o.departure_at.hour == 8
+    assert o.arrival_out.strftime("%H:%M") == "11:35" and o.arrival_back.strftime("%H:%M") == "22:00"
     assert o.link.startswith("https://www.aviasales.com/search/")
     assert parse_offer({"price": 5}, "CPH", "NAP", "EUR") is None
 
@@ -88,11 +89,13 @@ def fare(o, d, day, price):
 
 def test_parse_ryanair():
     payload = {"outbound": {"fares": [
-        {"departureDate": "2026-10-12T06:30:00", "price": {"value": 19.99}, "soldOut": False},
+        {"departureDate": "2026-10-12T06:30:00", "arrivalDate": "2026-10-12T09:15:00",
+         "price": {"value": 19.99}, "soldOut": False},
         {"departureDate": "2026-10-13T06:30:00", "price": {"value": 9.99}, "soldOut": True},
         {"departureDate": "2026-10-14T06:30:00", "price": None},
     ]}}
     got = parse_fares(payload, "CPH", "FCO", "EUR")
+    assert got[0].arrival_at.hour == 9
     assert len(got) == 1 and got[0].price == 19.99 and "originIata=CPH" in got[0].link
 
 
@@ -158,3 +161,11 @@ def test_leg_prices_shown(capsys):
     lines = out.splitlines()
     i = next(n for n, l in enumerate(lines) if "Andata:" in l)
     assert "originIata=CPH" in lines[i + 1] and "Ritorno:" in lines[i + 2] and "originIata=FCO" in lines[i + 3]
+
+
+def test_arrival_in_output(capsys):
+    from scanner.output import render_results
+    o = offers(item(80, dep="2026-10-12T22:30:00+02:00", duration_to=175))[0]
+    render_results([o], 100, 10)
+    out = capsys.readouterr().out
+    assert "22:30 CPH → 01:25 (+1) NAP" in out

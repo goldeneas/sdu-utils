@@ -38,6 +38,12 @@ def parse_fares(payload: dict, origin: str, destination: str, currency: str) -> 
             price = float(price)
         except ValueError:
             continue
+        arr_dt = None
+        if f.get("arrivalDate"):
+            try:
+                arr_dt = datetime.fromisoformat(f["arrivalDate"])
+            except ValueError:
+                pass
         fares.append(
             OneWayFare(
                 origin=origin,
@@ -47,6 +53,7 @@ def parse_fares(payload: dict, origin: str, destination: str, currency: str) -> 
                 airline="FR",
                 link=BOOKING_URL.format(date=dep_dt.date().isoformat(), o=origin, d=destination),
                 currency=currency.upper(),
+                arrival_at=arr_dt,
             )
         )
     return fares
