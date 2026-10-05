@@ -54,6 +54,13 @@ class NtfyConfig:
 
 
 @dataclass
+class SourcesConfig:
+    travelpayouts: bool = True    # A/R da cache Aviasales (serve TRAVELPAYOUTS_TOKEN)
+    ryanair: bool = True          # tariffe live Ryanair (tratte singole)
+    open_jaw: bool = True         # combina andata/ritorno su aeroporti diversi (Ryanair)
+
+
+@dataclass
 class OutputConfig:
     file: str = ""       # vuoto = solo terminale
     format: str = "csv"  # csv | txt | json
@@ -64,6 +71,7 @@ class Config:
     search: SearchConfig = field(default_factory=SearchConfig)
     airports: AirportsConfig = field(default_factory=AirportsConfig)
     ntfy: NtfyConfig = field(default_factory=NtfyConfig)
+    sources: SourcesConfig = field(default_factory=SourcesConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
 
 
@@ -82,6 +90,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
     s = data.get("search") or {}
     a = data.get("airports") or {}
     n = data.get("ntfy") or {}
+    src = data.get("sources") or {}
     o = data.get("output") or {}
 
     cfg = Config(
@@ -103,6 +112,11 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             server=str(n.get("server", "ntfy.sh")),
             topic=str(n.get("topic", "") or ""),
             notify_new_best=bool(n.get("notify_new_best", True)),
+        ),
+        sources=SourcesConfig(
+            travelpayouts=bool(src.get("travelpayouts", True)),
+            ryanair=bool(src.get("ryanair", True)),
+            open_jaw=bool(src.get("open_jaw", True)),
         ),
         output=OutputConfig(
             file=str(o.get("file", "") or ""),
@@ -133,5 +147,7 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.min_nights` non può superare `window_days`")
     if s.max_transfers < 0:
         raise ValueError("config: `search.max_transfers` non può essere negativo")
+    if not (cfg.sources.travelpayouts or cfg.sources.ryanair):
+        raise ValueError("config: abilita almeno una fonte in `sources`")
     if cfg.output.format not in ("csv", "txt", "json"):
         raise ValueError("config: `output.format` deve essere csv, txt o json")

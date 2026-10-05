@@ -25,6 +25,11 @@ airports:
     - BLQ
     - PSA
 
+sources:
+  travelpayouts: true       # A/R da cache Aviasales (richiede TRAVELPAYOUTS_TOKEN)
+  ryanair: true             # tariffe live Ryanair, tratta per tratta
+  open_jaw: true            # andata e ritorno su aeroporti diversi (solo Ryanair)
+
 ntfy:
   enabled: true             # false = nessuna notifica
   server: ntfy.sh           # sovrascrivibile con env NTFY_SERVER

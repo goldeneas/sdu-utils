@@ -4,8 +4,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scanner.config import AirportsConfig, Config, SearchConfig  # noqa: E402
-from scanner.search import filter_offers, months_in_window, run_search  # noqa: E402
+from scanner.config import AirportsConfig, Config, SearchConfig, SourcesConfig  # noqa: E402
+from scanner.models import OneWayFare  # noqa: E402
+from scanner.ryanair import parse_fares  # noqa: E402
+from scanner.search import combine_one_way, filter_offers, months_in_window, run_search  # noqa: E402
 from scanner.travelpayouts import parse_offer  # noqa: E402
 
 TODAY = dt.date(2026, 10, 5)
@@ -25,6 +27,7 @@ def cfg(**kw):
     return Config(
         search=SearchConfig(max_price=100, min_nights=3, window_days=30, **kw),
         airports=AirportsConfig(origins=["CPH"], destinations=["NAP"]),
+        sources=SourcesConfig(ryanair=False),
     )
 
 
@@ -50,7 +53,7 @@ def test_filters():
             item(50, ret="2026-10-14T19:00:00+02:00"),                 # solo 2 notti
             item(50, transfers=2),                                     # troppi scali
             item(50, dep="2026-12-01T08:00:00+01:00", ret="2026-12-06T08:00:00+01:00"),  # fuori finestra
-            item(100, airline="W6"),                                              # = soglia, incluso
+            item(100, ret="2026-10-18T19:00:00+02:00"),                                              # = soglia, incluso
         ),
         c, start, end,
     )
@@ -77,3 +80,55 @@ def test_run_search(capsys):
     top = run_search(c, client=fc, today=TODAY)
     assert len(fc.calls) == 2 and len(top) == 1 and top[0].price == 60
     assert "€  60.00" in capsys.readouterr().out
+
+
+def fare(o, d, day, price):
+    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR")
+
+
+def test_parse_ryanair():
+    payload = {"outbound": {"fares": [
+        {"departureDate": "2026-10-12T06:30:00", "price": {"value": 19.99}, "soldOut": False},
+        {"departureDate": "2026-10-13T06:30:00", "price": {"value": 9.99}, "soldOut": True},
+        {"departureDate": "2026-10-14T06:30:00", "price": None},
+    ]}}
+    got = parse_fares(payload, "CPH", "FCO", "EUR")
+    assert len(got) == 1 and got[0].price == 19.99 and "originIata=CPH" in got[0].link
+
+
+def test_open_jaw_combination():
+    fares = [
+        fare("CPH", "FCO", "2026-10-12", 20),
+        fare("FCO", "CPH", "2026-10-17", 70),   # stessa rotta: 90
+        fare("MXP", "CPH", "2026-10-17", 25),   # open-jaw: 45
+        fare("MXP", "CPH", "2026-10-14", 5),    # solo 2 notti: scartata
+        fare("BLL", "FCO", "2026-10-12", 95),   # tratta troppo cara in combinazione
+    ]
+    args = (["CPH", "BLL"], ["FCO", "MXP"], 100, 3)
+    got = combine_one_way(fares, *args, open_jaw=True)
+    assert sorted(o.price for o in got) == [45, 90]
+    jaw = next(o for o in got if o.price == 45)
+    assert jaw.open_jaw and jaw.return_origin == "MXP" and "ritorno MXP→CPH" in jaw.summary
+    same = combine_one_way(fares, *args, open_jaw=False)
+    assert [o.price for o in same] == [90] and not same[0].open_jaw
+
+
+class FakeRyanair:
+    def search_month(self, o, d, m):
+        if m != "2026-10":
+            return []
+        return {
+            ("CPH", "FCO"): [fare("CPH", "FCO", "2026-10-12", 20)],
+            ("MXP", "CPH"): [fare("MXP", "CPH", "2026-10-17", 25)],
+        }.get((o, d), [])
+
+
+def test_run_search_with_ryanair(capsys):
+    c = Config(
+        search=SearchConfig(max_price=100, min_nights=3, window_days=30, request_delay_seconds=0),
+        airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP"]),
+        sources=SourcesConfig(travelpayouts=False, ryanair=True, open_jaw=True),
+    )
+    top = run_search(c, ryanair=FakeRyanair(), today=TODAY)
+    assert [o.price for o in top] == [45] and top[0].open_jaw
+    assert "aeroporti diversi" in capsys.readouterr().out

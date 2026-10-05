@@ -13,6 +13,19 @@ def _human_minutes(minutes: int | None) -> str:
 
 
 @dataclass
+class OneWayFare:
+    """Una singola tratta con il suo prezzo."""
+
+    origin: str
+    destination: str
+    departure_at: datetime
+    price: float
+    airline: str = "n/d"
+    link: str = ""
+    currency: str = "EUR"
+
+
+@dataclass
 class FlightOption:
     """Un'offerta andata+ritorno (prezzo totale per 1 persona)."""
 
@@ -28,6 +41,18 @@ class FlightOption:
     duration_back: int | None = None  # minuti
     link: str = ""
     currency: str = "EUR"
+    source: str = "travelpayouts"
+    return_origin: str = ""        # aeroporto di partenza del ritorno (default: destinazione)
+    return_destination: str = ""   # aeroporto di arrivo del ritorno (default: origine)
+    return_link: str = ""
+
+    def __post_init__(self):
+        self.return_origin = self.return_origin or self.destination
+        self.return_destination = self.return_destination or self.origin
+
+    @property
+    def open_jaw(self) -> bool:
+        return (self.return_origin, self.return_destination) != (self.destination, self.origin)
 
     @property
     def departure_date(self) -> date:
@@ -57,12 +82,19 @@ class FlightOption:
 
     @property
     def key(self) -> tuple:
-        return (self.origin, self.destination, self.departure_at, self.return_at, self.airline)
+        return (
+            self.origin, self.destination, self.return_origin, self.return_destination,
+            self.departure_at, self.return_at,
+        )
 
     @property
     def summary(self) -> str:
+        back = (
+            f" ritorno {self.return_origin}→{self.return_destination}"
+            if self.open_jaw else ""
+        )
         return (
-            f"€{self.price:.2f} {self.origin}→{self.destination} "
+            f"€{self.price:.2f} {self.origin}→{self.destination}{back} "
             f"{self.departure_date.isoformat()} → {self.return_date.isoformat()} "
             f"({self.airline})"
         )
