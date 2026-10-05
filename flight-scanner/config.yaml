@@ -9,6 +9,7 @@ search:
   window_days: 30           # finestra di ricerca a partire da domani
   min_nights: 3             # notti minime di permanenza
   max_nights: 14            # notti massime di permanenza
+  unique_flights: true      # ogni volo compare una sola volta nei top (niente varianti dello stesso volo)
   max_transfers: 1          # scali massimi per tratta (0 = solo diretti)
   request_delay_seconds: 0.5  # pausa tra una richiesta e l'altra
 

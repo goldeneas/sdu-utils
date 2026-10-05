@@ -41,6 +41,23 @@ def filter_offers(offers, cfg: Config, start: dt.date, end: dt.date) -> list[Fli
     return out
 
 
+def pick_top(options: list[FlightOption], n: int, unique: bool) -> list[FlightOption]:
+    """Primi `n` per prezzo; con `unique` ogni singolo volo (andata o ritorno) compare una volta sola."""
+    if not unique:
+        return options[:n]
+    used, top = set(), []
+    for o in options:
+        out_leg = (o.origin, o.destination, o.departure_at)
+        back_leg = (o.return_origin, o.return_destination, o.return_at)
+        if out_leg in used or back_leg in used:
+            continue
+        used.update((out_leg, back_leg))
+        top.append(o)
+        if len(top) == n:
+            break
+    return top
+
+
 def combine_one_way(
     fares: list[OneWayFare],
     origins: list[str],
@@ -178,11 +195,12 @@ def run_search(
         found += hits
 
     found = filter_offers(found, cfg, start, end)
-    top = found[: s.top_n]
+    top = pick_top(found, s.top_n, s.unique_flights)
     counts = {n: sum(1 for o in found if o.source == n) for n in ("travelpayouts", "ryanair")}
     print(
         f"\nTotale ≤ soglia: {len(found)} (Travelpayouts: {counts['travelpayouts']}, "
         f"Ryanair: {counts['ryanair']}) · mostrati i {len(top)} più economici"
+        + (" (senza voli ripetuti)" if s.unique_flights else "")
     )
 
     if notifier and cfg.ntfy.notify_new_best and found:

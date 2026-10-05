@@ -36,6 +36,7 @@ class SearchConfig:
     window_days: int = 30
     min_nights: int = 3
     max_nights: int = 14
+    unique_flights: bool = True   # ogni volo compare al massimo una volta nei top
     max_transfers: int = 1        # scali massimi per tratta (0 = solo diretti)
     request_delay_seconds: float = 0.5
 
@@ -102,6 +103,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             window_days=int(s.get("window_days", 30)),
             min_nights=int(s.get("min_nights", 3)),
             max_nights=int(s.get("max_nights", 14)),
+            unique_flights=bool(s.get("unique_flights", True)),
             max_transfers=int(s.get("max_transfers", 1)),
             request_delay_seconds=float(s.get("request_delay_seconds", 0.5)),
         ),

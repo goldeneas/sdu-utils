@@ -169,3 +169,16 @@ def test_arrival_in_output(capsys):
     render_results([o], 100, 10)
     out = capsys.readouterr().out
     assert "22:30 CPH → 01:25 (+1) NAP" in out
+
+
+def test_pick_top_unique():
+    from scanner.search import pick_top
+    fares = [
+        fare("CPH", "FCO", "2026-10-27", 30), fare("CPH", "FCO", "2026-10-28", 45),
+        fare("FCO", "CPH", "2026-11-03", 40), fare("FCO", "CPH", "2026-11-04", 50),
+    ]
+    combos = sorted(combine_one_way(fares, ["CPH"], ["FCO"], 100, 3, True), key=lambda o: o.price)
+    assert len(combos) == 4
+    top = pick_top(combos, 10, True)
+    assert [o.price for o in top] == [70, 95]      # 27→03 e 28→04, nessuna gamba ripetuta
+    assert len(pick_top(combos, 10, False)) == 4
