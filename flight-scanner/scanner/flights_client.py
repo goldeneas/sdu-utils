@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from playwright.sync_api import sync_playwright  # pyright: ignore[reportMissingImports]
+import playwright.sync_api as pw  # pyright: ignore[reportMissingImports]
 
 from .models import OneWayOffer, Segment  # pyright: ignore[reportMissingImports]
 
@@ -39,6 +39,10 @@ SUMMARY_LAYOVER_RE = re.compile(r"Layover \(1 of 1\) is a (.+?) layover", re.IGN
 
 class BlockedError(RuntimeError):
     """Google ha bloccato la richiesta (captcha / traffico insolito)."""
+
+
+class RateLimitedError(RuntimeError):
+    """Google non risponde (probabile throttling / rate-limit)."""
 
 # Estrazione dal DOM. Usa aria-label con match "inizia con" (^=) per prendere
 # solo le "foglie" (orari, durata, scali) evitando i contenitori con
@@ -153,7 +157,7 @@ class GoogleFlightsClient:
         self._page: Any = None
 
     def start(self):
-        self._pw = sync_playwright().start()
+        self._pw = pw.sync_playwright().start()
         self._browser = self._pw.chromium.launch(headless=self.cfg.headless)
         self._context = self._browser.new_context(
             user_agent=UA,
@@ -179,6 +183,14 @@ class GoogleFlightsClient:
                 state, offers = self._try_search(url, origin, destination, date)
             except BlockedError:
                 raise
+            except pw.TimeoutError:
+                # Google non risponde: quasi certamente rate-limit
+                if attempt == 0:
+                    time.sleep(5)
+                    continue
+                raise RateLimitedError(
+                    f"Google non risponde ({origin}-{destination} {date})"
+                ) from None
             except Exception as exc:  # noqa: BLE001  # retry su qualsiasi errore transitorio
                 if attempt == 1:
                     print(

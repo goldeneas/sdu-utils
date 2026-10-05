@@ -14,6 +14,7 @@ from .config import Config  # pyright: ignore[reportMissingImports]
 from .flights_client import (  # pyright: ignore[reportMissingImports]
     BlockedError,
     GoogleFlightsClient,
+    RateLimitedError,
 )
 from .models import FlightOption  # pyright: ignore[reportMissingImports]
 from .notifier import resolve_ntfy  # pyright: ignore[reportMissingImports]
@@ -71,6 +72,21 @@ def _segment_layover_ok(seg, max_minutes: int) -> bool:
     return seg.layover_minutes is None or seg.layover_minutes <= max_minutes
 
 
+def _search_with_backoff(client, origin, dest, date):
+    """Esegue una ricerca con backoff se Google sta rate-limitando."""
+    cooldown = 30
+    for attempt in range(4):
+        try:
+            return client.search_one_way(origin, dest, date)
+        except RateLimitedError:
+            if attempt == 3:
+                raise
+            print(f"  [rate-limit] Google non risponde, pausa di {cooldown}s...")
+            time.sleep(cooldown)
+            cooldown = min(cooldown * 2, 300)
+    return []
+
+
 def run_search(cfg: Config) -> list[FlightOption]:
     s = cfg.search
     today = dt.date.today()  # noqa: DTZ011  # data locale dell'utente
@@ -108,10 +124,10 @@ def run_search(cfg: Config) -> list[FlightOption]:
         for i, (route, direction, date) in enumerate(tasks, 1):
             origin, dest = route
             if direction == "out":
-                offers = client.search_one_way(origin, dest, date)
+                offers = _search_with_backoff(client, origin, dest, date)
                 store = out_by_route.setdefault(route, {})
             else:
-                offers = client.search_one_way(dest, origin, date)
+                offers = _search_with_backoff(client, dest, origin, date)
                 store = ret_by_route.setdefault(route, {})
             ok = [o for o in offers if _segment_layover_ok(o.segment, max_layover_min)]
             if ok:
@@ -130,6 +146,9 @@ def run_search(cfg: Config) -> list[FlightOption]:
         print(f"\n[e] {exc}")
         print("    Google sta limitando/bloccando le richieste: interrompo "
               "per non peggiorare. Mostro i risultati parziali.")
+    except RateLimitedError as exc:
+        print(f"\n[e] {exc}")
+        print("    Rate-limit persistente: interrompo. Mostro i risultati parziali.")
     except KeyboardInterrupt:
         print("\nInterrotto dall'utente: combino i risultati parziali.")
     finally:
