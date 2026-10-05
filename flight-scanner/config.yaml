@@ -20,12 +20,12 @@ airports:
     - QSR
     - FCO
     - CIA
-    - MXP
-    - BGY
-    - LIN
-    - TRN
-    - BLQ
-    - PSA
+#    - MXP
+#    - BGY
+#    - LIN
+#    - TRN
+#    - BLQ
+#    - PSA
 
 sources:
   travelpayouts: true       # A/R da cache Aviasales (richiede TRAVELPAYOUTS_TOKEN)
