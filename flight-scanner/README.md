@@ -41,7 +41,7 @@ Il token serve solo se `sources.travelpayouts` è attivo. È gratuito: registrat
 |---|---|---|
 | `search.max_price` | Soglia (€, A/R totale) | 100 |
 | `search.top_n` | Risultati mostrati | 10 |
-| `search.window_days` | Finestra di ricerca (giorni da domani) | 30 |
+| `search.window_days` | Finestra delle partenze (giorni da domani); il ritorno può cadere oltre | 30 |
 | `search.min_nights` / `max_nights` | Notti minime / massime | 3 / 14 |
 | `search.max_transfers` | Scali massimi per tratta | 1 |
 | `search.request_delay_seconds` | Pausa tra le richieste | 0.5 |

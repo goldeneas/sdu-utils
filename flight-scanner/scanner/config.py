@@ -36,6 +36,7 @@ class SearchConfig:
     window_days: int = 30
     min_nights: int = 3
     max_nights: int = 14
+    unique_flights: bool = True   # ogni volo compare al massimo una volta nei top
     max_transfers: int = 1        # scali massimi per tratta (0 = solo diretti)
     request_delay_seconds: float = 0.5
 
@@ -102,6 +103,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             window_days=int(s.get("window_days", 30)),
             min_nights=int(s.get("min_nights", 3)),
             max_nights=int(s.get("max_nights", 14)),
+            unique_flights=bool(s.get("unique_flights", True)),
             max_transfers=int(s.get("max_transfers", 1)),
             request_delay_seconds=float(s.get("request_delay_seconds", 0.5)),
         ),
@@ -147,8 +149,6 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.min_nights` deve essere >= 1")
     if s.max_nights < s.min_nights:
         raise ValueError("config: `search.max_nights` non può essere minore di `min_nights`")
-    if s.min_nights > s.window_days:
-        raise ValueError("config: `search.min_nights` non può superare `window_days`")
     if s.max_transfers < 0:
         raise ValueError("config: `search.max_transfers` non può essere negativo")
     if not (cfg.sources.travelpayouts or cfg.sources.ryanair):

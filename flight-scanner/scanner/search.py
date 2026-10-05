@@ -26,7 +26,7 @@ def filter_offers(offers, cfg: Config, start: dt.date, end: dt.date) -> list[Fli
     s = cfg.search
     seen, out = set(), []
     for o in sorted(offers, key=lambda o: o.price):  # a parità di voli resta il più economico
-        if not (start <= o.departure_date <= end and o.return_date <= end):
+        if not (start <= o.departure_date <= end):  # solo la partenza è vincolata alla finestra
             continue
         if not (s.min_nights <= o.nights <= s.max_nights):
             continue
@@ -39,6 +39,23 @@ def filter_offers(offers, cfg: Config, start: dt.date, end: dt.date) -> list[Fli
         seen.add(o.key)
         out.append(o)
     return out
+
+
+def pick_top(options: list[FlightOption], n: int, unique: bool) -> list[FlightOption]:
+    """Primi `n` per prezzo; con `unique` ogni singolo volo (andata o ritorno) compare una volta sola."""
+    if not unique:
+        return options[:n]
+    used, top = set(), []
+    for o in options:
+        out_leg = (o.origin, o.destination, o.departure_at)
+        back_leg = (o.return_origin, o.return_destination, o.return_at)
+        if out_leg in used or back_leg in used:
+            continue
+        used.update((out_leg, back_leg))
+        top.append(o)
+        if len(top) == n:
+            break
+    return top
 
 
 def combine_one_way(
@@ -105,7 +122,8 @@ def run_search(
     today = today or dt.date.today()  # noqa: DTZ011
     start = today + dt.timedelta(days=1)
     end = today + dt.timedelta(days=s.window_days)
-    months = months_in_window(start, end)
+    months = months_in_window(start, end)  # mesi di partenza
+    return_months = months_in_window(start, end + dt.timedelta(days=s.max_nights))
     origins, dests = cfg.airports.origins, cfg.airports.destinations
     routes = [(o, d) for o in origins for d in dests if o != d]
 
@@ -117,7 +135,7 @@ def run_search(
 
     names = [n for n, on in (("Travelpayouts", src.travelpayouts), ("Ryanair", src.ryanair)) if on]
     print(f"Flight Scanner ({' + '.join(names)})")
-    print(f"  finestra: {start} → {end}")
+    print(f"  partenze: {start} → {end} (il ritorno può cadere fino a {s.max_nights} notti dopo)")
     print(f"  origini: {', '.join(origins)}")
     print(f"  destinazioni: {', '.join(dests)}")
     print(
@@ -153,7 +171,7 @@ def run_search(
         legs = [(o, d) for o, d in routes] + [(d, o) for o, d in routes]
         for a, b in legs:
             n = 0
-            for month in months:
+            for month in return_months:
                 try:
                     got = ryanair.search_month(a, b, month)
                 except ApiError as exc:
@@ -161,7 +179,8 @@ def run_search(
                     got = []
                 fares += [
                     f for f in got
-                    if start <= f.departure_at.date() <= end and f.price < s.max_price
+                    if start <= f.departure_at.date() <= end + dt.timedelta(days=s.max_nights)
+                    and f.price < s.max_price
                 ]
                 n += len(got)
                 _pause(cfg)
@@ -178,11 +197,12 @@ def run_search(
         found += hits
 
     found = filter_offers(found, cfg, start, end)
-    top = found[: s.top_n]
+    top = pick_top(found, s.top_n, s.unique_flights)
     counts = {n: sum(1 for o in found if o.source == n) for n in ("travelpayouts", "ryanair")}
     print(
         f"\nTotale ≤ soglia: {len(found)} (Travelpayouts: {counts['travelpayouts']}, "
         f"Ryanair: {counts['ryanair']}) · mostrati i {len(top)} più economici"
+        + (" (senza voli ripetuti)" if s.unique_flights else "")
     )
 
     if notifier and cfg.ntfy.notify_new_best and found:

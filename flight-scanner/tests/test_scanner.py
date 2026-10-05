@@ -61,6 +61,15 @@ def test_filters():
     assert [o.price for o in got] == [79.0, 100.0]
 
 
+def test_return_may_fall_after_window_end():
+    c = cfg()
+    start, end = TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=30)   # fine finestra: 4 nov
+    late = item(60, dep="2026-11-04T08:00:00+01:00", ret="2026-11-10T08:00:00+01:00")
+    assert len(filter_offers(offers(late), c, start, end)) == 1
+    too_late_dep = item(60, dep="2026-11-05T08:00:00+01:00", ret="2026-11-10T08:00:00+01:00")
+    assert filter_offers(offers(too_late_dep), c, start, end) == []
+
+
 def test_months():
     assert months_in_window(dt.date(2026, 10, 6), dt.date(2026, 11, 4)) == ["2026-10", "2026-11"]
     assert months_in_window(dt.date(2026, 12, 20), dt.date(2027, 1, 19)) == ["2026-12", "2027-01"]
@@ -169,3 +178,16 @@ def test_arrival_in_output(capsys):
     render_results([o], 100, 10)
     out = capsys.readouterr().out
     assert "22:30 CPH → 01:25 (+1) NAP" in out
+
+
+def test_pick_top_unique():
+    from scanner.search import pick_top
+    fares = [
+        fare("CPH", "FCO", "2026-10-27", 30), fare("CPH", "FCO", "2026-10-28", 45),
+        fare("FCO", "CPH", "2026-11-03", 40), fare("FCO", "CPH", "2026-11-04", 50),
+    ]
+    combos = sorted(combine_one_way(fares, ["CPH"], ["FCO"], 100, 3, True), key=lambda o: o.price)
+    assert len(combos) == 4
+    top = pick_top(combos, 10, True)
+    assert [o.price for o in top] == [70, 95]      # 27→03 e 28→04, nessuna gamba ripetuta
+    assert len(pick_top(combos, 10, False)) == 4
