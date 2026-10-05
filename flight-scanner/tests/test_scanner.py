@@ -61,6 +61,15 @@ def test_filters():
     assert [o.price for o in got] == [79.0, 100.0]
 
 
+def test_return_may_fall_after_window_end():
+    c = cfg()
+    start, end = TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=30)   # fine finestra: 4 nov
+    late = item(60, dep="2026-11-04T08:00:00+01:00", ret="2026-11-10T08:00:00+01:00")
+    assert len(filter_offers(offers(late), c, start, end)) == 1
+    too_late_dep = item(60, dep="2026-11-05T08:00:00+01:00", ret="2026-11-10T08:00:00+01:00")
+    assert filter_offers(offers(too_late_dep), c, start, end) == []
+
+
 def test_months():
     assert months_in_window(dt.date(2026, 10, 6), dt.date(2026, 11, 4)) == ["2026-10", "2026-11"]
     assert months_in_window(dt.date(2026, 12, 20), dt.date(2027, 1, 19)) == ["2026-12", "2027-01"]

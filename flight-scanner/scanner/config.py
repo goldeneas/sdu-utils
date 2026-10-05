@@ -149,8 +149,6 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.min_nights` deve essere >= 1")
     if s.max_nights < s.min_nights:
         raise ValueError("config: `search.max_nights` non può essere minore di `min_nights`")
-    if s.min_nights > s.window_days:
-        raise ValueError("config: `search.min_nights` non può superare `window_days`")
     if s.max_transfers < 0:
         raise ValueError("config: `search.max_transfers` non può essere negativo")
     if not (cfg.sources.travelpayouts or cfg.sources.ryanair):
