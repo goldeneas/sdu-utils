@@ -26,7 +26,8 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
     print(f"Migliori {len(options)} offerte (soglia €{max_price:.0f}, top {top_n}):")
     print("=" * 80)
     for i, f in enumerate(options, 1):
-        print(f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   {f.airline}")
+        tag = "  [aeroporti diversi]" if f.open_jaw else ""
+        print(f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   {f.airline}{tag}")
         print(
             f"   Andata:  {format_date(f.departure_date)}  "
             f"{f.departure_at:%H:%M}  · {f.duration_out_human} · "
@@ -34,11 +35,14 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
         )
         print(
             f"   Ritorno: {format_date(f.return_date)}  "
-            f"{f.return_at:%H:%M}  · {f.duration_back_human} · "
+            f"{f.return_at:%H:%M} {f.return_origin} → {f.return_destination}  · "
+            f"{f.duration_back_human} · "
             f"{f.stops_human(f.return_transfers)}"
         )
         if f.link:
             print(f"   Link:    {f.link}")
+        if f.return_link:
+            print(f"   Link ritorno: {f.return_link}")
         print("-" * 80)
 
 
@@ -51,12 +55,17 @@ def _as_row(f: FlightOption) -> dict:
         "departure_at": f.departure_at.isoformat(timespec="minutes"),
         "return_at": f.return_at.isoformat(timespec="minutes"),
         "nights": f.nights,
+        "return_origin": f.return_origin,
+        "return_destination": f.return_destination,
+        "open_jaw": f.open_jaw,
+        "source": f.source,
         "airline": f.airline,
         "out_stops": f.transfers,
         "in_stops": f.return_transfers,
         "out_duration_min": f.duration_out,
         "in_duration_min": f.duration_back,
         "link": f.link,
+        "return_link": f.return_link,
     }
 
 
@@ -81,9 +90,5 @@ def write_results_file(options: list[FlightOption], path: str, fmt: str = "csv")
             encoding="utf-8",
         )
     else:  # txt
-        lines = [
-            f"€{f.price:.2f}  {f.origin}→{f.destination}  "
-            f"{f.departure_date} → {f.return_date}  {f.airline}"
-            for f in options
-        ]
+        lines = [f.summary for f in options]
         p.write_text("\n".join(lines) + "\n", encoding="utf-8")
