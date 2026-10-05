@@ -83,7 +83,7 @@ def test_run_search(capsys):
 
 
 def fare(o, d, day, price):
-    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR")
+    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR", f"https://r/originIata={o}")
 
 
 def test_parse_ryanair():
@@ -154,4 +154,7 @@ def test_leg_prices_shown(capsys):
                         ["CPH"], ["FCO"], 100, 3, True)
     render_results(o, 100, 10)
     out = capsys.readouterr().out
-    assert "€20.00" in out and "€25.00" in out and "[ryanair]" in out
+    assert "€20.00" in out and "€25.00" in out and "Ryanair" in out
+    lines = out.splitlines()
+    i = next(n for n, l in enumerate(lines) if "Andata:" in l)
+    assert "originIata=CPH" in lines[i + 1] and "Ritorno:" in lines[i + 2] and "originIata=FCO" in lines[i + 3]
