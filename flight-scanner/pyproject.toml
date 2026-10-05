@@ -1,10 +1,9 @@
 [project]
 name = "flight-scanner"
 version = "0.1.0"
-description = "Trova voli convenienti via Google Flights (scraping con Playwright)."
+description = "Trova voli A/R convenienti tramite la Travelpayouts Data API."
 requires-python = ">=3.10"
 dependencies = [
-    "playwright>=1.40.0",
     "PyYAML>=6.0",
     "requests>=2.31.0",
 ]

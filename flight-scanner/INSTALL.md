@@ -18,11 +18,6 @@ source .venv/bin/activate          # macOS/Linux
 # dipendenze
 pip install -r requirements.txt
 
-# browser Chromium per Playwright (una tantum)
-playwright install chromium
-
-# (solo Linux) se mancano librerie di sistema:
-# playwright install-deps chromium
 ```
 
 ## 3. Configurazione
@@ -33,9 +28,10 @@ playwright install chromium
    cp .env.example .env
    ```
 
-2. Imposta il topic NTFY in `.env` (obbligatorio per ricevere le notifiche):
+2. Imposta in `.env` il token Travelpayouts (obbligatorio) e il topic NTFY (per le notifiche):
 
    ```
+   TRAVELPAYOUTS_TOKEN=il-tuo-token
    NTFY_TOPIC=mio-topic
    ```
 
@@ -43,16 +39,7 @@ playwright install chromium
 
 3. Regola `config.yaml` se necessario (aeroporti, soglia, finestra, ecc.).
 
-## 4. Prova rapida
-
-```bash
-python main.py --debug
-```
-
-La modalità `--debug` salva HTML e screenshot di ogni ricerca in `debug_dumps/`,
-utile per verificare che il parsing funzioni prima di lanciare la ricerca completa.
-
-## 5. Uso manuale
+## 4. Uso manuale
 
 ```bash
 python main.py
@@ -61,7 +48,7 @@ python main.py
 Premi `Ctrl+C` in qualsiasi momento: verranno mostrati i risultati parziali
 raccolti fino a quel punto.
 
-## 6. Esecuzione pianificata
+## 5. Esecuzione pianificata
 
 ### Linux/macOS — cron
 
@@ -109,7 +96,7 @@ Poi:
 launchctl load ~/Library/LaunchAgents/com.tuo.flightscanner.plist
 ```
 
-## 7. Verifica opzionale del type-check
+## 6. Verifica opzionale del type-check
 
 ```bash
 .venv/bin/pip install pyright
@@ -118,18 +105,11 @@ launchctl load ~/Library/LaunchAgents/com.tuo.flightscanner.plist
 
 Con le dipendenze installate il risultato atteso è `0 errors`.
 
-> Nota: gli import locali (`scanner.*`) e `playwright` portano un commento
-> `# pyright: ignore[reportMissingImports]`. Con il `.venv` attivo si risolvono
-> tutti (0 errori); il commento serve solo agli ambienti di analisi che non
-> hanno le dipendenze installate o il package nel path.
-
-## 8. Risoluzione problemi
+## 7. Risoluzione problemi
 
 | Problema | Cosa fare |
 |---|---|
-| `Google sta bloccando le richieste` | Rate-limit/captcha di Google. Aumenta `request_delay_seconds`, riduci `max_queries`, riprova più tardi. |
-| `Nessun volo trovato` / parsing vuoto | Probabile cambio del DOM di Google. Esegui `python main.py --debug` e aggiorna `EXTRACT_JS` in `scanner/flights_client.py`. |
-| `ricerca fallita` ripetuto | Possibile rate-limit di Google: aumenta `request_delay_seconds`, riduci `max_queries`, evita esecuzioni troppo ravvicinate. |
-| Ricerca troppo lenta | Aumenta `date_step_departure`/`date_step_return`, riduci le destinazioni in `config.yaml`. |
-| Notifiche non arrivano | Verifica `NTFY_TOPIC` in `.env` e che `ntfy.enabled` sia `true` in `config.yaml`. |
-| `File di configurazione non trovato` | Esegui dalla root del progetto (`flight-scanner/`). |
+| `Token Travelpayouts mancante/non valido` | Imposta `TRAVELPAYOUTS_TOKEN` in `.env`. |
+| `nessun dato in cache` per una rotta | Rotta poco cercata su Aviasales: normale per aeroporti piccoli (BLL). Usa anche CPH. |
+| Nessun volo ≤ soglia | Guarda il prezzo "più economico in assoluto" stampato per rotta e valuta di alzare `max_price`. |
+| Notifiche non arrivano | Verifica `NTFY_TOPIC` in `.env` e `ntfy.enabled: true`. |
