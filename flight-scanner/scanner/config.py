@@ -35,6 +35,7 @@ class SearchConfig:
     top_n: int = 10
     window_days: int = 30
     min_nights: int = 3
+    max_nights: int = 14
     max_transfers: int = 1        # scali massimi per tratta (0 = solo diretti)
     request_delay_seconds: float = 0.5
 
@@ -100,6 +101,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             top_n=int(s.get("top_n", 10)),
             window_days=int(s.get("window_days", 30)),
             min_nights=int(s.get("min_nights", 3)),
+            max_nights=int(s.get("max_nights", 14)),
             max_transfers=int(s.get("max_transfers", 1)),
             request_delay_seconds=float(s.get("request_delay_seconds", 0.5)),
         ),
@@ -143,6 +145,8 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.window_days` deve essere > 0")
     if s.min_nights < 1:
         raise ValueError("config: `search.min_nights` deve essere >= 1")
+    if s.max_nights < s.min_nights:
+        raise ValueError("config: `search.max_nights` non può essere minore di `min_nights`")
     if s.min_nights > s.window_days:
         raise ValueError("config: `search.min_nights` non può superare `window_days`")
     if s.max_transfers < 0:

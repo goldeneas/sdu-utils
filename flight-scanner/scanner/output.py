@@ -18,6 +18,10 @@ def format_date(d) -> str:
     return f"{_DAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]} {d.year}"
 
 
+def _leg_price(p) -> str:
+    return f" · €{p:.2f}" if p is not None else ""
+
+
 def render_results(options: list[FlightOption], max_price: float, top_n: int) -> None:
     print()
     if not options:
@@ -27,17 +31,20 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
     print("=" * 80)
     for i, f in enumerate(options, 1):
         tag = "  [aeroporti diversi]" if f.open_jaw else ""
-        print(f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   {f.airline}{tag}")
+        print(
+            f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   "
+            f"{f.airline}  [{f.source}]{tag}  ({f.nights} notti)"
+        )
         print(
             f"   Andata:  {format_date(f.departure_date)}  "
             f"{f.departure_at:%H:%M}  · {f.duration_out_human} · "
-            f"{f.stops_human(f.transfers)}"
+            f"{f.stops_human(f.transfers)}{_leg_price(f.price_out)}"
         )
         print(
             f"   Ritorno: {format_date(f.return_date)}  "
             f"{f.return_at:%H:%M} {f.return_origin} → {f.return_destination}  · "
             f"{f.duration_back_human} · "
-            f"{f.stops_human(f.return_transfers)}"
+            f"{f.stops_human(f.return_transfers)}{_leg_price(f.price_back)}"
         )
         if f.link:
             print(f"   Link:    {f.link}")
@@ -59,6 +66,8 @@ def _as_row(f: FlightOption) -> dict:
         "return_destination": f.return_destination,
         "open_jaw": f.open_jaw,
         "source": f.source,
+        "price_out": f.price_out,
+        "price_back": f.price_back,
         "airline": f.airline,
         "out_stops": f.transfers,
         "in_stops": f.return_transfers,
