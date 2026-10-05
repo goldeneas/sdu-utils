@@ -17,7 +17,10 @@ from .flights_client import (  # pyright: ignore[reportMissingImports]
 )
 from .models import FlightOption  # pyright: ignore[reportMissingImports]
 from .notifier import resolve_ntfy  # pyright: ignore[reportMissingImports]
-from .output import render_results  # pyright: ignore[reportMissingImports]
+from .output import (  # pyright: ignore[reportMissingImports]
+    render_results,
+    write_results_file,
+)
 
 
 class BestDealTracker:
@@ -162,6 +165,10 @@ def run_search(cfg: Config) -> list[FlightOption]:
     results.sort(key=lambda f: f.price)
     top = results[: s.top_n]
     render_results(top, s.max_price, s.top_n)
+
+    if cfg.output.file:
+        write_results_file(top, cfg.output.file, cfg.output.format)
+        print(f"\nRisultati salvati in: {cfg.output.file}")
 
     if notifier:
         notifier.notify_summary(top, s.max_price)

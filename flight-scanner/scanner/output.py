@@ -1,5 +1,9 @@
-"""Formattazione dell'output per il terminale."""
+"""Formattazione dell'output per il terminale e su file."""
 from __future__ import annotations
+
+import csv
+import json
+from pathlib import Path
 
 from .models import FlightOption  # pyright: ignore[reportMissingImports]
 
@@ -44,3 +48,55 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
             f"{f.origin}  · {f.inbound.duration_human} · {f.inbound.stops_human}"
         )
         print("-" * 80)
+
+
+def _as_row(f: FlightOption) -> dict:
+    return {
+        "price": f.price,
+        "currency": f.currency,
+        "origin": f.origin,
+        "destination": f.destination,
+        "departure_date": f.departure_date.isoformat(),
+        "return_date": f.return_date.isoformat(),
+        "out_airline": f.outbound.airline,
+        "out_departure": f.outbound.departure_time,
+        "out_arrival": f.outbound.arrival_time,
+        "out_duration_min": f.outbound.duration_minutes,
+        "out_stops": f.outbound.stops,
+        "out_layover_min": f.outbound.layover_minutes,
+        "in_airline": f.inbound.airline,
+        "in_departure": f.inbound.departure_time,
+        "in_arrival": f.inbound.arrival_time,
+        "in_duration_min": f.inbound.duration_minutes,
+        "in_stops": f.inbound.stops,
+        "in_layover_min": f.inbound.layover_minutes,
+    }
+
+
+def write_results_file(options: list[FlightOption], path: str, fmt: str = "csv") -> None:
+    """Salva i risultati su file in formato CSV, TXT o JSON."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    if fmt == "csv":
+        if not options:
+            p.write_text("", encoding="utf-8")
+            return
+        fields = list(_as_row(options[0]).keys())
+        with p.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fields)
+            writer.writeheader()
+            for f in options:
+                writer.writerow(_as_row(f))
+    elif fmt == "json":
+        p.write_text(
+            json.dumps([_as_row(f) for f in options], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    else:  # txt
+        lines = [
+            f"€{f.price:.2f}  {f.origin}→{f.destination}  "
+            f"{f.departure_date} → {f.return_date}  {f.outbound.airline}"
+            for f in options
+        ]
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")

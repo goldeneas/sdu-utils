@@ -64,11 +64,18 @@ class ScraperConfig:
 
 
 @dataclass
+class OutputConfig:
+    file: str = ""       # vuoto = solo terminale
+    format: str = "csv"  # csv | txt | json
+
+
+@dataclass
 class Config:
     search: SearchConfig = field(default_factory=SearchConfig)
     airports: AirportsConfig = field(default_factory=AirportsConfig)
     ntfy: NtfyConfig = field(default_factory=NtfyConfig)
     scraper: ScraperConfig = field(default_factory=ScraperConfig)
+    output: OutputConfig = field(default_factory=OutputConfig)
 
 
 def _clean_codes(items) -> list[str]:
@@ -87,6 +94,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
     a = data.get("airports") or {}
     n = data.get("ntfy") or {}
     sc = data.get("scraper") or {}
+    o = data.get("output") or {}
 
     cfg = Config(
         search=SearchConfig(
@@ -116,6 +124,10 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             timeout_seconds=int(sc.get("timeout_seconds", 30)),
             debug_dump_dir=str(sc.get("debug_dump_dir", "") or ""),
         ),
+        output=OutputConfig(
+            file=str(o.get("file", "") or ""),
+            format=str(o.get("format", "csv")).lower(),
+        ),
     )
 
     _validate(cfg)
@@ -143,3 +155,5 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `date_step_*` devono essere >= 1")
     if s.max_layover_hours < 0:
         raise ValueError("config: `search.max_layover_hours` non può essere negativo")
+    if cfg.output.format not in ("csv", "txt", "json"):
+        raise ValueError("config: `output.format` deve essere csv, txt o json")

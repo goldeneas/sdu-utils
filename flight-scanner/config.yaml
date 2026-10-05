@@ -38,3 +38,7 @@ scraper:
   headless: true            # browser senza interfaccia
   timeout_seconds: 20       # timeout per il caricamento della pagina
   debug_dump_dir: ""        # se valorizzato salva HTML+screenshot
+
+output:
+  file: ""                  # es. "risultati.csv" (vuoto = solo terminale)
+  format: csv               # csv | txt | json
