@@ -35,7 +35,7 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
     for i, f in enumerate(options, 1):
         tag = "  [aeroporti diversi]" if f.open_jaw else ""
         print(
-            f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   "
+            f"{i}) €{f.price:7.2f}   "
             f"{f.airline}{'' if f.source == 'ryanair' else '  [' + f.source + ']'}"
             f"{tag}  ({f.nights} notti)"
         )
