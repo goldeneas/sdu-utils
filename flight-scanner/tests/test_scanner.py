@@ -83,7 +83,7 @@ def test_run_search(capsys):
 
 
 def fare(o, d, day, price):
-    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR")
+    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR", f"https://r/originIata={o}")
 
 
 def test_parse_ryanair():
@@ -132,3 +132,29 @@ def test_run_search_with_ryanair(capsys):
     top = run_search(c, ryanair=FakeRyanair(), today=TODAY)
     assert [o.price for o in top] == [45] and top[0].open_jaw
     assert "aeroporti diversi" in capsys.readouterr().out
+
+
+def test_max_nights():
+    fares = [
+        fare("CPH", "FCO", "2026-10-12", 20),
+        fare("FCO", "CPH", "2026-10-20", 30),   # 8 notti
+        fare("FCO", "CPH", "2026-12-01", 10),   # 50 notti
+    ]
+    args = (["CPH"], ["FCO"], 100, 3, True)
+    assert [o.price for o in combine_one_way(fares, *args, max_nights=14)] == [50]
+    got = combine_one_way(fares, *args)
+    assert len(got) == 2
+    o = filter_offers(offers(item(40, ret="2026-10-28T10:00:00+02:00")), cfg(), TODAY, TODAY + dt.timedelta(days=30))
+    assert o == []  # 16 notti > 14
+
+
+def test_leg_prices_shown(capsys):
+    from scanner.output import render_results
+    o = combine_one_way([fare("CPH", "FCO", "2026-10-12", 20), fare("FCO", "CPH", "2026-10-17", 25)],
+                        ["CPH"], ["FCO"], 100, 3, True)
+    render_results(o, 100, 10)
+    out = capsys.readouterr().out
+    assert "€20.00" in out and "€25.00" in out and "Ryanair" in out
+    lines = out.splitlines()
+    i = next(n for n, l in enumerate(lines) if "Andata:" in l)
+    assert "originIata=CPH" in lines[i + 1] and "Ritorno:" in lines[i + 2] and "originIata=FCO" in lines[i + 3]

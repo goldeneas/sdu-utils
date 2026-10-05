@@ -45,6 +45,8 @@ class FlightOption:
     return_origin: str = ""        # aeroporto di partenza del ritorno (default: destinazione)
     return_destination: str = ""   # aeroporto di arrivo del ritorno (default: origine)
     return_link: str = ""
+    price_out: float | None = None    # prezzo della sola andata (se noto)
+    price_back: float | None = None   # prezzo del solo ritorno (se noto)
 
     def __post_init__(self):
         self.return_origin = self.return_origin or self.destination

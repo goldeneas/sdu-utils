@@ -28,7 +28,7 @@ def filter_offers(offers, cfg: Config, start: dt.date, end: dt.date) -> list[Fli
     for o in sorted(offers, key=lambda o: o.price):  # a parità di voli resta il più economico
         if not (start <= o.departure_date <= end and o.return_date <= end):
             continue
-        if o.nights < s.min_nights:
+        if not (s.min_nights <= o.nights <= s.max_nights):
             continue
         if max(o.transfers, o.return_transfers) > s.max_transfers:
             continue
@@ -48,6 +48,7 @@ def combine_one_way(
     max_price: float,
     min_nights: int,
     open_jaw: bool,
+    max_nights: int = 365,
 ) -> list[FlightOption]:
     """Abbina tratte di andata (origine→destinazione) e di ritorno (destinazione→origine).
 
@@ -64,7 +65,7 @@ def combine_one_way(
         for b in rets:
             if not open_jaw and (b.origin, b.destination) != (a.destination, a.origin):
                 continue
-            if (b.departure_at.date() - a.departure_at.date()).days < min_nights:
+            if not (min_nights <= (b.departure_at.date() - a.departure_at.date()).days <= max_nights):
                 continue
             total = round(a.price + b.price, 2)
             if total > max_price:
@@ -82,6 +83,8 @@ def combine_one_way(
                     source="ryanair",
                     return_origin=b.origin,
                     return_destination=b.destination,
+                    price_out=a.price,
+                    price_back=b.price,
                 )
             )
     return combos
@@ -116,7 +119,7 @@ def run_search(
     print(f"  origini: {', '.join(origins)}")
     print(f"  destinazioni: {', '.join(dests)}")
     print(
-        f"  soglia: ≤ €{s.max_price:.0f} A/R · min {s.min_nights} notti · "
+        f"  soglia: ≤ €{s.max_price:.0f} A/R · {s.min_nights}-{s.max_nights} notti · "
         f"max {s.max_transfers} scali"
         + (" · open-jaw" if src.ryanair and src.open_jaw else "")
     )
@@ -162,7 +165,9 @@ def run_search(
                 _pause(cfg)
             if n:
                 print(f"  {a}→{b}: {n} giorni con tariffa")
-        combos = combine_one_way(fares, origins, dests, s.max_price, s.min_nights, src.open_jaw)
+        combos = combine_one_way(
+            fares, origins, dests, s.max_price, s.min_nights, src.open_jaw, s.max_nights
+        )
         hits = filter_offers(combos, cfg, start, end)
         print(
             f"  combinazioni ≤ soglia: {len(hits)} "
@@ -172,6 +177,11 @@ def run_search(
 
     found = filter_offers(found, cfg, start, end)
     top = found[: s.top_n]
+    counts = {n: sum(1 for o in found if o.source == n) for n in ("travelpayouts", "ryanair")}
+    print(
+        f"\nTotale ≤ soglia: {len(found)} (Travelpayouts: {counts['travelpayouts']}, "
+        f"Ryanair: {counts['ryanair']}) · mostrati i {len(top)} più economici"
+    )
 
     if notifier and cfg.ntfy.notify_new_best and found:
         notifier.notify_new_best(found[0], None)

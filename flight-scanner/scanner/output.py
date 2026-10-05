@@ -18,6 +18,13 @@ def format_date(d) -> str:
     return f"{_DAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]} {d.year}"
 
 
+def _leg_extra(duration: str, stops: str, price) -> str:
+    parts = [stops] + ([] if duration == "n/d" else [duration])
+    if price is not None:
+        parts.append(f"€{price:.2f}")
+    return "  · " + " · ".join(parts)
+
+
 def render_results(options: list[FlightOption], max_price: float, top_n: int) -> None:
     print()
     if not options:
@@ -27,22 +34,27 @@ def render_results(options: list[FlightOption], max_price: float, top_n: int) ->
     print("=" * 80)
     for i, f in enumerate(options, 1):
         tag = "  [aeroporti diversi]" if f.open_jaw else ""
-        print(f"{i}) €{f.price:7.2f}   {f.origin} → {f.destination}   {f.airline}{tag}")
         print(
-            f"   Andata:  {format_date(f.departure_date)}  "
-            f"{f.departure_at:%H:%M}  · {f.duration_out_human} · "
-            f"{f.stops_human(f.transfers)}"
+            f"{i}) €{f.price:7.2f}   "
+            f"{f.airline}{'' if f.source == 'ryanair' else '  [' + f.source + ']'}"
+            f"{tag}  ({f.nights} notti)"
         )
+        out_extra = _leg_extra(f.duration_out_human, f.stops_human(f.transfers), f.price_out)
+        back_extra = _leg_extra(f.duration_back_human, f.stops_human(f.return_transfers), f.price_back)
         print(
-            f"   Ritorno: {format_date(f.return_date)}  "
-            f"{f.return_at:%H:%M} {f.return_origin} → {f.return_destination}  · "
-            f"{f.duration_back_human} · "
-            f"{f.stops_human(f.return_transfers)}"
+            f"   Andata:  {format_date(f.departure_date)}  {f.departure_at:%H:%M}  "
+            f"{f.origin} → {f.destination}{out_extra}"
         )
-        if f.link:
-            print(f"   Link:    {f.link}")
+        if f.return_link:  # biglietti separati: un link per tratta
+            print(f"            {f.link}")
+        print(
+            f"   Ritorno: {format_date(f.return_date)}  {f.return_at:%H:%M}  "
+            f"{f.return_origin} → {f.return_destination}{back_extra}"
+        )
         if f.return_link:
-            print(f"   Link ritorno: {f.return_link}")
+            print(f"            {f.return_link}")
+        elif f.link:
+            print(f"   Link A/R: {f.link}")
         print("-" * 80)
 
 
@@ -59,6 +71,8 @@ def _as_row(f: FlightOption) -> dict:
         "return_destination": f.return_destination,
         "open_jaw": f.open_jaw,
         "source": f.source,
+        "price_out": f.price_out,
+        "price_back": f.price_back,
         "airline": f.airline,
         "out_stops": f.transfers,
         "in_stops": f.return_transfers,
