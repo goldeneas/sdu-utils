@@ -8,11 +8,8 @@ search:
   top_n: 10                 # quanti risultati mostrare a fine ricerca
   window_days: 30           # finestra di ricerca a partire da domani
   min_nights: 3             # notti minime di permanenza
-  max_layover_hours: 3      # durata max scalo (best-effort)
-  date_step_departure: 1    # passo in giorni tra le date di partenza testate
-  date_step_return: 1       # passo in giorni tra le date di ritorno testate
-  max_queries: 0            # tetto di sicurezza (0 = nessun limite)
-  request_delay_seconds: 1.5  # pausa tra una ricerca e l'altra
+  max_transfers: 1          # scali massimi per tratta (0 = solo diretti)
+  request_delay_seconds: 0.5  # pausa tra una richiesta e l'altra
 
 airports:
   origins: ["BLL", "CPH"]
@@ -33,11 +30,6 @@ ntfy:
   server: ntfy.sh           # sovrascrivibile con env NTFY_SERVER
   topic: ""                 # vuoto = letto da env NTFY_TOPIC
   notify_new_best: true     # notifica quando viene trovato un nuovo best deal
-
-scraper:
-  headless: true            # browser senza interfaccia
-  timeout_seconds: 20       # timeout per il caricamento della pagina
-  debug_dump_dir: ""        # se valorizzato salva HTML+screenshot
 
 output:
   file: ""                  # es. "risultati.csv" (vuoto = solo terminale)

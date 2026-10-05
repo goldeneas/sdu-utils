@@ -5,8 +5,8 @@ import os
 
 import requests
 
-from .config import Config  # pyright: ignore[reportMissingImports]
-from .models import FlightOption  # pyright: ignore[reportMissingImports]
+from .config import Config
+from .models import FlightOption
 
 
 class Notifier:

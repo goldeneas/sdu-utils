@@ -2,66 +2,67 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 
-@dataclass
-class Segment:
-    """Una tratta (andata o ritorno) di un'offerta di volo."""
-
-    origin: str
-    destination: str
-    departure_time: str          # "08:40" (formato 24h)
-    arrival_time: str            # "10:20" (formato 24h)
-    airline: str
-    stops: int = 0
-    layover_minutes: int | None = None   # None = non rilevato dal DOM
-    duration_minutes: int | None = None
-
-    @property
-    def duration_human(self) -> str:
-        if self.duration_minutes is None:
-            return "n/d"
-        h, m = divmod(self.duration_minutes, 60)
-        return f"{h}h {m:02d}m" if h else f"{m}m"
-
-    @property
-    def stops_human(self) -> str:
-        if self.stops == 0:
-            return "nonstop"
-        base = f"{self.stops} scalo" if self.stops == 1 else f"{self.stops} scali"
-        if self.layover_minutes:
-            h, m = divmod(self.layover_minutes, 60)
-            base += f" ({h}h {m:02d}m)" if h else f" ({m}m)"
-        return base
-
-
-@dataclass
-class OneWayOffer:
-    """Un volo one-way con il relativo prezzo."""
-
-    segment: Segment
-    price: float
-    currency: str = "EUR"
+def _human_minutes(minutes: int | None) -> str:
+    if minutes is None:
+        return "n/d"
+    h, m = divmod(minutes, 60)
+    return f"{h}h {m:02d}m" if h else f"{m}m"
 
 
 @dataclass
 class FlightOption:
-    """Un'offerta andata+ritorno completa."""
+    """Un'offerta andata+ritorno (prezzo totale per 1 persona)."""
 
     origin: str
     destination: str
-    departure_date: date
-    return_date: date
-    outbound: Segment
-    inbound: Segment
+    departure_at: datetime
+    return_at: datetime
     price: float
+    airline: str = "n/d"
+    transfers: int = 0           # scali all'andata
+    return_transfers: int = 0    # scali al ritorno
+    duration_out: int | None = None   # minuti
+    duration_back: int | None = None  # minuti
+    link: str = ""
     currency: str = "EUR"
+
+    @property
+    def departure_date(self) -> date:
+        return self.departure_at.date()
+
+    @property
+    def return_date(self) -> date:
+        return self.return_at.date()
+
+    @property
+    def nights(self) -> int:
+        return (self.return_date - self.departure_date).days
+
+    @property
+    def duration_out_human(self) -> str:
+        return _human_minutes(self.duration_out)
+
+    @property
+    def duration_back_human(self) -> str:
+        return _human_minutes(self.duration_back)
+
+    @staticmethod
+    def stops_human(n: int) -> str:
+        if n == 0:
+            return "diretto"
+        return f"{n} scalo" if n == 1 else f"{n} scali"
+
+    @property
+    def key(self) -> tuple:
+        return (self.origin, self.destination, self.departure_at, self.return_at, self.airline)
 
     @property
     def summary(self) -> str:
         return (
             f"€{self.price:.2f} {self.origin}→{self.destination} "
             f"{self.departure_date.isoformat()} → {self.return_date.isoformat()} "
-            f"({self.outbound.airline})"
+            f"({self.airline})"
         )

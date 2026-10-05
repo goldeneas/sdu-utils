@@ -35,11 +35,8 @@ class SearchConfig:
     top_n: int = 10
     window_days: int = 30
     min_nights: int = 3
-    max_layover_hours: float = 3.0
-    date_step_departure: int = 1
-    date_step_return: int = 1
-    max_queries: int = 0          # 0 = nessun limite
-    request_delay_seconds: float = 1.5
+    max_transfers: int = 1        # scali massimi per tratta (0 = solo diretti)
+    request_delay_seconds: float = 0.5
 
 
 @dataclass
@@ -57,13 +54,6 @@ class NtfyConfig:
 
 
 @dataclass
-class ScraperConfig:
-    headless: bool = True
-    timeout_seconds: int = 30
-    debug_dump_dir: str = ""
-
-
-@dataclass
 class OutputConfig:
     file: str = ""       # vuoto = solo terminale
     format: str = "csv"  # csv | txt | json
@@ -74,7 +64,6 @@ class Config:
     search: SearchConfig = field(default_factory=SearchConfig)
     airports: AirportsConfig = field(default_factory=AirportsConfig)
     ntfy: NtfyConfig = field(default_factory=NtfyConfig)
-    scraper: ScraperConfig = field(default_factory=ScraperConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
 
 
@@ -93,7 +82,6 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
     s = data.get("search") or {}
     a = data.get("airports") or {}
     n = data.get("ntfy") or {}
-    sc = data.get("scraper") or {}
     o = data.get("output") or {}
 
     cfg = Config(
@@ -103,11 +91,8 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             top_n=int(s.get("top_n", 10)),
             window_days=int(s.get("window_days", 30)),
             min_nights=int(s.get("min_nights", 3)),
-            max_layover_hours=float(s.get("max_layover_hours", 3.0)),
-            date_step_departure=int(s.get("date_step_departure", 1)),
-            date_step_return=int(s.get("date_step_return", 1)),
-            max_queries=int(s.get("max_queries", 0)),
-            request_delay_seconds=float(s.get("request_delay_seconds", 1.5)),
+            max_transfers=int(s.get("max_transfers", 1)),
+            request_delay_seconds=float(s.get("request_delay_seconds", 0.5)),
         ),
         airports=AirportsConfig(
             origins=_clean_codes(a.get("origins")),
@@ -118,11 +103,6 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             server=str(n.get("server", "ntfy.sh")),
             topic=str(n.get("topic", "") or ""),
             notify_new_best=bool(n.get("notify_new_best", True)),
-        ),
-        scraper=ScraperConfig(
-            headless=bool(sc.get("headless", True)),
-            timeout_seconds=int(sc.get("timeout_seconds", 30)),
-            debug_dump_dir=str(sc.get("debug_dump_dir", "") or ""),
         ),
         output=OutputConfig(
             file=str(o.get("file", "") or ""),
@@ -151,9 +131,7 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.min_nights` deve essere >= 1")
     if s.min_nights > s.window_days:
         raise ValueError("config: `search.min_nights` non può superare `window_days`")
-    if s.date_step_departure < 1 or s.date_step_return < 1:
-        raise ValueError("config: `date_step_*` devono essere >= 1")
-    if s.max_layover_hours < 0:
-        raise ValueError("config: `search.max_layover_hours` non può essere negativo")
+    if s.max_transfers < 0:
+        raise ValueError("config: `search.max_transfers` non può essere negativo")
     if cfg.output.format not in ("csv", "txt", "json"):
         raise ValueError("config: `output.format` deve essere csv, txt o json")
