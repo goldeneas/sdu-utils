@@ -10,6 +10,7 @@ ATTENZIONE: Google può cambiare il formato; in tal caso va aggiornata `fast-fli
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -29,11 +30,17 @@ DEBUG_FILE = Path("debug_dumps") / "google_flights_error.html"
 
 def _explain_bad_page(html: str) -> str:
     low = html.lower()
-    if "consent.google" in low or "before you continue" in low or "prima di continuare" in low:
-        return "pagina di consenso cookie di Google (nessun risultato)"
-    if "unusual traffic" in low or "captcha" in low or "recaptcha" in low:
-        return "Google chiede un captcha / traffico insolito"
-    return "pagina senza dati voli (formato cambiato o richiesta rifiutata)"
+    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    title = " ".join(m.group(1).split()) if m else "(nessun titolo)"
+    markers = {
+        "consenso cookie di Google": ("consent.google", "before you continue", "prima di continuare"),
+        "captcha / traffico insolito": ("unusual traffic", "traffico insolito", "g-recaptcha", "/sorry/"),
+    }
+    for label, keys in markers.items():
+        hit = next((k for k in keys if k in low), None)
+        if hit:
+            return f"{label} [trovato «{hit}»] · titolo pagina: «{title}» · {len(html)} byte"
+    return f"pagina senza dati voli · titolo: «{title}» · {len(html)} byte"
 
 
 def fetch_html(query) -> str:

@@ -364,5 +364,5 @@ def test_google_bad_page_is_explained(tmp_path, monkeypatch):
         c.search_day("CPH", "FCO", dt.date(2026, 10, 31))
         assert False
     except ApiError as exc:
-        assert "consenso" in str(exc) and "dbg.html" in str(exc)
+        assert "consenso" in str(exc) and "dbg.html" in str(exc) and "Before you continue" in str(exc)
     assert (tmp_path / "dbg.html").exists()
