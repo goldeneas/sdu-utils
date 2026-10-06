@@ -63,11 +63,14 @@ def _inspect_ds1(p) -> None:
         return
     print("forma payload:", json.dumps(_shape(payload), ensure_ascii=False)[:1800])
     try:
-        from fast_flights.parser import parse_js
-        res = parse_js(js)
-        print(f"parse_js OK: {len(res)} voli")
+        from scanner.google_flights import parse_js_tolerant
+        res = parse_js_tolerant(js)
+        print(f"parser tollerante OK: {len(res)} voli con prezzo")
+        for f in res[:5]:
+            seg = f.flights[0]
+            print(f"  €{f.price} {f.airlines} {seg.from_airport.code}→{f.flights[-1].to_airport.code} {seg.departure.time}")
     except Exception:  # noqa: BLE001
-        print("parse_js fallisce:")
+        print("parser tollerante fallisce:")
         traceback.print_exc()
 
 

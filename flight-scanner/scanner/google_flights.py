@@ -54,23 +54,67 @@ def fetch_html(query) -> str:
     return client.get(URL, params=query.params()).text
 
 
-def parse_any_script(html: str):
-    """Come `fast_flights.parser.parse`, ma prova tutti gli <script> con dati (`ds:N`).
+def _parse_time(value) -> tuple[int, int]:
+    """[8] = 08:00, [None, 31] = 00:31: Google omette le componenti a zero."""
+    padded = [*(value or []), None, None]
+    return (padded[0] or 0, padded[1] or 0)
 
-    La libreria legge solo `script.ds:1`; se Google sposta i dati in un altro blocco
-    la ricerca fallisce, qui invece si prova ogni blocco finché uno ha la struttura attesa.
+
+def parse_js_tolerant(js: str):
+    """Come `fast_flights.parser.parse_js`, ma salta i voli con dati mancanti.
+
+    Google mostra anche voli senza prezzo (es. non prenotabili): la libreria va in
+    errore su tutta la pagina, qui si scartano solo quelle voci.
     """
+    import json
+
     from fast_flights.exceptions import FlightsNotFound
-    from fast_flights.parser import parse_js
+    from fast_flights.model import (
+        Airport, CarbonEmission, Flights, SimpleDatetime, SingleFlight,
+    )
+
+    data = js.split("data:", 1)[1].rsplit(",", 1)[0]
+    if data.endswith("errorHasStatus: true"):
+        raise FlightsNotFound("no flights found; received error")
+    payload = json.loads(data)
+    entries = (payload[3] or [None])[0]
+    results = []
+    for k in entries or []:
+        try:
+            flight = k[0]
+            price = k[1][0][1]
+            segs = []
+            for sf in flight[2]:
+                segs.append(SingleFlight(
+                    from_airport=Airport(code=sf[3], name=sf[4]),
+                    to_airport=Airport(code=sf[6], name=sf[5]),
+                    departure=SimpleDatetime(date=tuple(sf[20]), time=_parse_time(sf[8])),
+                    arrival=SimpleDatetime(date=tuple(sf[21]), time=_parse_time(sf[10])),
+                    duration=sf[11],
+                    plane_type=sf[17],
+                ))
+            try:
+                extras = flight[22]
+                carbon = CarbonEmission(typical_on_route=extras[8], emission=extras[7])
+            except (IndexError, TypeError):
+                carbon = CarbonEmission(typical_on_route=0, emission=0)
+            results.append(Flights(type=flight[0], price=price, airlines=flight[1], flights=segs, carbon=carbon))
+        except (IndexError, TypeError, KeyError):
+            continue  # voce senza prezzo o con formato diverso
+    return results
+
+
+def parse_any_script(html: str):
+    """Cerca i dati voli in tutti gli <script> `ds:N` (Google può spostarli)."""
+    from fast_flights.exceptions import FlightsNotFound
     from selectolax.lexbor import LexborHTMLParser
 
-    parser = LexborHTMLParser(html)
-    scripts = parser.css("script")
+    scripts = LexborHTMLParser(html).css("script")
     candidates = [s for s in scripts if (s.attributes.get("class") or "").startswith("ds:")]
     candidates += [s for s in scripts if s not in candidates and "data:" in (s.text() or "")[:5000]]
     for s in candidates:
         try:
-            return parse_js(s.text())
+            return parse_js_tolerant(s.text())
         except FlightsNotFound:
             raise
         except Exception:  # noqa: BLE001 - blocco con altra struttura: prova il prossimo
@@ -79,21 +123,14 @@ def parse_any_script(html: str):
 
 
 def get_flights_with_consent(query):
-    from fast_flights.exceptions import FlightsNotFound
-    from fast_flights.parser import parse
-
     html = fetch_html(query)
     try:
-        return parse(html)
-    except FlightsNotFound:
-        raise
-    except Exception:
-        try:
-            return parse_any_script(html)
-        except FlightsNotFound:
+        return parse_any_script(html)
+    except Exception as exc:
+        from fast_flights.exceptions import FlightsNotFound
+        if isinstance(exc, FlightsNotFound):
             raise
-        except Exception as exc:
-            return _fail(html, exc)
+        return _fail(html, exc)
 
 
 def _fail(html: str, exc: Exception):

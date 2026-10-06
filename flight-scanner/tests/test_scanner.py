@@ -368,12 +368,33 @@ def test_google_bad_page_is_explained(tmp_path, monkeypatch):
     assert (tmp_path / "dbg.html").exists()
 
 
-def test_parse_any_script_tries_other_blocks(monkeypatch):
-    import fast_flights.parser as fp
+def _raw_flight(price, code_from="CPH", code_to="NAP", dep=(16, 35), arr=(19, 10)):
+    seg = [None] * 22
+    seg[3], seg[4], seg[5], seg[6] = code_from, "from", "to", code_to
+    seg[8], seg[10], seg[11], seg[17] = list(dep), list(arr), 155, "A320"
+    seg[20], seg[21] = [2026, 10, 31], [2026, 10, 31]
+    flight = ["best", ["Wizz Air"], [seg]] + [None] * 19 + [[0] * 9]
+    return [flight, [[None, price]] if price is not None else [[]]]
+
+
+def _js(entries):
+    import json
+    payload = [None, None, None, [entries], None, None, None, [None, [[], []]]]
+    return "AF_initDataCallback({key: 'ds:1', hash: '9', data:" + json.dumps(payload) + ", sideChannel: {}});"
+
+
+def test_tolerant_parser_skips_flights_without_price():
     import scanner.google_flights as gf
-    monkeypatch.setattr(fp, "parse_js", lambda js: ["OK"] if "GOOD" in js else (_ for _ in ()).throw(IndexError()))
-    html = '<html><script class="ds:0">data:BAD</script><script class="ds:7">data:GOOD</script></html>'
-    assert gf.parse_any_script(html) == ["OK"]
+    res = gf.parse_js_tolerant(_js([_raw_flight(39), _raw_flight(None), _raw_flight(55)]))
+    assert [f.price for f in res] == [39, 55] and res[0].flights[0].departure.time == (16, 35)
+    assert gf.parse_js_tolerant(_js(None)) == []
+
+
+def test_parse_any_script_tries_other_blocks():
+    import scanner.google_flights as gf
+    good = _js([_raw_flight(39)])
+    html = f'<html><script class="ds:0">data:BAD</script><script class="ds:1">{good}</script></html>'
+    assert [f.price for f in gf.parse_any_script(html)] == [39]
     try:
         gf.parse_any_script("<html><script class='ds:0'>data:BAD</script></html>")
         assert False
