@@ -152,12 +152,17 @@ def parse_any_script(html: str):
 
 
 def _looks_like_results(js: str) -> bool:
-    """Il blocco dei risultati ha, come ds:1, i metadati su compagnie e alleanze (payload[7])."""
+    """Riconosce il blocco dei risultati anche quando è vuoto ("nessun volo").
+
+    Quello dei risultati ha in testa un'intestazione di 5 elementi che termina con un
+    token lungo; gli altri blocchi `ds:N` (aeroporti, paesi, valute, lingue) no.
+    """
     import json
 
     try:
         payload = json.loads(js.split("data:", 1)[1].rsplit(",", 1)[0])
-        return isinstance(payload[7][1][0], list) and isinstance(payload[7][1][1], list)
+        head = payload[0]
+        return isinstance(head, list) and len(head) >= 5 and isinstance(head[4], str) and len(head[4]) > 20
     except Exception:  # noqa: BLE001
         return False
 

@@ -379,7 +379,7 @@ def _raw_flight(price, code_from="CPH", code_to="NAP", dep=(16, 35), arr=(19, 10
 
 def _js(entries):
     import json
-    payload = [None, None, None, [entries], None, None, None, [None, [[], []]]]
+    payload = [[None, None, 0, "tok", "x" * 52], None, None, [entries], None, None, None, [None, [[], []]]]
     return "AF_initDataCallback({key: 'ds:1', hash: '9', data:" + json.dumps(payload) + ", sideChannel: {}});"
 
 
@@ -440,3 +440,21 @@ def test_parse_any_script_ignores_airport_info_block_with_list_entries():
     real = f'<script class="ds:1">{_js([_raw_flight(39)])}</script>'
     got = gf.parse_any_script("<html>" + junk + real + "</html>")
     assert [f.price for f in got] == [39]
+
+
+def test_empty_results_page_is_no_flights_not_error():
+    """Pagina reale "nessun volo": payload[2]/[3] vuoti, ma l'intestazione dei risultati c'è."""
+    import json
+    import scanner.google_flights as gf
+
+    empty = [[None, [1, 2, 3, 4, 5, 6], 0, "ad3Eav7OEc-ThcIP8JfHmAQ", "x" * 52], [[1, 2]], None, None, None, None,
+             [[1, 2, 3, 4, 5]], [None, [1], None, None, None, [1, 2, 3, 4], None, [1]], None, None, None, None]
+    blk = f"<script class='ds:1'>AF_initDataCallback({{key: 'ds:1', data:{json.dumps(empty)}, sideChannel: {{}}}});</script>"
+    airports = [[None, None, 0, "id"], [2, [None]], [[["CPH", 0], "Copenhagen"]], [["/g/y", 4], "Naples"]]
+    junk = f"<script class='ds:0'>AF_initDataCallback({{key: 'ds:0', data:{json.dumps(airports)}, sideChannel: {{}}}});</script>"
+    assert list(gf.parse_any_script("<html>" + junk + blk + "</html>")) == []
+    try:
+        gf.parse_any_script("<html>" + junk + "</html>")   # senza blocco risultati: errore vero
+        assert False
+    except ValueError:
+        pass
