@@ -50,6 +50,7 @@ Il token serve solo se `sources.travelpayouts` è attivo. È gratuito: registrat
 | `sources.open_jaw` | Andata/ritorno su aeroporti diversi (Ryanair) | true |
 | `ntfy.*` | Notifiche | — |
 | `output.*` | Salvataggio su file (csv/txt/json) | — |
+| `output.top_per_airport` | Solo su file: sotto la top, i migliori N per aeroporto di arrivo, senza soglia di prezzo (0 = off) | 3 |
 
 ## Limitazioni
 

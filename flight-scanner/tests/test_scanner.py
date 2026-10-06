@@ -191,3 +191,53 @@ def test_pick_top_unique():
     top = pick_top(combos, 10, True)
     assert [o.price for o in top] == [70, 95]      # 27→03 e 28→04, nessuna gamba ripetuta
     assert len(pick_top(combos, 10, False)) == 4
+
+
+def _file_cfg(path, fmt, per_airport=2):
+    from scanner.config import OutputConfig
+    return Config(
+        search=SearchConfig(max_price=60, min_nights=3, window_days=30, request_delay_seconds=0),
+        airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP", "NAP"]),
+        sources=SourcesConfig(travelpayouts=False, ryanair=True, open_jaw=False),
+        output=OutputConfig(file=str(path), format=fmt, top_per_airport=per_airport),
+    )
+
+
+class FakeRyanair2:
+    def search_month(self, o, d, m):
+        if m != "2026-10":
+            return []
+        return {
+            ("CPH", "FCO"): [fare("CPH", "FCO", "2026-10-12", 20), fare("CPH", "FCO", "2026-10-13", 30)],
+            ("FCO", "CPH"): [fare("FCO", "CPH", "2026-10-17", 25)],
+            ("CPH", "MXP"): [fare("CPH", "MXP", "2026-10-12", 90)],   # sopra soglia
+            ("MXP", "CPH"): [fare("MXP", "CPH", "2026-10-17", 80)],
+        }.get((o, d), [])
+
+
+def test_file_has_top_and_per_airport_ignoring_threshold(tmp_path, capsys):
+    import csv
+    import json
+    out = tmp_path / "r.txt"
+    top = run_search(_file_cfg(out, "txt"), ryanair=FakeRyanair2(), today=TODAY)
+    assert [o.price for o in top] == [45]            # CLI/top: solo ≤ soglia (60), 1 volo ripetuto escluso
+    txt = out.read_text(encoding="utf-8")
+    assert "Migliori 1 offerte" in txt and "RIEPILOGO PER AEROPORTO" in txt
+    assert "### FCO — migliori 1" in txt and "### MXP — migliori 1" in txt and "€ 170.00" in txt  # MXP 90+80 oltre soglia
+    assert "### NAP — nessun volo trovato" in txt
+    assert "RIEPILOGO" not in capsys.readouterr().out   # il terminale resta com'era
+
+    out = tmp_path / "r.csv"
+    run_search(_file_cfg(out, "csv"), ryanair=FakeRyanair2(), today=TODAY)
+    rows = list(csv.DictReader(out.open(encoding="utf-8")))
+    assert [r["section"] for r in rows] == ["top", "aeroporto", "aeroporto"]
+    assert [r["airport"] for r in rows if r["section"] == "aeroporto"] == ["FCO", "MXP"]
+
+    out = tmp_path / "r.json"
+    run_search(_file_cfg(out, "json"), ryanair=FakeRyanair2(), today=TODAY)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert set(data) == {"top", "per_airport"} and list(data["per_airport"]) == ["FCO", "MXP", "NAP"]
+
+    out = tmp_path / "off.txt"
+    run_search(_file_cfg(out, "txt", per_airport=0), ryanair=FakeRyanair2(), today=TODAY)
+    assert "RIEPILOGO" not in out.read_text(encoding="utf-8")

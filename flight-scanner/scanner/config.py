@@ -66,6 +66,7 @@ class SourcesConfig:
 class OutputConfig:
     file: str = ""       # vuoto = solo terminale
     format: str = "csv"  # csv | txt | json
+    top_per_airport: int = 3   # nel file: migliori N per aeroporto di arrivo, senza soglia (0 = no)
 
 
 @dataclass
@@ -125,6 +126,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
         output=OutputConfig(
             file=str(o.get("file", "") or ""),
             format=str(o.get("format", "csv")).lower(),
+            top_per_airport=int(o.get("top_per_airport", 3)),
         ),
     )
 
@@ -151,6 +153,8 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.max_nights` non può essere minore di `min_nights`")
     if s.max_transfers < 0:
         raise ValueError("config: `search.max_transfers` non può essere negativo")
+    if cfg.output.top_per_airport < 0:
+        raise ValueError("config: `output.top_per_airport` non può essere negativo")
     if not (cfg.sources.travelpayouts or cfg.sources.ryanair):
         raise ValueError("config: abilita almeno una fonte in `sources`")
     if cfg.output.format not in ("csv", "txt", "json"):
