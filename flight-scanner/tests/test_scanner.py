@@ -254,3 +254,20 @@ def test_rejection_reasons():
         c, start, end, ignore_price=True, rejected=rej,
     )
     assert rej == Counter({"notti fuori range": 2, "troppi scali": 1, "fuori finestra": 1})
+
+
+def test_exclude_next_days(capsys):
+    c = cfg(request_delay_seconds=0)
+    c.search.window_days, c.search.exclude_next_days = 60, 15
+    seen = []
+
+    class C:
+        def search_month(self, o, d, m):
+            seen.append(m)
+            return offers(
+                item(50, dep="2026-10-12T08:00:00+02:00", ret="2026-10-17T08:00:00+02:00"),  # giorno 7: escluso
+                item(60, dep="2026-10-25T08:00:00+01:00", ret="2026-10-30T08:00:00+01:00"),  # giorno 20: ok
+            )
+    top = run_search(c, client=C(), today=TODAY)
+    assert [o.price for o in top] == [60]
+    assert "2026-10-21" in capsys.readouterr().out    # prima partenza = oggi + 1 + 15

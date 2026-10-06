@@ -140,7 +140,7 @@ def run_search(
     s = cfg.search
     src = cfg.sources
     today = today or dt.date.today()  # noqa: DTZ011
-    start = today + dt.timedelta(days=1)
+    start = today + dt.timedelta(days=1 + s.exclude_next_days)
     end = today + dt.timedelta(days=s.window_days)
     months = months_in_window(start, end)  # mesi di partenza
     return_months = months_in_window(start, end + dt.timedelta(days=s.max_nights))

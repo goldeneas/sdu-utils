@@ -34,6 +34,7 @@ class SearchConfig:
     max_price: float = 100.0
     top_n: int = 10
     window_days: int = 30
+    exclude_next_days: int = 0    # salta i primi N giorni dopo oggi (le partenze iniziano più avanti)
     min_nights: int = 3
     max_nights: int = 14
     unique_flights: bool = True   # ogni volo compare al massimo una volta nei top
@@ -102,6 +103,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             max_price=float(s.get("max_price", 100.0)),
             top_n=int(s.get("top_n", 10)),
             window_days=int(s.get("window_days", 30)),
+            exclude_next_days=int(s.get("exclude_next_days", 0)),
             min_nights=int(s.get("min_nights", 3)),
             max_nights=int(s.get("max_nights", 14)),
             unique_flights=bool(s.get("unique_flights", True)),
@@ -149,6 +151,10 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.window_days` deve essere > 0")
     if s.min_nights < 1:
         raise ValueError("config: `search.min_nights` deve essere >= 1")
+    if s.exclude_next_days < 0:
+        raise ValueError("config: `search.exclude_next_days` non può essere negativo")
+    if s.exclude_next_days >= s.window_days:
+        raise ValueError("config: `search.exclude_next_days` deve essere minore di `window_days`")
     if s.max_nights < s.min_nights:
         raise ValueError("config: `search.max_nights` non può essere minore di `min_nights`")
     if s.max_transfers < 0:

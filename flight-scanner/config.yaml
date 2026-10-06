@@ -6,6 +6,7 @@ search:
   currency: EUR
   max_price: 100            # soglia "deal": prezzo max A/R (€) per 1 persona
   top_n: 10                 # quanti risultati mostrare a fine ricerca
+  exclude_next_days: 0      # escludi i prossimi N giorni (es. 15 con window_days 60 = partenze dal giorno 16 al 60)
   window_days: 30           # finestra delle PARTENZE (da domani); il ritorno può cadere dopo
   min_nights: 3             # notti minime di permanenza
   max_nights: 14            # notti massime di permanenza
