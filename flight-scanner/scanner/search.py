@@ -1,15 +1,17 @@
-"""Orchestrazione: raccolta da Travelpayouts (A/R) e Ryanair (tratte), filtro e unione."""
+"""Orchestrazione: Travelpayouts (A/R) + tariffe per tratta (Ryanair, Google Flights), filtro e unione."""
 from __future__ import annotations
 
 import datetime as dt
 import os
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 
 from .config import Config
 from .models import FlightOption, OneWayFare
 from .notifier import resolve_ntfy
 from .output import render_results, write_results_file
+from .google_flights import GoogleFlightsClient
 from .ryanair import RyanairClient
 from .travelpayouts import ApiError, TravelpayoutsClient
 
@@ -114,10 +116,14 @@ def combine_one_way(
                     departure_at=a.departure_at,
                     return_at=b.departure_at,
                     price=total,
-                    airline="Ryanair",
+                    airline=a.airline if a.airline == b.airline else f"{a.airline} + {b.airline}",
                     link=a.link,
                     return_link=b.link,
-                    source="ryanair",
+                    source=a.source if a.source == b.source else "misto",
+                    transfers=a.transfers,
+                    return_transfers=b.transfers,
+                    duration_out=a.duration,
+                    duration_back=b.duration,
                     return_origin=b.origin,
                     return_destination=b.destination,
                     arrival_out=a.arrival_at,
@@ -134,8 +140,61 @@ def _pause(cfg: Config) -> None:
         time.sleep(cfg.search.request_delay_seconds)
 
 
+def google_tasks(cfg: Config, routes, start: dt.date, end: dt.date):
+    """(origine, destinazione, giorno) da interrogare: partenze nella finestra, ritorni dopo."""
+    s, g = cfg.search, cfg.google
+    out_days = [start + dt.timedelta(days=i) for i in range(0, (end - start).days + 1, g.date_step)]
+    ret_first = start + dt.timedelta(days=s.min_nights)
+    ret_last = end + dt.timedelta(days=s.max_nights)
+    ret_days = [ret_first + dt.timedelta(days=i) for i in range(0, (ret_last - ret_first).days + 1, g.date_step)]
+    tasks = [(o, d, day) for o, d in routes for day in out_days]
+    tasks += [(d, o, day) for o, d in routes for day in ret_days]
+    return tasks[: g.max_queries] if g.max_queries > 0 else tasks
+
+
+def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -> list[OneWayFare]:
+    g = cfg.google
+    tasks = google_tasks(cfg, routes, start, end)
+    print(f"\nGoogle Flights (tratte singole, prezzi live): {len(tasks)} richieste, {g.workers} in parallelo")
+    fares: list[OneWayFare] = []
+    errors, done, aborted = [], 0, False
+
+    def work(task):
+        if aborted:
+            return None
+        try:
+            return client.search_day(*task)
+        except ApiError as exc:
+            return exc
+        finally:
+            if g.delay_seconds > 0:
+                time.sleep(g.delay_seconds)
+
+    try:
+        with ThreadPoolExecutor(max_workers=g.workers) as pool:
+            for res in pool.map(work, tasks):
+                done += 1
+                if isinstance(res, ApiError):
+                    errors.append(str(res))
+                    if len(errors) >= 15 and len(errors) > done // 2:  # quasi tutto fallisce: blocco
+                        aborted = True
+                elif res:
+                    fares += res
+                if done % 100 == 0 or done == len(tasks):
+                    print(f"  [{done}/{len(tasks)}] {len(fares)} tariffe, {len(errors)} errori")
+    except KeyboardInterrupt:
+        aborted = True
+        print("  interrotto dall'utente: uso le tariffe raccolte finora")
+    if aborted and errors:
+        print("  [e] troppi errori: Google sta probabilmente limitando le richieste. Esempio:")
+        print(f"      {errors[0]}")
+    elif errors:
+        print(f"  [warn] {len(errors)} richieste fallite, esempio: {errors[0]}")
+    return fares
+
+
 def run_search(
-    cfg: Config, client=None, ryanair=None, today: dt.date | None = None
+    cfg: Config, client=None, ryanair=None, google=None, today: dt.date | None = None
 ) -> list[FlightOption]:
     s = cfg.search
     src = cfg.sources
@@ -151,9 +210,16 @@ def run_search(
         client = TravelpayoutsClient(os.getenv("TRAVELPAYOUTS_TOKEN", "").strip(), s.currency)
     if src.ryanair and ryanair is None:
         ryanair = RyanairClient(s.currency)
+    if src.google_flights and google is None:
+        google = GoogleFlightsClient(s.currency, cfg.google.airlines, s.max_transfers)
     notifier = resolve_ntfy(cfg)
 
-    names = [n for n, on in (("Travelpayouts", src.travelpayouts), ("Ryanair", src.ryanair)) if on]
+    names = [
+        n for n, on in (
+            ("Travelpayouts", src.travelpayouts), ("Ryanair", src.ryanair),
+            ("Google Flights", src.google_flights),
+        ) if on
+    ]
     print(f"Flight Scanner ({' + '.join(names)})")
     print(f"  partenze: {start} → {end} (il ritorno può cadere fino a {s.max_nights} notti dopo)")
     print(f"  origini: {', '.join(origins)}")
@@ -161,7 +227,7 @@ def run_search(
     print(
         f"  soglia: ≤ €{s.max_price:.0f} A/R · {s.min_nights}-{s.max_nights} notti · "
         f"max {s.max_transfers} scali"
-        + (" · open-jaw" if src.ryanair and src.open_jaw else "")
+        + (" · open-jaw" if (src.ryanair or src.google_flights) and src.open_jaw else "")
     )
     print()
 
@@ -192,9 +258,10 @@ def run_search(
                 print(f"  {origin}→{dest}: nessun dato in cache")
             candidates += valid
 
+    fares: list[OneWayFare] = []   # tariffe per singola tratta, da tutte le fonti
+
     if src.ryanair:
         print("\nRyanair (tratte singole, prezzi live):")
-        fares: list[OneWayFare] = []
         legs = [(o, d) for o, d in routes] + [(d, o) for o, d in routes]
         for a, b in legs:
             n = 0
@@ -212,13 +279,18 @@ def run_search(
                 _pause(cfg)
             if n:
                 print(f"  {a}→{b}: {n} giorni con tariffa")
+
+    if src.google_flights:
+        fares += _collect_google(cfg, google, routes, start, end)
+
+    if src.ryanair or src.google_flights:
         combos = combine_one_way(
             fares, origins, dests, None, s.min_nights, src.open_jaw, s.max_nights
         )
         valid = filter_offers(combos, cfg, start, end, ignore_price=True)
         hits = [o for o in valid if o.price <= s.max_price]
         print(
-            f"  combinazioni ≤ soglia: {len(hits)} "
+            f"\nCombinazioni da tariffe per tratta ≤ soglia: {len(hits)} "
             f"(di cui aeroporti diversi: {sum(1 for h in hits if h.open_jaw)})"
         )
         candidates += valid
@@ -226,10 +298,11 @@ def run_search(
     candidates = filter_offers(candidates, cfg, start, end, ignore_price=True)
     found = [o for o in candidates if o.price <= s.max_price]
     top = pick_top(found, s.top_n, s.unique_flights)
-    counts = {n: sum(1 for o in found if o.source == n) for n in ("travelpayouts", "ryanair")}
+    counts = Counter(o.source for o in found)
     print(
-        f"\nTotale ≤ soglia: {len(found)} (Travelpayouts: {counts['travelpayouts']}, "
-        f"Ryanair: {counts['ryanair']}) · mostrati i {len(top)} più economici"
+        f"\nTotale ≤ soglia: {len(found)} ("
+        + ", ".join(f"{n}: {c}" for n, c in sorted(counts.items()))
+        + f") · mostrati i {len(top)} più economici"
         + (" (senza voli ripetuti)" if s.unique_flights else "")
     )
 

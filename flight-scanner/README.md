@@ -4,14 +4,18 @@ Trova **voli andata/ritorno convenienti** da Odense (BLL) / Copenaghen (CPH) ver
 Salerno e i principali aeroporti italiani, filtra per soglia di prezzo e notifica
 i deal su **NTFY**.
 
-Usa due fonti, attivabili in `config.yaml` (`sources`):
+Usa tre fonti, attivabili in `config.yaml` (`sources`):
 
 - **Travelpayouts (Aviasales) Data API**: A/R con prezzo totale da cache, una richiesta per rotta e mese.
 - **Ryanair** (API tariffe non ufficiale): prezzi live per singola tratta; andata e ritorno
   vengono sommati e, con `open_jaw: true`, combinati anche su **aeroporti diversi**
   (es. andata su Roma, ritorno da Milano).
+- **Google Flights** (libreria [`fast-flights`](https://pypi.org/project/fast-flights/), non ufficiale):
+  prezzi live per tratta di **tutti i voli del giorno**, filtrati per compagnia
+  (`google_flights.airlines`, di default Wizz Air, easyJet, Norwegian, Vueling, Transavia).
+  Le tratte di Google e Ryanair si combinano fra loro, anche tra compagnie diverse.
 
-Niente scraping, niente browser.
+Nessun browser necessario.
 
 ## Come funziona
 
@@ -54,6 +58,11 @@ Il token serve solo se `sources.travelpayouts` è attivo. È gratuito: registrat
 | `output.top_per_airport` | Solo su file: sotto la top, i migliori N per aeroporto di arrivo, senza soglia di prezzo (0 = off) | 3 |
 
 ## Limitazioni
+
+- **Google Flights**: una richiesta per tratta e giorno (con le impostazioni di default
+  alcune migliaia): la prima esecuzione è lenta. Regola `google_flights.date_step`,
+  `workers` e `max_queries`. Se Google blocca le richieste lo script lo segnala e usa
+  le tariffe raccolte fino a quel momento. Se smette di funzionare: `pip install -U fast-flights`.
 
 - **Ryanair**: l'endpoint è non ufficiale e può cambiare o limitare le richieste; solo voli Ryanair, prezzo base senza bagagli. Le combinazioni open-jaw sono due biglietti separati (due link).
 

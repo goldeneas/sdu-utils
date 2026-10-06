@@ -27,7 +27,7 @@ def cfg(**kw):
     return Config(
         search=SearchConfig(max_price=100, min_nights=3, window_days=30, **kw),
         airports=AirportsConfig(origins=["CPH"], destinations=["NAP"]),
-        sources=SourcesConfig(ryanair=False),
+        sources=SourcesConfig(ryanair=False, google_flights=False),
     )
 
 
@@ -93,7 +93,7 @@ def test_run_search(capsys):
 
 
 def fare(o, d, day, price):
-    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "FR", f"https://r/originIata={o}")
+    return OneWayFare(o, d, dt.datetime.fromisoformat(f"{day}T07:00:00"), price, "Ryanair", f"https://r/originIata={o}")
 
 
 def test_parse_ryanair():
@@ -139,7 +139,7 @@ def test_run_search_with_ryanair(capsys):
     c = Config(
         search=SearchConfig(max_price=100, min_nights=3, window_days=30, request_delay_seconds=0),
         airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP"]),
-        sources=SourcesConfig(travelpayouts=False, ryanair=True, open_jaw=True),
+        sources=SourcesConfig(travelpayouts=False, ryanair=True, google_flights=False, open_jaw=True),
     )
     top = run_search(c, ryanair=FakeRyanair(), today=TODAY)
     assert [o.price for o in top] == [45] and top[0].open_jaw
@@ -198,7 +198,7 @@ def _file_cfg(path, fmt, per_airport=2):
     return Config(
         search=SearchConfig(max_price=60, min_nights=3, window_days=30, request_delay_seconds=0),
         airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP", "NAP"]),
-        sources=SourcesConfig(travelpayouts=False, ryanair=True, open_jaw=False),
+        sources=SourcesConfig(travelpayouts=False, ryanair=True, google_flights=False, open_jaw=False),
         output=OutputConfig(file=str(path), format=fmt, top_per_airport=per_airport),
     )
 
@@ -271,3 +271,84 @@ def test_exclude_next_days(capsys):
     top = run_search(c, client=C(), today=TODAY)
     assert [o.price for o in top] == [60]
     assert "2026-10-21" in capsys.readouterr().out    # prima partenza = oggi + 1 + 15
+
+
+# --- Google Flights (fast-flights) ---
+
+def _gf(price, airlines, legs):
+    from fast_flights.model import Airport, Flights, SimpleDatetime, SingleFlight, CarbonEmission
+    sf = [
+        SingleFlight(Airport("x", o), Airport("x", d), SimpleDatetime(dd, dt_), SimpleDatetime(ad, at), dur, "A320")
+        for o, d, dd, dt_, ad, at, dur in legs
+    ]
+    return Flights("best", price, airlines, sf, CarbonEmission(1, 1))
+
+
+def test_parse_google_flights():
+    from scanner.google_flights import parse_flights
+    res = [
+        _gf(39, ["Wizz Air"], [("CPH", "FCO", (2026, 10, 31), (16, 35), (2026, 10, 31), (19, 10), 155)]),
+        _gf(60, ["Wizz Air", "SAS"], [("CPH", "ARN", (2026, 10, 31), (8, 0), (2026, 10, 31), (9, 30), 90),
+                                      ("ARN", "FCO", (2026, 10, 31), (11, 0), (2026, 10, 31), (14, 30), 210)]),
+        _gf(30, ["Wizz Air"], [("CPH", "CIA", (2026, 10, 31), (7, 0), (2026, 10, 31), (9, 30), 150)]),  # altro aeroporto
+    ]
+    got = parse_flights(res, "CPH", "FCO", "https://g/x", "EUR")
+    assert [f.price for f in got] == [39, 60]
+    assert got[0].arrival_at.hour == 19 and got[0].transfers == 0 and got[0].source == "google"
+    assert got[1].transfers == 1 and got[1].duration == 300 and got[1].airline == "Wizz Air + SAS"
+
+
+def test_google_client_uses_getter_and_handles_errors():
+    from scanner.google_flights import GoogleFlightsClient
+    from scanner.travelpayouts import ApiError
+    c = GoogleFlightsClient(getter=lambda q: [_gf(39, ["Wizz Air"], [("CPH", "FCO", (2026, 10, 31), (16, 35), (2026, 10, 31), (19, 10), 155)])])
+    got = c.search_day("CPH", "FCO", dt.date(2026, 10, 31))
+    assert len(got) == 1 and got[0].link.startswith("https://www.google.com/travel/flights")
+
+    def boom(q):
+        raise RuntimeError("blocked")
+    try:
+        GoogleFlightsClient(getter=boom).search_day("CPH", "FCO", dt.date(2026, 10, 31))
+        assert False
+    except ApiError:
+        pass
+
+
+def test_run_search_google_combines_with_other_carriers(capsys):
+    from scanner.config import GoogleFlightsConfig
+
+    class FakeGoogle:
+        def search_day(self, o, d, day):
+            if (o, d) == ("CPH", "FCO") and str(day) == "2026-10-31":
+                return [_g("CPH", "FCO", "2026-10-31T16:35:00", 33.91, "Wizz Air")]
+            if (o, d) == ("FCO", "CPH") and str(day) == "2026-11-07":
+                return [_g("FCO", "CPH", "2026-11-07T19:50:00", 53.09, "Wizz Air")]
+            return []
+
+    def _g(o, d, when, price, airline):
+        return OneWayFare(o, d, dt.datetime.fromisoformat(when), price, airline, "https://g", source="google")
+
+    c = Config(
+        search=SearchConfig(max_price=100, min_nights=3, max_nights=14, window_days=30, request_delay_seconds=0),
+        airports=AirportsConfig(origins=["CPH"], destinations=["FCO"]),
+        sources=SourcesConfig(travelpayouts=False, ryanair=False, google_flights=True),
+        google=GoogleFlightsConfig(workers=2, delay_seconds=0),
+    )
+    top = run_search(c, google=FakeGoogle(), today=TODAY)
+    assert [o.price for o in top] == [87.0]
+    assert top[0].airline == "Wizz Air" and top[0].source == "google" and top[0].nights == 7
+    assert "[google]" in capsys.readouterr().out
+
+
+def test_google_tasks_ranges():
+    from scanner.search import google_tasks
+    c = cfg()
+    c.search.window_days = 10
+    c.google.date_step = 1
+    tasks = google_tasks(c, [("CPH", "NAP")], TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=10))
+    outs = [t for t in tasks if t[0] == "CPH"]
+    rets = [t for t in tasks if t[0] == "NAP"]
+    assert len(outs) == 10 and min(t[2] for t in rets) == TODAY + dt.timedelta(days=1 + 3)
+    assert max(t[2] for t in rets) == TODAY + dt.timedelta(days=10 + 14)
+    c.google.max_queries = 5
+    assert len(google_tasks(c, [("CPH", "NAP")], TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=10))) == 5

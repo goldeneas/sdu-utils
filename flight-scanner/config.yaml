@@ -31,7 +31,15 @@ airports:
 sources:
   travelpayouts: true       # A/R da cache Aviasales (richiede TRAVELPAYOUTS_TOKEN)
   ryanair: true             # tariffe live Ryanair, tratta per tratta
-  open_jaw: true            # andata e ritorno su aeroporti diversi (solo Ryanair)
+  google_flights: true      # tariffe live da Google Flights (Wizz Air, easyJet, ...), tratta per tratta
+  open_jaw: true            # andata e ritorno su aeroporti diversi (fonti per tratta)
+
+google_flights:
+  airlines: [W6, U2, DY, VY, HV]  # solo queste compagnie (codici IATA); [] = tutte
+  workers: 4                # richieste in parallelo
+  date_step: 1              # 1 = ogni giorno; 2 = un giorno sì e uno no (più veloce)
+  max_queries: 0            # tetto di sicurezza (0 = nessun limite)
+  delay_seconds: 0.5        # pausa di ogni worker tra una richiesta e l'altra
 
 ntfy:
   enabled: true             # false = nessuna notifica
