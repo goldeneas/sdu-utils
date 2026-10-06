@@ -125,7 +125,7 @@ def parse_any_script(html: str):
     """Cerca i dati voli in tutti gli <script> `ds:N` (Google può spostarli).
 
     Solo il blocco con i risultati ha voci di volo: gli altri (paesi, valute, lingue)
-    si leggono senza errori ma restano vuoti, quindi si sceglie il primo con voci.
+    si leggono senza errori ma restano vuoti, quindi si sceglie il primo con almeno un volo con prezzo.
     Se nessuno ne ha ma almeno uno ha la struttura giusta, la pagina è "nessun volo".
     """
     from fast_flights.exceptions import FlightsNotFound
@@ -142,7 +142,7 @@ def parse_any_script(html: str):
             raise
         except Exception:  # noqa: BLE001 - blocco con altra struttura: prova il prossimo
             continue
-        if parsed.total:
+        if parsed:  # almeno un volo con prezzo: è il blocco dei risultati
             return parsed
         if _looks_like_results(s.text()):
             empty = parsed

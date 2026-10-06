@@ -427,3 +427,16 @@ def test_parse_any_script_ignores_junk_blocks_before_results():
     # pagina "nessun volo": ds:1 con struttura giusta ma senza voci -> vuota, non errore
     empty = f'<script class="ds:1">{_js(None)}</script>'
     assert list(gf.parse_any_script("<html>" + junk + empty + "</html>")) == []
+
+
+def test_parse_any_script_ignores_airport_info_block_with_list_entries():
+    """Il blocco ds:0 (info aeroporti) ha liste in payload[2]/[3]: non deve essere scambiato per i voli."""
+    import json
+    import scanner.google_flights as gf
+
+    info = [[None, None, 0, "id"], [2, [None]], [[["CPH", 0], "Copenhagen Airport", ["/m/x", "Copenhagen"]]],
+            [["/g/y", 4], "Naples", ["/g/y", "Naples"]]]
+    junk = f"<script class='ds:0'>AF_initDataCallback({{key: 'ds:0', data:{json.dumps(info)}, sideChannel: {{}}}});</script>"
+    real = f'<script class="ds:1">{_js([_raw_flight(39)])}</script>'
+    got = gf.parse_any_script("<html>" + junk + real + "</html>")
+    assert [f.price for f in got] == [39]
