@@ -155,9 +155,14 @@ def google_tasks(cfg: Config, routes, start: dt.date, end: dt.date):
 def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -> list[OneWayFare]:
     g = cfg.google
     tasks = google_tasks(cfg, routes, start, end)
-    print(f"\nGoogle Flights (tratte singole, prezzi live): {len(tasks)} richieste, {g.workers} in parallelo")
+    print(
+        f"\nGoogle Flights (tratte singole, prezzi live): {len(tasks)} richieste, "
+        f"{g.workers} in parallelo (ogni richiesta richiede qualche secondo)",
+        flush=True,
+    )
     fares: list[OneWayFare] = []
     errors, done, aborted = [], 0, False
+    t0 = time.monotonic()
 
     def work(task):
         if aborted:
@@ -180,8 +185,14 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
                         aborted = True
                 elif res:
                     fares += res
-                if not aborted and (done % 100 == 0 or done == len(tasks)):
-                    print(f"  [{done}/{len(tasks)}] {len(fares)} tariffe, {len(errors)} errori")
+                if not aborted and (done in (1, 5) or done % 25 == 0 or done == len(tasks)):
+                    elapsed = time.monotonic() - t0
+                    eta = elapsed / done * (len(tasks) - done)
+                    print(
+                        f"  [{done}/{len(tasks)}] {len(fares)} tariffe, {len(errors)} errori"
+                        f" · {elapsed / 60:.1f} min trascorsi, ~{eta / 60:.0f} min rimanenti",
+                        flush=True,
+                    )
     except KeyboardInterrupt:
         aborted = True
         print("  interrotto dall'utente: uso le tariffe raccolte finora")
