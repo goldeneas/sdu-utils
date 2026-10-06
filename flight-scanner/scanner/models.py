@@ -24,6 +24,9 @@ class OneWayFare:
     link: str = ""
     currency: str = "EUR"
     arrival_at: datetime | None = None   # ora locale di arrivo
+    source: str = "ryanair"
+    transfers: int = 0
+    duration: int | None = None          # minuti
 
 
 @dataclass

@@ -50,7 +50,7 @@ def parse_fares(payload: dict, origin: str, destination: str, currency: str) -> 
                 destination=destination,
                 departure_at=dep_dt,
                 price=round(price, 2),
-                airline="FR",
+                airline="Ryanair",
                 link=BOOKING_URL.format(date=dep_dt.date().isoformat(), o=origin, d=destination),
                 currency=currency.upper(),
                 arrival_at=arr_dt,

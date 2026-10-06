@@ -60,7 +60,17 @@ class NtfyConfig:
 class SourcesConfig:
     travelpayouts: bool = True    # A/R da cache Aviasales (serve TRAVELPAYOUTS_TOKEN)
     ryanair: bool = True          # tariffe live Ryanair (tratte singole)
-    open_jaw: bool = True         # combina andata/ritorno su aeroporti diversi (Ryanair)
+    google_flights: bool = True   # tariffe live da Google Flights (libreria fast-flights)
+    open_jaw: bool = True         # combina andata/ritorno su aeroporti diversi (tariffe per tratta)
+
+
+@dataclass
+class GoogleFlightsConfig:
+    airlines: list[str] = field(default_factory=list)  # [] = tutte le compagnie
+    workers: int = 4              # richieste in parallelo
+    date_step: int = 1            # 1 = ogni giorno; 2 = un giorno sì e uno no, ecc.
+    max_queries: int = 0          # tetto di sicurezza (0 = nessun limite)
+    delay_seconds: float = 0.5    # pausa di ogni worker tra una richiesta e l'altra
 
 
 @dataclass
@@ -76,6 +86,7 @@ class Config:
     airports: AirportsConfig = field(default_factory=AirportsConfig)
     ntfy: NtfyConfig = field(default_factory=NtfyConfig)
     sources: SourcesConfig = field(default_factory=SourcesConfig)
+    google: GoogleFlightsConfig = field(default_factory=GoogleFlightsConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
 
 
@@ -95,6 +106,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
     a = data.get("airports") or {}
     n = data.get("ntfy") or {}
     src = data.get("sources") or {}
+    g = data.get("google_flights") or {}
     o = data.get("output") or {}
 
     cfg = Config(
@@ -123,7 +135,15 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
         sources=SourcesConfig(
             travelpayouts=bool(src.get("travelpayouts", True)),
             ryanair=bool(src.get("ryanair", True)),
+            google_flights=bool(src.get("google_flights", True)),
             open_jaw=bool(src.get("open_jaw", True)),
+        ),
+        google=GoogleFlightsConfig(
+            airlines=_clean_codes(g.get("airlines")),
+            workers=int(g.get("workers", 4)),
+            date_step=int(g.get("date_step", 1)),
+            max_queries=int(g.get("max_queries", 0)),
+            delay_seconds=float(g.get("delay_seconds", 0.5)),
         ),
         output=OutputConfig(
             file=str(o.get("file", "") or ""),
@@ -161,7 +181,9 @@ def _validate(cfg: Config) -> None:
         raise ValueError("config: `search.max_transfers` non può essere negativo")
     if cfg.output.top_per_airport < 0:
         raise ValueError("config: `output.top_per_airport` non può essere negativo")
-    if not (cfg.sources.travelpayouts or cfg.sources.ryanair):
+    if not (cfg.sources.travelpayouts or cfg.sources.ryanair or cfg.sources.google_flights):
         raise ValueError("config: abilita almeno una fonte in `sources`")
+    if cfg.google.workers < 1 or cfg.google.date_step < 1:
+        raise ValueError("config: `google_flights.workers` e `date_step` devono essere >= 1")
     if cfg.output.format not in ("csv", "txt", "json"):
         raise ValueError("config: `output.format` deve essere csv, txt o json")
