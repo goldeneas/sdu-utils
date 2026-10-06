@@ -400,3 +400,8 @@ def test_parse_any_script_tries_other_blocks():
         assert False
     except ValueError:
         pass
+
+
+def test_google_default_has_no_airline_filter():
+    from scanner.config import GoogleFlightsConfig
+    assert GoogleFlightsConfig().airlines == []

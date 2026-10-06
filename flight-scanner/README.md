@@ -11,8 +11,8 @@ Usa tre fonti, attivabili in `config.yaml` (`sources`):
   vengono sommati e, con `open_jaw: true`, combinati anche su **aeroporti diversi**
   (es. andata su Roma, ritorno da Milano).
 - **Google Flights** (libreria [`fast-flights`](https://pypi.org/project/fast-flights/), non ufficiale):
-  prezzi live per tratta di **tutti i voli del giorno**, filtrati per compagnia
-  (`google_flights.airlines`, di default Wizz Air, easyJet, Norwegian, Vueling, Transavia).
+  prezzi live per tratta di **tutti i voli del giorno**, di tutte le compagnie
+  (filtrabili con `google_flights.airlines`, codici IATA).
   Le tratte di Google e Ryanair si combinano fra loro, anche tra compagnie diverse.
 
 Nessun browser necessario.

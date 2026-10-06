@@ -35,7 +35,8 @@ sources:
   open_jaw: true            # andata e ritorno su aeroporti diversi (fonti per tratta)
 
 google_flights:
-  airlines: [W6, U2, DY, VY, HV]  # solo queste compagnie (codici IATA); [] = tutte
+  airlines: []              # [] = tutte le compagnie (consigliato: il filtro per prezzo basta);
+                            # oppure solo alcune, es. [W6, U2, D8, DY, VY, HV] (Norwegian = D8/DY)
   workers: 4                # richieste in parallelo
   date_step: 1              # 1 = ogni giorno; 2 = un giorno sì e uno no (più veloce)
   max_queries: 0            # tetto di sicurezza (0 = nessun limite)

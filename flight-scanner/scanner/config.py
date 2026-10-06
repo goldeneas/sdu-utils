@@ -66,7 +66,7 @@ class SourcesConfig:
 
 @dataclass
 class GoogleFlightsConfig:
-    airlines: list[str] = field(default_factory=lambda: ["W6", "U2", "DY", "VY", "HV"])  # [] = tutte
+    airlines: list[str] = field(default_factory=list)  # [] = tutte le compagnie
     workers: int = 4              # richieste in parallelo
     date_step: int = 1            # 1 = ogni giorno; 2 = un giorno sì e uno no, ecc.
     max_queries: int = 0          # tetto di sicurezza (0 = nessun limite)
@@ -139,7 +139,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
             open_jaw=bool(src.get("open_jaw", True)),
         ),
         google=GoogleFlightsConfig(
-            airlines=_clean_codes(g.get("airlines", ["W6", "U2", "DY", "VY", "HV"])),
+            airlines=_clean_codes(g.get("airlines")),
             workers=int(g.get("workers", 4)),
             date_step=int(g.get("date_step", 1)),
             max_queries=int(g.get("max_queries", 0)),
