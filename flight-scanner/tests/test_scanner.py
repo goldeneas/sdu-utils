@@ -405,3 +405,25 @@ def test_parse_any_script_tries_other_blocks():
 def test_google_default_has_no_airline_filter():
     from scanner.config import GoogleFlightsConfig
     assert GoogleFlightsConfig().airlines == []
+
+
+def test_parse_any_script_ignores_junk_blocks_before_results():
+    """I blocchi ds:0/2/3/4 (paesi, valute, lingue) vengono prima di ds:1 e non devono vincere."""
+    import json
+    import scanner.google_flights as gf
+
+    def blk(k, data):
+        return f"<script class='{k}'>AF_initDataCallback({{key: '{k}', data:{json.dumps(data)}, sideChannel: {{}}}});</script>"
+
+    junk = (
+        blk("ds:0", [[None, None, 0, "id"], [2, [None]]])
+        + blk("ds:2", [["AF", "Afghanistan"], ["AL", "Albania"], ["DZ", "Algeria"], ["AS", "Samoa"]])
+        + blk("ds:3", [["ALL", "Lek", "ALL", 0], ["DZD", "Dinar", "DZD", 0], ["ARS", "Peso", "ARS", 0], ["AMD", "Dram", "AMD", 0]])
+    )
+    real = f'<script class="ds:1">{_js([_raw_flight(39), _raw_flight(None)])}</script>'
+    got = gf.parse_any_script("<html>" + junk + real + "</html>")
+    assert [f.price for f in got] == [39] and got.total == 2 and got.skipped == 1
+
+    # pagina "nessun volo": ds:1 con struttura giusta ma senza voci -> vuota, non errore
+    empty = f'<script class="ds:1">{_js(None)}</script>'
+    assert list(gf.parse_any_script("<html>" + junk + empty + "</html>")) == []

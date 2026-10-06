@@ -88,9 +88,12 @@ def parse_js_tolerant(js: str):
     entries = []
     for idx in (2, 3):
         try:
-            entries += payload[idx][0] or []
+            block = payload[idx][0]
         except (IndexError, TypeError):
-            pass
+            continue
+        # solo elenchi di voci-lista: gli altri blocchi `ds:N` (paesi, valute, lingue) contengono stringhe
+        if isinstance(block, list):
+            entries += [k for k in block if isinstance(k, list)]
     results = Parsed()
     results.total = len(entries)
     for k in entries:
@@ -119,21 +122,44 @@ def parse_js_tolerant(js: str):
 
 
 def parse_any_script(html: str):
-    """Cerca i dati voli in tutti gli <script> `ds:N` (Google può spostarli)."""
+    """Cerca i dati voli in tutti gli <script> `ds:N` (Google può spostarli).
+
+    Solo il blocco con i risultati ha voci di volo: gli altri (paesi, valute, lingue)
+    si leggono senza errori ma restano vuoti, quindi si sceglie il primo con voci.
+    Se nessuno ne ha ma almeno uno ha la struttura giusta, la pagina è "nessun volo".
+    """
     from fast_flights.exceptions import FlightsNotFound
     from selectolax.lexbor import LexborHTMLParser
 
     scripts = LexborHTMLParser(html).css("script")
     candidates = [s for s in scripts if (s.attributes.get("class") or "").startswith("ds:")]
     candidates += [s for s in scripts if s not in candidates and "data:" in (s.text() or "")[:5000]]
+    empty = None
     for s in candidates:
         try:
-            return parse_js_tolerant(s.text())
+            parsed = parse_js_tolerant(s.text())
         except FlightsNotFound:
             raise
         except Exception:  # noqa: BLE001 - blocco con altra struttura: prova il prossimo
             continue
+        if parsed.total:
+            return parsed
+        if _looks_like_results(s.text()):
+            empty = parsed
+    if empty is not None:
+        return empty
     raise ValueError("nessun blocco dati con la struttura attesa")
+
+
+def _looks_like_results(js: str) -> bool:
+    """Il blocco dei risultati ha, come ds:1, i metadati su compagnie e alleanze (payload[7])."""
+    import json
+
+    try:
+        payload = json.loads(js.split("data:", 1)[1].rsplit(",", 1)[0])
+        return isinstance(payload[7][1][0], list) and isinstance(payload[7][1][1], list)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def get_flights_with_consent(query):
