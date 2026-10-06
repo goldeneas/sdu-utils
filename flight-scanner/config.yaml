@@ -41,3 +41,5 @@ ntfy:
 output:
   file: ""                  # es. "risultati.csv" (vuoto = solo terminale)
   format: csv               # csv | txt | json
+  top_per_airport: 3        # solo su file: sotto la top, i migliori N per aeroporto di arrivo
+                            # (ignorando la soglia di prezzo; 0 = disattivato)
