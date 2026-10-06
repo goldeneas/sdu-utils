@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import os
 import time
+from collections import Counter
 
 from .config import Config
 from .models import FlightOption, OneWayFare
@@ -22,19 +23,25 @@ def months_in_window(start: dt.date, end: dt.date) -> list[str]:
 
 
 def filter_offers(
-    offers, cfg: Config, start: dt.date, end: dt.date, ignore_price: bool = False
+    offers, cfg: Config, start: dt.date, end: dt.date, ignore_price: bool = False,
+    rejected: Counter | None = None,
 ) -> list[FlightOption]:
     """Applica finestra di date, notti minime, scali e soglia di prezzo; deduplica."""
     s = cfg.search
+    rejected = rejected if rejected is not None else Counter()
     seen, out = set(), []
     for o in sorted(offers, key=lambda o: o.price):  # a parità di voli resta il più economico
         if not (start <= o.departure_date <= end):  # solo la partenza è vincolata alla finestra
+            rejected["fuori finestra"] += 1
             continue
         if not (s.min_nights <= o.nights <= s.max_nights):
+            rejected["notti fuori range"] += 1
             continue
         if max(o.transfers, o.return_transfers) > s.max_transfers:
+            rejected["troppi scali"] += 1
             continue
         if o.price > s.max_price and not ignore_price:
+            rejected["prezzo"] += 1
             continue
         if o.key in seen:
             continue
@@ -170,11 +177,17 @@ def run_search(
                 except ApiError as exc:
                     print(f"  [warn] {origin}→{dest} {month}: {exc}")
                 _pause(cfg)
-            valid = filter_offers(raw, cfg, start, end, ignore_price=True)
+            rejected: Counter = Counter()
+            valid = filter_offers(raw, cfg, start, end, ignore_price=True, rejected=rejected)
             hits = [o for o in valid if o.price <= s.max_price]
             if raw:
-                cheapest = min(o.price for o in raw)
-                print(f"  {origin}→{dest}: {len(hits)} ≤ soglia (più economico in assoluto: €{cheapest:.0f})")
+                line = f"  {origin}→{dest}: {len(hits)} ≤ soglia"
+                if valid:
+                    line += f" · più economico valido: €{valid[0].price:.0f}"
+                line += f" · più economico in cache (qualsiasi data): €{min(o.price for o in raw):.0f}"
+                if rejected:
+                    line += " · scartati: " + ", ".join(f"{n} {r}" for r, n in rejected.items())
+                print(line)
             else:
                 print(f"  {origin}→{dest}: nessun dato in cache")
             candidates += valid
