@@ -54,20 +54,52 @@ def fetch_html(query) -> str:
     return client.get(URL, params=query.params()).text
 
 
+def parse_any_script(html: str):
+    """Come `fast_flights.parser.parse`, ma prova tutti gli <script> con dati (`ds:N`).
+
+    La libreria legge solo `script.ds:1`; se Google sposta i dati in un altro blocco
+    la ricerca fallisce, qui invece si prova ogni blocco finché uno ha la struttura attesa.
+    """
+    from fast_flights.exceptions import FlightsNotFound
+    from fast_flights.parser import parse_js
+    from selectolax.lexbor import LexborHTMLParser
+
+    parser = LexborHTMLParser(html)
+    scripts = parser.css("script")
+    candidates = [s for s in scripts if (s.attributes.get("class") or "").startswith("ds:")]
+    candidates += [s for s in scripts if s not in candidates and "data:" in (s.text() or "")[:5000]]
+    for s in candidates:
+        try:
+            return parse_js(s.text())
+        except FlightsNotFound:
+            raise
+        except Exception:  # noqa: BLE001 - blocco con altra struttura: prova il prossimo
+            continue
+    raise ValueError("nessun blocco dati con la struttura attesa")
+
+
 def get_flights_with_consent(query):
+    from fast_flights.exceptions import FlightsNotFound
     from fast_flights.parser import parse
 
     html = fetch_html(query)
     try:
         return parse(html)
-    except Exception as exc:
-        # FlightsNotFound è un esito normale: lo lasciamo passare
-        from fast_flights.exceptions import FlightsNotFound
-        if isinstance(exc, FlightsNotFound):
+    except FlightsNotFound:
+        raise
+    except Exception:
+        try:
+            return parse_any_script(html)
+        except FlightsNotFound:
             raise
-        DEBUG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        DEBUG_FILE.write_text(html, encoding="utf-8")
-        raise ApiError(f"{_explain_bad_page(html)} · HTML salvato in {DEBUG_FILE}") from exc
+        except Exception as exc:
+            return _fail(html, exc)
+
+
+def _fail(html: str, exc: Exception):
+    DEBUG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DEBUG_FILE.write_text(html, encoding="utf-8")
+    raise ApiError(f"{_explain_bad_page(html)} · HTML salvato in {DEBUG_FILE}") from exc
 
 
 def _to_dt(sd) -> datetime:

@@ -366,3 +366,16 @@ def test_google_bad_page_is_explained(tmp_path, monkeypatch):
     except ApiError as exc:
         assert "consenso" in str(exc) and "dbg.html" in str(exc) and "Before you continue" in str(exc)
     assert (tmp_path / "dbg.html").exists()
+
+
+def test_parse_any_script_tries_other_blocks(monkeypatch):
+    import fast_flights.parser as fp
+    import scanner.google_flights as gf
+    monkeypatch.setattr(fp, "parse_js", lambda js: ["OK"] if "GOOD" in js else (_ for _ in ()).throw(IndexError()))
+    html = '<html><script class="ds:0">data:BAD</script><script class="ds:7">data:GOOD</script></html>'
+    assert gf.parse_any_script(html) == ["OK"]
+    try:
+        gf.parse_any_script("<html><script class='ds:0'>data:BAD</script></html>")
+        assert False
+    except ValueError:
+        pass
