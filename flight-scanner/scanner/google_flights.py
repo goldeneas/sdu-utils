@@ -60,6 +60,13 @@ def _parse_time(value) -> tuple[int, int]:
     return (padded[0] or 0, padded[1] or 0)
 
 
+class Parsed(list):
+    """Lista di voli letti, con il conteggio delle voci trovate e di quelle scartate."""
+
+    total = 0
+    skipped = 0
+
+
 def parse_js_tolerant(js: str):
     """Come `fast_flights.parser.parse_js`, ma salta i voli con dati mancanti.
 
@@ -77,9 +84,16 @@ def parse_js_tolerant(js: str):
     if data.endswith("errorHasStatus: true"):
         raise FlightsNotFound("no flights found; received error")
     payload = json.loads(data)
-    entries = (payload[3] or [None])[0]
-    results = []
-    for k in entries or []:
+    # payload[2] = "migliori voli", payload[3] = "altri voli": Google li separa
+    entries = []
+    for idx in (2, 3):
+        try:
+            entries += payload[idx][0] or []
+        except (IndexError, TypeError):
+            pass
+    results = Parsed()
+    results.total = len(entries)
+    for k in entries:
         try:
             flight = k[0]
             price = k[1][0][1]
@@ -100,7 +114,7 @@ def parse_js_tolerant(js: str):
                 carbon = CarbonEmission(typical_on_route=0, emission=0)
             results.append(Flights(type=flight[0], price=price, airlines=flight[1], flights=segs, carbon=carbon))
         except (IndexError, TypeError, KeyError):
-            continue  # voce senza prezzo o con formato diverso
+            results.skipped += 1  # voce senza prezzo o con formato diverso
     return results
 
 
@@ -179,6 +193,7 @@ class GoogleFlightsClient:
         self.airlines = airlines or None
         self.max_stops = max_stops
         self._getter = getter
+        self.stats = {"pagine": 0, "voci": 0, "scartate": 0, "con_voli": 0}
 
     def _fetch(self, query):
         if self._getter is not None:
@@ -209,4 +224,9 @@ class GoogleFlightsClient:
             raise
         except Exception as exc:  # noqa: BLE001 - rete, blocco, formato cambiato
             raise ApiError(f"Google Flights {origin}→{destination} {day}: {exc}") from exc
-        return parse_flights(results, origin, destination, query.url(), self.currency)
+        self.stats["pagine"] += 1
+        self.stats["voci"] += getattr(results, "total", len(results))
+        self.stats["scartate"] += getattr(results, "skipped", 0)
+        fares = parse_flights(results, origin, destination, query.url(), self.currency)
+        self.stats["con_voli"] += bool(fares)
+        return fares

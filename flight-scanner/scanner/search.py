@@ -196,6 +196,14 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
     except KeyboardInterrupt:
         aborted = True
         print("  interrotto dall'utente: uso le tariffe raccolte finora")
+    stats = getattr(client, "stats", None)
+    if stats:
+        print(
+            f"  pagine ricevute: {stats['pagine']} · con almeno una tariffa: {stats['con_voli']} · "
+            f"voci nelle pagine: {stats['voci']} (scartate senza prezzo/formato: {stats['scartate']})"
+        )
+        if stats["pagine"] and not fares:
+            print("  [!] nessuna tariffa letta: esegui `python -m scanner.inspect_dump --fetch CPH FCO <data>`")
     if aborted and errors:
         print("  [e] troppi errori, interrompo Google Flights. Primo errore:")
         print(f"      {errors[0]}")

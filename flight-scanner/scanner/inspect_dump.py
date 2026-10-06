@@ -5,11 +5,29 @@ Stampa la struttura della pagina Google Flights salvata in caso di errore
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 from selectolax.lexbor import LexborHTMLParser
+
+
+def fetch_to_file(origin: str, dest: str, day: str, airlines: list[str] | None = None) -> str:
+    """Scarica la pagina di una tratta (come fa lo scanner) e la salva per l'analisi."""
+    from fast_flights import FlightQuery, create_query
+
+    from scanner.google_flights import fetch_html
+
+    q = create_query(
+        flights=[FlightQuery(date=day, from_airport=origin, to_airport=dest, airlines=airlines)],
+        seat="economy", trip="one-way", language="en-US", currency="EUR",
+    )
+    out = Path("debug_dumps") / f"fetch_{origin}_{dest}_{day}.html"
+    out.parent.mkdir(exist_ok=True)
+    out.write_text(fetch_html(q), encoding="utf-8")
+    print(f"scaricato: {out}")
+    return str(out)
 
 
 def main(path: str = "debug_dumps/google_flights_error.html") -> int:
@@ -29,6 +47,17 @@ def main(path: str = "debug_dumps/google_flights_error.html") -> int:
         print(f"  '{word}': {html.count(word)} occorrenze")
     _inspect_ds1(p)
     return 0
+
+
+def _entry_shapes(payload) -> None:
+    for idx in (2, 3):
+        try:
+            entries = payload[idx][0] or []
+        except (IndexError, TypeError):
+            entries = []
+        print(f"payload[{idx}][0]: {len(entries)} voci")
+        for n, k in enumerate(entries[:3]):
+            print(f"  voce {n}: {json.dumps(_shape(k, 0, 3), ensure_ascii=False)[:900]}")
 
 
 def _shape(x, depth=0, max_depth=2):
@@ -62,6 +91,7 @@ def _inspect_ds1(p) -> None:
         traceback.print_exc()
         return
     print("forma payload:", json.dumps(_shape(payload), ensure_ascii=False)[:1800])
+    _entry_shapes(payload)
     try:
         from scanner.google_flights import parse_js_tolerant
         res = parse_js_tolerant(js)
@@ -75,4 +105,8 @@ def _inspect_ds1(p) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(*sys.argv[1:2]))
+    args = sys.argv[1:]
+    if args and args[0] == "--fetch":
+        o, d, day = args[1:4]
+        raise SystemExit(main(fetch_to_file(o, d, day, args[4].split(",") if len(args) > 4 else None)))
+    raise SystemExit(main(*args[:1]))
