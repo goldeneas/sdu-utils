@@ -176,17 +176,17 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
                 done += 1
                 if isinstance(res, ApiError):
                     errors.append(str(res))
-                    if len(errors) >= 15 and len(errors) > done // 2:  # quasi tutto fallisce: blocco
+                    if len(errors) >= 10 and len(errors) > done // 2:  # quasi tutto fallisce: blocco
                         aborted = True
                 elif res:
                     fares += res
-                if done % 100 == 0 or done == len(tasks):
+                if not aborted and (done % 100 == 0 or done == len(tasks)):
                     print(f"  [{done}/{len(tasks)}] {len(fares)} tariffe, {len(errors)} errori")
     except KeyboardInterrupt:
         aborted = True
         print("  interrotto dall'utente: uso le tariffe raccolte finora")
     if aborted and errors:
-        print("  [e] troppi errori: Google sta probabilmente limitando le richieste. Esempio:")
+        print("  [e] troppi errori, interrompo Google Flights. Primo errore:")
         print(f"      {errors[0]}")
     elif errors:
         print(f"  [warn] {len(errors)} richieste fallite, esempio: {errors[0]}")

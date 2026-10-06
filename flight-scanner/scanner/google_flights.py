@@ -9,10 +9,58 @@ ATTENZIONE: Google può cambiare il formato; in tal caso va aggiornata `fast-fli
 """
 from __future__ import annotations
 
+import os
 from datetime import date, datetime
+from pathlib import Path
 
 from .models import OneWayFare
 from .travelpayouts import ApiError
+
+
+URL = "https://www.google.com/travel/flights"
+# Cookie di consenso: senza, dall'UE Google risponde con la pagina "Before you continue"
+# invece dei risultati (fast-flights non trova i dati e fallisce).
+CONSENT_COOKIES = {
+    "SOCS": os.getenv("GOOGLE_SOCS", "CAESHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmRlIAEaBgiAo_CmBg"),
+    "CONSENT": "YES+cb",
+}
+DEBUG_FILE = Path("debug_dumps") / "google_flights_error.html"
+
+
+def _explain_bad_page(html: str) -> str:
+    low = html.lower()
+    if "consent.google" in low or "before you continue" in low or "prima di continuare" in low:
+        return "pagina di consenso cookie di Google (nessun risultato)"
+    if "unusual traffic" in low or "captcha" in low or "recaptcha" in low:
+        return "Google chiede un captcha / traffico insolito"
+    return "pagina senza dati voli (formato cambiato o richiesta rifiutata)"
+
+
+def fetch_html(query) -> str:
+    """Scarica la pagina Google Flights con i cookie di consenso già impostati."""
+    from primp import Client
+
+    client = Client(impersonate="chrome_145", impersonate_os="macos", referer=True, cookie_store=True)
+    with_cookies = getattr(client, "set_cookies", None)
+    if with_cookies:
+        with_cookies(URL, CONSENT_COOKIES)
+    return client.get(URL, params=query.params()).text
+
+
+def get_flights_with_consent(query):
+    from fast_flights.parser import parse
+
+    html = fetch_html(query)
+    try:
+        return parse(html)
+    except Exception as exc:
+        # FlightsNotFound è un esito normale: lo lasciamo passare
+        from fast_flights.exceptions import FlightsNotFound
+        if isinstance(exc, FlightsNotFound):
+            raise
+        DEBUG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        DEBUG_FILE.write_text(html, encoding="utf-8")
+        raise ApiError(f"{_explain_bad_page(html)} · HTML salvato in {DEBUG_FILE}") from exc
 
 
 def _to_dt(sd) -> datetime:
@@ -59,11 +107,7 @@ class GoogleFlightsClient:
     def _fetch(self, query):
         if self._getter is not None:
             return self._getter(query)
-        try:
-            from fast_flights import get_flights
-        except ImportError as exc:
-            raise ApiError("manca la libreria: pip install fast-flights") from exc
-        return get_flights(query)
+        return get_flights_with_consent(query)
 
     def search_day(self, origin: str, destination: str, day: date) -> list[OneWayFare]:
         """Tutti i voli diretti/con scali di una tratta in un giorno."""

@@ -352,3 +352,17 @@ def test_google_tasks_ranges():
     assert max(t[2] for t in rets) == TODAY + dt.timedelta(days=10 + 14)
     c.google.max_queries = 5
     assert len(google_tasks(c, [("CPH", "NAP")], TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=10))) == 5
+
+
+def test_google_bad_page_is_explained(tmp_path, monkeypatch):
+    import scanner.google_flights as gf
+    from scanner.travelpayouts import ApiError
+    monkeypatch.setattr(gf, "DEBUG_FILE", tmp_path / "dbg.html")
+    monkeypatch.setattr(gf, "fetch_html", lambda q: "<html><title>Before you continue</title>consent.google.com</html>")
+    c = gf.GoogleFlightsClient()
+    try:
+        c.search_day("CPH", "FCO", dt.date(2026, 10, 31))
+        assert False
+    except ApiError as exc:
+        assert "consenso" in str(exc) and "dbg.html" in str(exc)
+    assert (tmp_path / "dbg.html").exists()
