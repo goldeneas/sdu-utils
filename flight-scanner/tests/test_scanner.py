@@ -241,3 +241,33 @@ def test_file_has_top_and_per_airport_ignoring_threshold(tmp_path, capsys):
     out = tmp_path / "off.txt"
     run_search(_file_cfg(out, "txt", per_airport=0), ryanair=FakeRyanair2(), today=TODAY)
     assert "RIEPILOGO" not in out.read_text(encoding="utf-8")
+
+
+def test_rejection_reasons():
+    from collections import Counter
+    c = cfg()
+    rej = Counter()
+    start, end = TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=30)
+    filter_offers(
+        offers(item(80, ret="2026-10-14T19:00:00+02:00"), item(70, transfers=2),
+               item(60, ret="2026-11-02T19:00:00+01:00"), item(50, dep="2026-12-01T08:00:00+01:00", ret="2026-12-05T08:00:00+01:00")),
+        c, start, end, ignore_price=True, rejected=rej,
+    )
+    assert rej == Counter({"notti fuori range": 2, "troppi scali": 1, "fuori finestra": 1})
+
+
+def test_exclude_next_days(capsys):
+    c = cfg(request_delay_seconds=0)
+    c.search.window_days, c.search.exclude_next_days = 60, 15
+    seen = []
+
+    class C:
+        def search_month(self, o, d, m):
+            seen.append(m)
+            return offers(
+                item(50, dep="2026-10-12T08:00:00+02:00", ret="2026-10-17T08:00:00+02:00"),  # giorno 7: escluso
+                item(60, dep="2026-10-25T08:00:00+01:00", ret="2026-10-30T08:00:00+01:00"),  # giorno 20: ok
+            )
+    top = run_search(c, client=C(), today=TODAY)
+    assert [o.price for o in top] == [60]
+    assert "2026-10-21" in capsys.readouterr().out    # prima partenza = oggi + 1 + 15
