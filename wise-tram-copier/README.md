@@ -12,3 +12,9 @@ A static, single-file UI mock of a card-payment detail screen, built as a fronte
 
 - `index.html` – payment details screen mock
 - `cards.html` – cards screen mock (card artwork, quick actions, "manage card" list, floating tab bar)
+
+## Custom card picture
+
+`cards.html` draws a placeholder card artwork in SVG. To use a real picture instead, save any image as
+`assets/card-bg.jpg` (landscape, roughly 600×380 or larger). It is cropped to fill the card and drawn over the
+placeholder artwork; the fictional "demo" / "CARD" text stays on top. If the file is missing, the drawn artwork is used.
