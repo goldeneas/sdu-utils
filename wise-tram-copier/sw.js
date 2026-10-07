@@ -1,5 +1,5 @@
 // Offline-first service worker. Bump VERSION to force clients to refresh the precache.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `ui-mock-${VERSION}`;
 const PRECACHE = [
   './',
@@ -16,7 +16,9 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)
+      // optional card picture: precache it when present, never fail the install if it is missing
+      .then(() => cache.add('assets/card-bg.jpg').catch(() => {}))).then(() => self.skipWaiting())
   );
 });
 

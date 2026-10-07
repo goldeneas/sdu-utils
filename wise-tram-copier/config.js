@@ -52,8 +52,8 @@ window.APP_CONFIG = {
 
     cardName: "Digital card",        // text under the card
     last4: "0000",                   // last digits under the card
-    artworkTop: "demo",              // big text on the card
-    artworkBottom: "CARD",           // text at the bottom of the card
+    artworkTop: "",                  // big text drawn over the card ("" = none; the picture has its own logo)
+    artworkBottom: "",               // text at the bottom of the card ("" = none)
     cardImage: "assets/card-bg.jpg", // optional picture drawn over the card; "" = never try it
 
     walletNote: "Added to phone wallet",   // "" hides it
