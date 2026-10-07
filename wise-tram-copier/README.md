@@ -23,6 +23,8 @@ When online, `config.js` is always fetched fresh, so edits show on the next relo
 
 ## Install as an app (PWA)
 
+Full step-by-step instructions (hosting, iOS, Android, desktop, updating): see [INSTALL.md](INSTALL.md). In short:
+
 The pages are wrapped as an installable, offline-capable web app: `manifest.webmanifest`, `sw.js` (offline cache),
 `pwa.js` (registers the worker) and `icons/`. Only a few `<head>` tags were added to the HTML pages.
 
