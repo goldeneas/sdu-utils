@@ -142,99 +142,30 @@
       <svg viewBox="0 0 300 189" aria-label="Placeholder card artwork">
         <defs>
           <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#e29a35"/><stop offset=".5" stop-color="#eebb3b"/><stop offset="1" stop-color="#d9972f"/>
+            <stop offset="0" stop-color="#e9b445"/><stop offset=".55" stop-color="#f2c946"/><stop offset="1" stop-color="#e5a53c"/>
           </linearGradient>
-          <linearGradient id="wave" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stop-color="#f2c940"/><stop offset=".5" stop-color="#f7d553"/><stop offset="1" stop-color="#f0c842"/>
-          </linearGradient>
-          <linearGradient id="lower" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#e98a35"/><stop offset=".55" stop-color="#eeb43f"/><stop offset="1" stop-color="#b3c050"/>
-          </linearGradient>
-          <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/>
-          </linearGradient>
-          <!-- wobbly, painterly edges -->
-          <filter id="paint" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency=".025 .06" numOctaves="3" seed="7" result="t"/>
-            <feDisplacementMap in="SourceGraphic" in2="t" scale="14" xChannelSelector="R" yChannelSelector="G"/>
-            <feGaussianBlur stdDeviation=".7"/>
+          <radialGradient id="glow" cx=".62" cy=".45" r=".55"><stop offset="0" stop-color="#f8de62" stop-opacity=".95"/><stop offset="1" stop-color="#f8de62" stop-opacity="0"/></radialGradient>
+          <radialGradient id="warm" cx=".15" cy=".95" r=".6"><stop offset="0" stop-color="#e5742f" stop-opacity=".85"/><stop offset="1" stop-color="#e5742f" stop-opacity="0"/></radialGradient>
+          <radialGradient id="sage" cx=".98" cy=".95" r=".5"><stop offset="0" stop-color="#a9bd58" stop-opacity=".9"/><stop offset="1" stop-color="#a9bd58" stop-opacity="0"/></radialGradient>
+          <radialGradient id="haze" cx=".2" cy=".3" r=".38"><stop offset="0" stop-color="#9ea58c" stop-opacity=".85"/><stop offset="1" stop-color="#9ea58c" stop-opacity="0"/></radialGradient>
+          <radialGradient id="wine" cx=".23" cy=".62" r=".16"><stop offset="0" stop-color="#9a3a46" stop-opacity=".85"/><stop offset="1" stop-color="#9a3a46" stop-opacity="0"/></radialGradient>
+          <filter id="grain" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
+            <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .7  0 0 0 .55 -.12"/>
           </filter>
-          <filter id="mist" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency=".04 .08" numOctaves="3" seed="3" result="t"/>
-            <feDisplacementMap in="SourceGraphic" in2="t" scale="9" xChannelSelector="R" yChannelSelector="G"/>
-            <feGaussianBlur stdDeviation="1.6"/>
-          </filter>
-          <filter id="soft"><feGaussianBlur stdDeviation="9"/></filter>
-          <filter id="streak" x="-10%" y="-50%" width="120%" height="200%">
-            <feTurbulence type="fractalNoise" baseFrequency=".02 .5" numOctaves="2" seed="11" result="t"/>
-            <feDisplacementMap in="SourceGraphic" in2="t" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-            <feGaussianBlur stdDeviation=".35"/>
-          </filter>
-          <!-- canvas weave + speckle -->
-          <filter id="canvas" x="0" y="0" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency=".55 .9" numOctaves="3" seed="2" result="n"/>
-            <feDiffuseLighting in="n" lighting-color="#fff" surfaceScale="1.6" result="l"><feDistantLight azimuth="235" elevation="58"/></feDiffuseLighting>
-          </filter>
-          <filter id="speckle" x="0" y="0" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="1" seed="9"/>
-            <feColorMatrix type="matrix" values="0 0 0 0 .95  0 0 0 0 .86  0 0 0 0 .5  0 0 0 1.8 -.78"/>
-          </filter>
-          <clipPath id="cardclip"><rect width="300" height="189" rx="18"/></clipPath>
         </defs>
-
-        <g clip-path="url(#cardclip)">
-          <rect width="300" height="189" fill="url(#base)"/>
-
-          <!-- misty skyline, upper left -->
-          <g filter="url(#mist)" opacity=".7" fill="#6f7a68">
-            <path d="M-10 120V84l8-3v-8h6v8l8 3v-18h10v18l6-2v-12h8v12l4 2v-30h8v30l5-1V74l9-10 4-16 2-14h2l2 14 4 16 9 10v52z"/>
-            <path d="M92 130V92l6-4 4-18 8-18c3-8 8-12 12-12s9 4 12 12l8 18 4 18 6 4v38z"/>
-            <rect x="116" y="18" width="2.600" height="22"/>
-            <path d="M128 130V100l6-2v-8h6v8l8 2v30z"/>
-          </g>
-          <g filter="url(#mist)" opacity=".5" fill="#a9ad8d">
-            <path d="M0 100l12-4 10 3 12-7 14 5 12-5 18 6 12-4 22 8v40H0z"/>
-          </g>
-          <!-- tree mass / warm maroon accent -->
-          <g filter="url(#soft)" opacity=".85">
-            <ellipse cx="90" cy="108" rx="24" ry="34" fill="#932f3f"/>
-            <ellipse cx="72" cy="96" rx="14" ry="20" fill="#b2503f" opacity=".7"/>
-            <ellipse cx="60" cy="124" rx="30" ry="14" fill="#c8662f" opacity=".6"/>
-          </g>
-          <g filter="url(#paint)" fill="#9b3443" opacity=".5">
-            <path d="M78 78c10-6 22-4 28 6 6 12 2 26-6 36-8 8-14 10-22 4-10-10-12-34 0-46z"/>
-          </g>
-
-          <!-- big pale sweep -->
-          <g filter="url(#paint)">
-            <path d="M136 189C138 132 176 98 226 70 260 50 286 30 312 12V0H128c-10 40 0 72 6 108 4 28 3 56 2 81z" fill="url(#wave)" opacity=".78"/>
-            <path d="M118 189C130 150 168 112 232 98 266 91 290 84 312 70V189z" fill="url(#lower)" opacity=".85"/>
-            <path d="M0 189V140c26 4 52 20 84 38 14 8 22 11 34 11z" fill="#ea8a37" opacity=".85"/>
-          </g>
-          <g filter="url(#paint)" opacity=".55">
-            <path d="M118 189C150 160 200 140 252 138 276 137 296 132 312 124" fill="none" stroke="#fbe58a" stroke-width="10" stroke-linecap="round"/>
-            <path d="M160 40C200 30 252 22 312 -2" fill="none" stroke="#e0903a" stroke-width="12" stroke-linecap="round" opacity=".6"/>
-          </g>
-
-          <!-- brush streaks, bottom -->
-          <g filter="url(#streak)" fill="none" stroke-linecap="round">
-            <path d="M-6 178C40 170 90 172 150 174" stroke="#d7502e" stroke-width="1.200" opacity=".85"/>
-            <path d="M10 183C70 176 130 178 190 182" stroke="#b83a2b" stroke-width=".8" opacity=".7"/>
-            <path d="M-4 168C50 162 100 166 140 168" stroke="#f0a23c" stroke-width="3" opacity=".6"/>
-            <path d="M130 186C190 176 250 178 312 172" stroke="#8ea23d" stroke-width="4" opacity=".45"/>
-            <path d="M200 160C240 156 280 158 312 154" stroke="#c9d062" stroke-width="3" opacity=".5"/>
-          </g>
-
-          <!-- grain / canvas -->
-          <!-- optional: drop your own picture at assets/card-bg.jpg (any 16:10-ish image); it covers the drawn artwork -->
-          <image href="assets/card-bg.jpg" x="0" y="0" width="300" height="189" preserveAspectRatio="xMidYMid slice"/>
-          <rect class="grain" width="300" height="189" filter="url(#canvas)" style="mix-blend-mode:soft-light" opacity=".6"/>
-          <rect width="300" height="189" filter="url(#speckle)" opacity=".7"/>
-          <rect width="300" height="189" fill="url(#gloss)"/>
-          <rect x=".5" y=".5" width="299" height="188" rx="17.500" fill="none" stroke="#fff" stroke-opacity=".28"/>
-        </g>
-
-        <text x="286" y="49" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-2" style="paint-order:stroke" stroke="#c88a1c" stroke-opacity=".25" stroke-width=".6">demo</text>
+        <rect width="300" height="189" fill="url(#base)"/>
+        <rect width="300" height="189" fill="url(#haze)"/>
+        <path d="M0 189V90c20-10 40-6 70 8 30 14 40 40 80 70 20 15 60 21 150 21z" fill="#f4d14e" opacity=".55"/>
+        <rect width="300" height="189" fill="url(#glow)"/>
+        <rect width="300" height="189" fill="url(#warm)"/>
+        <rect width="300" height="189" fill="url(#sage)"/>
+        <rect width="300" height="189" fill="url(#wine)"/>
+        <!-- faint dome silhouette -->
+        <g fill="#5d6a55" opacity=".28"><path d="M38 70c0-18 12-28 25-28s25 10 25 28z"/><rect x="36" y="70" width="54" height="50"/><rect x="60" y="30" width="3" height="14"/></g>
+        <g id="photo"></g><!-- filled by script if assets/card-bg.jpg exists -->
+        <rect width="300" height="189" filter="url(#grain)" opacity=".5"/>
+        <text x="286" y="49" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-2" >demo</text>
         <text x="286" y="166" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-1">CARD</text>
       </svg>
     </div>
@@ -324,6 +255,19 @@
 <div class="demo">UI mock &middot; placeholder data</div>
 
 <script>
+  // Optional: if assets/card-bg.jpg exists, draw it over the placeholder card artwork.
+  (function () {
+    var img = new Image();
+    img.onload = function () {
+      var el = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      el.setAttribute('href', 'assets/card-bg.jpg');
+      el.setAttribute('width', '300'); el.setAttribute('height', '189');
+      el.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      document.getElementById('photo').appendChild(el);
+    };
+    img.src = 'assets/card-bg.jpg';
+  })();
+
   var mini = document.getElementById('mini');
   function onScroll() {
     var t = Math.min(1, Math.max(0, (window.scrollY - 70) / 40));
