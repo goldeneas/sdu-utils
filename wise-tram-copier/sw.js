@@ -1,5 +1,5 @@
 // Offline-first service worker. Bump VERSION to force clients to refresh the precache.
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = `ui-mock-${VERSION}`;
 const PRECACHE = [
   './',
@@ -16,7 +16,8 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)
+    // cache: 'reload' bypasses the browser HTTP cache so a new version never precaches stale files
+    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })))
       // optional card picture: precache it when present, never fail the install if it is missing
       .then(() => cache.add('assets/card-bg.jpg').catch(() => {}))).then(() => self.skipWaiting())
   );
@@ -36,15 +37,16 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
 
-  // config.js is network-first so edits show up on the next reload (cache is the offline fallback).
-  if (new URL(req.url).pathname.endsWith('/config.js')) {
+  // Pages, scripts and config are network-first so edits show up on the next reload (cache is the offline fallback).
+  const path = new URL(req.url).pathname;
+  if (req.mode === 'navigate' || /\.(html|js)$/.test(path) || path.endsWith('/')) {
     event.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-cache' })
         .then((res) => {
           if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
           return res;
         })
-        .catch(() => caches.match(req, { ignoreSearch: true }))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('index.html')))
     );
     return;
   }
