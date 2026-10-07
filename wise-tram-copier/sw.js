@@ -1,5 +1,5 @@
 // Offline-first service worker. Bump VERSION to force clients to refresh the precache.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `ui-mock-${VERSION}`;
 const PRECACHE = [
   './',
