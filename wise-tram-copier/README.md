@@ -7,3 +7,8 @@ A static, single-file UI mock of a card-payment detail screen, built as a fronte
 - A "UI mock · not a real payment" label is always visible.
 - The header collapses into a compact title as you scroll, like the original screen.
 - It is not an installable app and is not a payment record.
+
+## Pages
+
+- `index.html` – payment details screen mock
+- `cards.html` – cards screen mock (card artwork, quick actions, "manage card" list, floating tab bar)
