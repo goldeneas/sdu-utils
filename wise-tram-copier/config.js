@@ -13,24 +13,24 @@ window.APP_CONFIG = {
 
   // ---------------------------------------------------------------- index.html
   payment: {
-    amount: "25",                    // number shown big at the top, as text
+    amount: "10",                    // number shown big at the top, as text
     currency: "DKK",                 // currency code, also used in "How you paid"
     amountTaken: null,               // optional; null = same as "<amount> <currency>"
     flag: "DK",                      // DK NO SE FI DE FR IT NL PL AT BE IE | "" = no flag
 
-    merchant: "Demo Transit",        // name under the amount and in the footer
+    merchant: "FunBys",        // name under the amount and in the footer
     footerName: null,                // optional; null = same as merchant
     category: "Bills",               // chip under the merchant ("" hides it)
 
     when: "1 January 2026 at 09:00",
     where: "Online",
-    card: "1234",                    // card shown in "Which card"
-    authorisedVia: "Phone wallet",
-    authorisedBadge: "PAY",          // small badge next to it ("" hides it)
+    card: "5092",                    // card shown in "Which card"
+    authorisedVia: "Apple Pay",
+    authorisedBadge: "PAY",          // small badge next to it ("" hides it)
     note: "",                        // "" = shows the "Add" link, otherwise shows this text
-    transactionNo: "0000000000",
+    transactionNo: "4413885726",
 
-    splitInitials: "AB"              // initials bubble in the "Split" box
+    splitInitials: "NP"              // initials bubble in the "Split" box
   },
 
   // Fixed labels of the payment screen
@@ -51,7 +51,7 @@ window.APP_CONFIG = {
     rightButton: "Card",             // green pill, top right
 
     cardName: "Digital card",        // text under the card
-    last4: "0000",                   // last digits under the card
+    last4: "5092",                   // last digits under the card
     artworkTop: "",                  // big text drawn over the card ("" = none; the picture has its own logo)
     artworkBottom: "",               // text at the bottom of the card ("" = none)
     cardImage: "assets/card-bg.jpg", // optional picture drawn over the card; "" = never try it
