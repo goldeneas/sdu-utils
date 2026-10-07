@@ -1,291 +1,290 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex">
-<meta name="theme-color" content="#ffffff">
-<title>Cards screen UI mock</title>
-<style>
-  :root {
-    --bg: #ffffff;
-    --ink: #0e0f0c;
-    --muted: #454745;
-    --green: #163300;
-    --lime: #9fe870;
-    --line: #d3d3cf;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --font: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { background: var(--bg); }
-  body {
-    margin: 0; color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.25;
-    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
-    overflow-x: hidden;
-  }
-  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
-  h1, p { margin: 0; }
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<meta name="robots" content="noindex">
+		<meta name="theme-color" content="#ffffff">
+		<title>Cards screen UI mock</title>
+		<style>
+			:root {
+				--bg: #ffffff;
+				--ink: #0e0f0c;
+				--muted: #454745;
+				--green: #163300;
+				--lime: #9fe870;
+				--line: #d3d3cf;
+				--safe-top: env(safe-area-inset-top, 0px);
+				--font: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+			}
+			* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+			html, body { background: var(--bg); }
+			body {
+				margin: 0; color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.25;
+				-webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+				overflow-x: hidden;
+			}
+			button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+			h1, p { margin: 0; }
+			
+			.app { max-width: 430px; margin: 0 auto; padding: calc(var(--safe-top) + 75px) 16px 100px; position: relative; }
+			
+			/* ---------- top bar ---------- */
+			.topbar {
+				position: fixed; z-index: 10; top: 0; left: 0; right: 0; max-width: 430px; margin: 0 auto;
+				height: calc(var(--safe-top) + 69px);
+				padding: calc(var(--safe-top) + 12px) 16px 0;
+				background: var(--bg);
+				display: flex; justify-content: space-between; align-items: flex-start;
+			}
+			.pill {
+				height: 45px; padding: 0 17px 0 14px; border-radius: 23px;
+				display: inline-flex; align-items: center; gap: 7px;
+				font-size: 14.5px; font-weight: 600; color: var(--muted);
+				background: #fcfcfb; border: 1px solid #d9d9d5;
+				box-shadow: 0 2px 8px rgba(14, 15, 12, .07);
+			}
+			.pill.lime {
+				background: var(--lime); border-color: #8fdc60; color: var(--green);
+				padding: 0 17px; box-shadow: 0 2px 10px rgba(120, 220, 80, .35);
+			}
+			.mini-title {
+				position: absolute; left: 0; right: 0; top: calc(var(--safe-top) + 12px); height: 45px;
+				display: grid; place-items: center; pointer-events: none;
+				font-size: 18px; font-weight: 500; opacity: 0;
+			}
+			
+			/* ---------- title + card ---------- */
+			h1 { margin-top: 7px; font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -.02em; }
+			
+			.carousel { position: relative; margin-top: 15.5px; height: 189px; }
+			.peek {
+				position: absolute; left: -56px; top: 0; width: 63px; height: 189px;
+				border: 3px solid var(--green); border-radius: 18px; background: #e9ebe7;
+			}
+			.card {
+				position: absolute; left: 30px; top: 0; width: 300px; height: 189px;
+				border-radius: 18px; overflow: hidden;
+				box-shadow: 0 18px 38px rgba(80, 60, 10, .16);
+			}
+			.card svg { display: block; width: 100%; height: 100%; }
+			
+			.label { margin-top: 26.5px; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 15.5px; line-height: 20px; }
+			.label b { font-weight: 700; }
+			.label .dots { letter-spacing: 1px; font-weight: 700; margin-right: -4px; }
+			
+			/* ---------- quick actions ---------- */
+			.actions { margin-top: 42px; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+			.act { display: flex; flex-direction: column; align-items: center; }
+			.act .c {
+				width: 56px; height: 56px; border-radius: 50%; background: var(--lime); color: var(--green);
+				display: grid; place-items: center;
+			}
+			.act span.t { margin-top: 10px; font-size: 14.5px; line-height: 20px; font-weight: 600; color: var(--green); }
+			.wallet { margin-top: 19px; text-align: center; color: var(--muted); font-size: 14.5px; line-height: 20px; }
+			
+			/* ---------- manage list ---------- */
+			.manage { margin-top: 41px; font-size: 14.5px; line-height: 20px; color: var(--muted); padding-bottom: 6px; border-bottom: 1.5px solid #e1e1de; }
+			.list { margin-top: 17.5px; }
+			.item {
+				width: 100%; height: 48px; margin-bottom: 32.6px;
+				display: flex; align-items: center; text-align: left;
+			}
+			.item .ic {
+				width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff;
+				display: grid; place-items: center; flex: none; color: var(--ink);
+			}
+			.item .tx { margin-left: 15px; flex: 1; font-size: 16px; font-weight: 600; letter-spacing: -.005em; }
+			.item .chev { margin-right: 6px; color: var(--green); }
+			
+			/* ---------- floating tab bar ---------- */
+			.tabbar {
+				position: fixed; z-index: 10; left: 0; right: 0; bottom: 23px; margin: 0 auto;
+				width: min(351px, calc(100% - 42px)); height: 62.5px;
+				display: grid; grid-template-columns: repeat(4, 1fr); padding: 0 9px; align-items: center;
+				background: rgba(255, 255, 255, .88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+				border: 1px solid #dcdcd8; border-radius: 32px;
+				box-shadow: 0 6px 24px rgba(14, 15, 12, .10);
+			}
+			.tab {
+				position: relative; z-index: 1; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+				font-size: 11.5px; line-height: 14px; font-weight: 500; color: var(--ink); letter-spacing: .01em;
+			}
+			.tab.on::before {
+				content: ""; position: absolute; z-index: -1; left: 50%; top: 0; width: 93px; height: 54px; margin-left: -46.5px;
+				border-radius: 27px; background: #e8e8e5;
+			}
+			
+			.demo {
+				position: fixed; z-index: 20; left: 50%; bottom: 4px; transform: translateX(-50%);
+				font-size: 9.5px; line-height: 14px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+				background: rgba(14, 15, 12, .86); color: #fff; padding: 0 9px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+			}
+		</style>
+		<link rel="manifest" href="manifest.webmanifest">
+		<link rel="apple-touch-icon" href="icons/icon-180.png">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-title" content="UI Mock">
+		<script src="pwa.js" defer></script>
+		<script src="config.js"></script>
+	</head>
+	<body>
 
-  .app { max-width: 430px; margin: 0 auto; padding: calc(var(--safe-top) + 75px) 16px 100px; position: relative; }
+		<header class="topbar">
+			<button class="pill" type="button">
+				<svg width="18" height="20" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="12" rx="2.500"/><path d="M7.500 6V3h5v3M7.500 10h5M7 18v2M13 18v2"/></svg>
+				<span data-cfg="cards.leftButton" data-cfg-hide=".pill">Travel hub</span>
+			</button>
+			<div class="mini-title" id="mini" data-cfg="cards.title">Cards</div>
+			<button class="pill lime" type="button" data-cfg="cards.rightButton">Card</button>
+		</header>
 
-  /* ---------- top bar ---------- */
-  .topbar {
-    position: fixed; z-index: 10; top: 0; left: 0; right: 0; max-width: 430px; margin: 0 auto;
-    height: calc(var(--safe-top) + 69px);
-    padding: calc(var(--safe-top) + 12px) 16px 0;
-    background: var(--bg);
-    display: flex; justify-content: space-between; align-items: flex-start;
-  }
-  .pill {
-    height: 45px; padding: 0 17px 0 14px; border-radius: 23px;
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 14.5px; font-weight: 600; color: var(--muted);
-    background: #fcfcfb; border: 1px solid #d9d9d5;
-    box-shadow: 0 2px 8px rgba(14, 15, 12, .07);
-  }
-  .pill.lime {
-    background: var(--lime); border-color: #8fdc60; color: var(--green);
-    padding: 0 17px; box-shadow: 0 2px 10px rgba(120, 220, 80, .35);
-  }
-  .mini-title {
-    position: absolute; left: 0; right: 0; top: calc(var(--safe-top) + 12px); height: 45px;
-    display: grid; place-items: center; pointer-events: none;
-    font-size: 18px; font-weight: 500; opacity: 0;
-  }
+		<main class="app">
+			<h1 data-cfg="cards.title">Cards</h1>
 
-  /* ---------- title + card ---------- */
-  h1 { margin-top: 7px; font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -.02em; }
+			<div class="carousel">
+				<div class="peek"></div>
+				<div class="card">
+					<svg viewBox="0 0 300 189" aria-label="Placeholder card artwork">
+						<defs>
+							<linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+								<stop offset="0" stop-color="#e9b445"/><stop offset=".55" stop-color="#f2c946"/><stop offset="1" stop-color="#e5a53c"/>
+							</linearGradient>
+							<radialGradient id="glow" cx=".62" cy=".45" r=".55"><stop offset="0" stop-color="#f8de62" stop-opacity=".95"/><stop offset="1" stop-color="#f8de62" stop-opacity="0"/></radialGradient>
+							<radialGradient id="warm" cx=".15" cy=".95" r=".6"><stop offset="0" stop-color="#e5742f" stop-opacity=".85"/><stop offset="1" stop-color="#e5742f" stop-opacity="0"/></radialGradient>
+							<radialGradient id="sage" cx=".98" cy=".95" r=".5"><stop offset="0" stop-color="#a9bd58" stop-opacity=".9"/><stop offset="1" stop-color="#a9bd58" stop-opacity="0"/></radialGradient>
+							<radialGradient id="haze" cx=".2" cy=".3" r=".38"><stop offset="0" stop-color="#9ea58c" stop-opacity=".85"/><stop offset="1" stop-color="#9ea58c" stop-opacity="0"/></radialGradient>
+							<radialGradient id="wine" cx=".23" cy=".62" r=".16"><stop offset="0" stop-color="#9a3a46" stop-opacity=".85"/><stop offset="1" stop-color="#9a3a46" stop-opacity="0"/></radialGradient>
+							<filter id="grain" x="0" y="0" width="100%" height="100%">
+								<feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
+								<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .7  0 0 0 .55 -.12"/>
+							</filter>
+						</defs>
+						<rect width="300" height="189" fill="url(#base)"/>
+						<rect width="300" height="189" fill="url(#haze)"/>
+						<path d="M0 189V90c20-10 40-6 70 8 30 14 40 40 80 70 20 15 60 21 150 21z" fill="#f4d14e" opacity=".55"/>
+						<rect width="300" height="189" fill="url(#glow)"/>
+						<rect width="300" height="189" fill="url(#warm)"/>
+						<rect width="300" height="189" fill="url(#sage)"/>
+						<rect width="300" height="189" fill="url(#wine)"/>
+						<!-- faint dome silhouette -->
+						<g fill="#5d6a55" opacity=".28"><path d="M38 70c0-18 12-28 25-28s25 10 25 28z"/><rect x="36" y="70" width="54" height="50"/><rect x="60" y="30" width="3" height="14"/></g>
+						<g id="photo"></g><!-- filled by script if assets/card-bg.jpg exists -->
+						<rect width="300" height="189" filter="url(#grain)" opacity=".5"/>
+						<text x="286" y="49" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-2" data-cfg="cards.artworkTop">demo</text>
+						<text x="286" y="166" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-1" data-cfg="cards.artworkBottom">CARD</text>
+					</svg>
+				</div>
+			</div>
 
-  .carousel { position: relative; margin-top: 15.5px; height: 189px; }
-  .peek {
-    position: absolute; left: -56px; top: 0; width: 63px; height: 189px;
-    border: 3px solid var(--green); border-radius: 18px; background: #e9ebe7;
-  }
-  .card {
-    position: absolute; left: 30px; top: 0; width: 300px; height: 189px;
-    border-radius: 18px; overflow: hidden;
-    box-shadow: 0 18px 38px rgba(80, 60, 10, .16);
-  }
-  .card svg { display: block; width: 100%; height: 100%; }
+			<div class="label"><b data-cfg="cards.cardName">Digital card</b><span><span class="dots">&bull;&bull;&bull;&bull;</span>
+			<span data-cfg="cards.last4">0000</span></span></div>
 
-  .label { margin-top: 26.5px; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 15.5px; line-height: 20px; }
-  .label b { font-weight: 700; }
-  .label .dots { letter-spacing: 1px; font-weight: 700; margin-right: -4px; }
+			<div class="actions">
+				<button class="act" type="button">
+					<span class="c">
+						<svg width="26" height="30" viewBox="0 0 26 30" fill="currentColor"><circle cx="5" cy="5" r="2.600"/><circle cx="13" cy="5" r="2.600"/><circle cx="21" cy="5" r="2.600"/><circle cx="5" cy="12" r="2.600"/><circle cx="13" cy="12" r="2.600"/><circle cx="21" cy="12" r="2.600"/><circle cx="5" cy="19" r="2.600"/><circle cx="13" cy="19" r="2.600"/><circle cx="21" cy="19" r="2.600"/><circle cx="13" cy="26" r="2.600"/></svg>
+					</span>
+					<span class="t" data-cfg="cards.actions.pin" data-cfg-hide=".act">Show PIN</span>
+				</button>
+				<button class="act" type="button">
+					<span class="c">
+						<svg width="30" height="26" viewBox="0 0 30 26" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h20a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 10h7M8 15h14"/></svg>
+					</span>
+					<span class="t" data-cfg="cards.actions.details" data-cfg-hide=".act">Card details</span>
+				</button>
+				<button class="act" type="button">
+					<span class="c">
+						<svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v24M4.600 9l20.800 12M4.600 21L25.400 9"/><path d="M11.500 4.500L15 8l3.500-3.500M11.500 25.500L15 22l3.500 3.500M3.500 14.500L8 15 6.500 10M26.500 15.500L22 15l1.500 5M3.500 15.500L8 15l-1.500 5M26.500 14.500L22 15l1.500-5"/></svg>
+					</span>
+					<span class="t" data-cfg="cards.actions.freeze" data-cfg-hide=".act">Freeze card</span>
+				</button>
+			</div>
 
-  /* ---------- quick actions ---------- */
-  .actions { margin-top: 42px; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
-  .act { display: flex; flex-direction: column; align-items: center; }
-  .act .c {
-    width: 56px; height: 56px; border-radius: 50%; background: var(--lime); color: var(--green);
-    display: grid; place-items: center;
-  }
-  .act span.t { margin-top: 10px; font-size: 14.5px; line-height: 20px; font-weight: 600; color: var(--green); }
-  .wallet { margin-top: 19px; text-align: center; color: var(--muted); font-size: 14.5px; line-height: 20px; }
+			<p class="wallet" data-cfg="cards.walletNote">Added to phone wallet</p>
 
-  /* ---------- manage list ---------- */
-  .manage { margin-top: 41px; font-size: 14.5px; line-height: 20px; color: var(--muted); padding-bottom: 6px; border-bottom: 1.5px solid #e1e1de; }
-  .list { margin-top: 17.5px; }
-  .item {
-    width: 100%; height: 48px; margin-bottom: 32.6px;
-    display: flex; align-items: center; text-align: left;
-  }
-  .item .ic {
-    width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff;
-    display: grid; place-items: center; flex: none; color: var(--ink);
-  }
-  .item .tx { margin-left: 15px; flex: 1; font-size: 16px; font-weight: 600; letter-spacing: -.005em; }
-  .item .chev { margin-right: 6px; color: var(--green); }
+			<p class="manage" data-cfg="cards.manageHeading">Manage card</p>
 
-  /* ---------- floating tab bar ---------- */
-  .tabbar {
-    position: fixed; z-index: 10; left: 0; right: 0; bottom: 23px; margin: 0 auto;
-    width: min(351px, calc(100% - 42px)); height: 62.5px;
-    display: grid; grid-template-columns: repeat(4, 1fr); padding: 0 9px; align-items: center;
-    background: rgba(255, 255, 255, .88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid #dcdcd8; border-radius: 32px;
-    box-shadow: 0 6px 24px rgba(14, 15, 12, .10);
-  }
-  .tab {
-    position: relative; z-index: 1; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    font-size: 11.5px; line-height: 14px; font-weight: 500; color: var(--ink); letter-spacing: .01em;
-  }
-  .tab.on::before {
-    content: ""; position: absolute; z-index: -1; left: 50%; top: 0; width: 93px; height: 54px; margin-left: -46.5px;
-    border-radius: 27px; background: #e8e8e5;
-  }
+			<div class="list">
+				<button class="item" type="button">
+					<span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="4.500" cy="6" r=".8" fill="currentColor"/><circle cx="4.500" cy="12" r=".8" fill="currentColor"/><circle cx="4.500" cy="18" r=".8" fill="currentColor"/><path d="M9 6h12M9 12h12M9 18h12"/></svg></span>
+					<span class="tx" data-cfg="cards.items.transactions" data-cfg-hide=".item">View recent card transactions</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.400 15a1.650 1.650 0 0 0 .33 1.820l.06.06a2 2 0 0 1 0 2.830 2 2 0 0 1-2.830 0l-.06-.06a1.650 1.650 0 0 0-1.820-.33 1.650 1.650 0 0 0-1 1.510V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.650 1.650 0 0 0 9 19.400a1.650 1.650 0 0 0-1.820.33l-.06.06a2 2 0 0 1-2.830 0 2 2 0 0 1 0-2.830l.06-.06a1.650 1.650 0 0 0 .33-1.820 1.650 1.650 0 0 0-1.510-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.650 1.650 0 0 0 4.600 9a1.650 1.650 0 0 0-.33-1.820l-.06-.06a2 2 0 0 1 0-2.830 2 2 0 0 1 2.830 0l.06.06a1.650 1.650 0 0 0 1.820.33H9a1.650 1.650 0 0 0 1-1.510V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.650 1.650 0 0 0 1 1.510 1.650 1.650 0 0 0 1.820-.33l.06-.06a2 2 0 0 1 2.830 0 2 2 0 0 1 0 2.830l-.06.06a1.650 1.650 0 0 0-.33 1.820V9a1.650 1.650 0 0 0 1.510 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.650 1.650 0 0 0-1.510 1z"/></svg></span>
+					<span class="tx" data-cfg="cards.items.controls" data-cfg-hide=".item">Card controls</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.500" y="11" width="15" height="10" rx="2"/><path d="M8 11V7.500a4 4 0 0 1 7.700-1.500"/><path d="M12 15v2.500"/></svg></span>
+					<span class="tx" data-cfg="cards.items.unblockPin" data-cfg-hide=".item">Unblock PIN</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4.500L16.500 4a2.100 2.100 0 0 1 3 3L8 18.500z"/><path d="M14 6.500l3.500 3.500"/></svg></span>
+					<span class="tx" data-cfg="cards.items.edit" data-cfg-hide=".item">Edit card</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.500a10 10 0 1 1 16 0"/><circle cx="13" cy="15" r="2"/><path d="M14.500 13.500L18 9.500"/></svg></span>
+					<span class="tx" data-cfg="cards.items.limits" data-cfg-hide=".item">Your spending limits</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h18a2 2 0 0 1 2 2v3.500a2 2 0 0 0 0 5V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M6 8h7"/></svg></span>
+					<span class="tx" data-cfg="cards.items.replace" data-cfg-hide=".item">Replace card</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+				<button class="item" type="button">
+					<span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l.8 13h9.400l.8-13"/></svg></span>
+					<span class="tx" data-cfg="cards.items.remove" data-cfg-hide=".item">Delete card</span>
+					<svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
+				</button>
+			</div>
+		</main>
 
-  .demo {
-    position: fixed; z-index: 20; left: 50%; bottom: 4px; transform: translateX(-50%);
-    font-size: 9.5px; line-height: 14px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    background: rgba(14, 15, 12, .86); color: #fff; padding: 0 9px; border-radius: 999px; white-space: nowrap; pointer-events: none;
-  }
-</style>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="UI Mock">
-<script src="pwa.js" defer></script>
-<script src="config.js"></script>
-</head>
-<body>
+		<nav class="tabbar">
+			<button class="tab" type="button">
+				<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linejoin="round"><path d="M3.500 12.500L13 4l9.500 8.500V22h-19z"/></svg><span data-cfg="cards.tabs.home">Home</span>
+			</button>
+			<button class="tab on" type="button">
+				<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h18a1 1 0 0 1 1 1v4.500a2.500 2.500 0 0 0 0 5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M7 10h6"/></svg><span data-cfg="cards.tabs.cards">Cards</span>
+			</button>
+			<button class="tab" type="button">
+				<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="3.500"/><path d="M3.500 21c0-3.800 3-6 6.500-6s6.500 2.200 6.500 6"/><path d="M16.500 5.500a3.500 3.500 0 0 1 0 7M19.500 15.500c2 .8 3 2.700 3 5.500"/></svg><span data-cfg="cards.tabs.recipients">Recipients</span>
+			</button>
+			<button class="tab" type="button">
+				<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.500" cy="6" r="2.500"/><circle cx="7" cy="19" r="2.500"/><circle cx="20" cy="19.500" r="2.500"/><path d="M13 7.500C7 8 4 12 4.500 14.500M17 21.500h-5M18.500 9.500c2.500 2 3.500 4 3.500 7"/></svg><span data-cfg="cards.tabs.payments">Payments</span>
+			</button>
+		</nav>
 
-<header class="topbar">
-  <button class="pill" type="button">
-    <svg width="18" height="20" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="12" rx="2.500"/><path d="M7.500 6V3h5v3M7.500 10h5M7 18v2M13 18v2"/></svg>
-    <span data-cfg="cards.leftButton" data-cfg-hide=".pill">Travel hub</span>
-  </button>
-  <div class="mini-title" id="mini" data-cfg="cards.title">Cards</div>
-  <button class="pill lime" type="button" data-cfg="cards.rightButton">Card</button>
-</header>
+		<script src="render.js"></script>
+		<script>
+			// Optional: if the card image exists, draw it over the placeholder card artwork.
+			(function () {
+				var c = (window.APP_CONFIG || {}).cards || {};
+				var src = c.cardImage !== undefined ? c.cardImage : 'assets/card-bg.jpg';
+				if (!src) return;
+				var img = new Image();
+				img.onload = function () {
+					var el = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+					el.setAttribute('href', src);
+					el.setAttribute('width', '300'); el.setAttribute('height', '189');
+					el.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+					document.getElementById('photo').appendChild(el);
+				};
+				img.src = src;
+			})();
 
-<main class="app">
-  <h1 data-cfg="cards.title">Cards</h1>
-
-  <div class="carousel">
-    <div class="peek"></div>
-    <div class="card">
-      <svg viewBox="0 0 300 189" aria-label="Placeholder card artwork">
-        <defs>
-          <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#e9b445"/><stop offset=".55" stop-color="#f2c946"/><stop offset="1" stop-color="#e5a53c"/>
-          </linearGradient>
-          <radialGradient id="glow" cx=".62" cy=".45" r=".55"><stop offset="0" stop-color="#f8de62" stop-opacity=".95"/><stop offset="1" stop-color="#f8de62" stop-opacity="0"/></radialGradient>
-          <radialGradient id="warm" cx=".15" cy=".95" r=".6"><stop offset="0" stop-color="#e5742f" stop-opacity=".85"/><stop offset="1" stop-color="#e5742f" stop-opacity="0"/></radialGradient>
-          <radialGradient id="sage" cx=".98" cy=".95" r=".5"><stop offset="0" stop-color="#a9bd58" stop-opacity=".9"/><stop offset="1" stop-color="#a9bd58" stop-opacity="0"/></radialGradient>
-          <radialGradient id="haze" cx=".2" cy=".3" r=".38"><stop offset="0" stop-color="#9ea58c" stop-opacity=".85"/><stop offset="1" stop-color="#9ea58c" stop-opacity="0"/></radialGradient>
-          <radialGradient id="wine" cx=".23" cy=".62" r=".16"><stop offset="0" stop-color="#9a3a46" stop-opacity=".85"/><stop offset="1" stop-color="#9a3a46" stop-opacity="0"/></radialGradient>
-          <filter id="grain" x="0" y="0" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
-            <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .7  0 0 0 .55 -.12"/>
-          </filter>
-        </defs>
-        <rect width="300" height="189" fill="url(#base)"/>
-        <rect width="300" height="189" fill="url(#haze)"/>
-        <path d="M0 189V90c20-10 40-6 70 8 30 14 40 40 80 70 20 15 60 21 150 21z" fill="#f4d14e" opacity=".55"/>
-        <rect width="300" height="189" fill="url(#glow)"/>
-        <rect width="300" height="189" fill="url(#warm)"/>
-        <rect width="300" height="189" fill="url(#sage)"/>
-        <rect width="300" height="189" fill="url(#wine)"/>
-        <!-- faint dome silhouette -->
-        <g fill="#5d6a55" opacity=".28"><path d="M38 70c0-18 12-28 25-28s25 10 25 28z"/><rect x="36" y="70" width="54" height="50"/><rect x="60" y="30" width="3" height="14"/></g>
-        <g id="photo"></g><!-- filled by script if assets/card-bg.jpg exists -->
-        <rect width="300" height="189" filter="url(#grain)" opacity=".5"/>
-        <text x="286" y="49" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-2" data-cfg="cards.artworkTop">demo</text>
-        <text x="286" y="166" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900" font-style="italic" fill="#fff" letter-spacing="-1" data-cfg="cards.artworkBottom">CARD</text>
-      </svg>
-    </div>
-  </div>
-
-  <div class="label"><b data-cfg="cards.cardName">Digital card</b><span><span class="dots">&bull;&bull;&bull;&bull;</span> <span data-cfg="cards.last4">0000</span></span></div>
-
-  <div class="actions">
-    <button class="act" type="button">
-      <span class="c">
-        <svg width="26" height="30" viewBox="0 0 26 30" fill="currentColor"><circle cx="5" cy="5" r="2.600"/><circle cx="13" cy="5" r="2.600"/><circle cx="21" cy="5" r="2.600"/><circle cx="5" cy="12" r="2.600"/><circle cx="13" cy="12" r="2.600"/><circle cx="21" cy="12" r="2.600"/><circle cx="5" cy="19" r="2.600"/><circle cx="13" cy="19" r="2.600"/><circle cx="21" cy="19" r="2.600"/><circle cx="13" cy="26" r="2.600"/></svg>
-      </span>
-      <span class="t" data-cfg="cards.actions.pin" data-cfg-hide=".act">Show PIN</span>
-    </button>
-    <button class="act" type="button">
-      <span class="c">
-        <svg width="30" height="26" viewBox="0 0 30 26" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h20a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 10h7M8 15h14"/></svg>
-      </span>
-      <span class="t" data-cfg="cards.actions.details" data-cfg-hide=".act">Card details</span>
-    </button>
-    <button class="act" type="button">
-      <span class="c">
-        <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v24M4.600 9l20.800 12M4.600 21L25.400 9"/><path d="M11.500 4.500L15 8l3.500-3.500M11.500 25.500L15 22l3.500 3.500M3.500 14.500L8 15 6.500 10M26.500 15.500L22 15l1.500 5M3.500 15.500L8 15l-1.500 5M26.500 14.500L22 15l1.500-5"/></svg>
-      </span>
-      <span class="t" data-cfg="cards.actions.freeze" data-cfg-hide=".act">Freeze card</span>
-    </button>
-  </div>
-
-  <p class="wallet" data-cfg="cards.walletNote">Added to phone wallet</p>
-
-  <p class="manage" data-cfg="cards.manageHeading">Manage card</p>
-
-  <div class="list">
-    <button class="item" type="button">
-      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="4.500" cy="6" r=".8" fill="currentColor"/><circle cx="4.500" cy="12" r=".8" fill="currentColor"/><circle cx="4.500" cy="18" r=".8" fill="currentColor"/><path d="M9 6h12M9 12h12M9 18h12"/></svg></span>
-      <span class="tx" data-cfg="cards.items.transactions" data-cfg-hide=".item">View recent card transactions</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.400 15a1.650 1.650 0 0 0 .33 1.820l.06.06a2 2 0 0 1 0 2.830 2 2 0 0 1-2.830 0l-.06-.06a1.650 1.650 0 0 0-1.820-.33 1.650 1.650 0 0 0-1 1.510V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.650 1.650 0 0 0 9 19.400a1.650 1.650 0 0 0-1.820.33l-.06.06a2 2 0 0 1-2.830 0 2 2 0 0 1 0-2.830l.06-.06a1.650 1.650 0 0 0 .33-1.820 1.650 1.650 0 0 0-1.510-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.650 1.650 0 0 0 4.600 9a1.650 1.650 0 0 0-.33-1.820l-.06-.06a2 2 0 0 1 0-2.830 2 2 0 0 1 2.830 0l.06.06a1.650 1.650 0 0 0 1.820.33H9a1.650 1.650 0 0 0 1-1.510V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.650 1.650 0 0 0 1 1.510 1.650 1.650 0 0 0 1.820-.33l.06-.06a2 2 0 0 1 2.830 0 2 2 0 0 1 0 2.830l-.06.06a1.650 1.650 0 0 0-.33 1.820V9a1.650 1.650 0 0 0 1.510 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.650 1.650 0 0 0-1.510 1z"/></svg></span>
-      <span class="tx" data-cfg="cards.items.controls" data-cfg-hide=".item">Card controls</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.500" y="11" width="15" height="10" rx="2"/><path d="M8 11V7.500a4 4 0 0 1 7.700-1.500"/><path d="M12 15v2.500"/></svg></span>
-      <span class="tx" data-cfg="cards.items.unblockPin" data-cfg-hide=".item">Unblock PIN</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4.500L16.500 4a2.100 2.100 0 0 1 3 3L8 18.500z"/><path d="M14 6.500l3.500 3.500"/></svg></span>
-      <span class="tx" data-cfg="cards.items.edit" data-cfg-hide=".item">Edit card</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.500a10 10 0 1 1 16 0"/><circle cx="13" cy="15" r="2"/><path d="M14.500 13.500L18 9.500"/></svg></span>
-      <span class="tx" data-cfg="cards.items.limits" data-cfg-hide=".item">Your spending limits</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h18a2 2 0 0 1 2 2v3.500a2 2 0 0 0 0 5V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M6 8h7"/></svg></span>
-      <span class="tx" data-cfg="cards.items.replace" data-cfg-hide=".item">Replace card</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-    <button class="item" type="button">
-      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l.8 13h9.400l.8-13"/></svg></span>
-      <span class="tx" data-cfg="cards.items.remove" data-cfg-hide=".item">Delete card</span>
-      <svg class="chev" width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l7 7-7 7"/></svg>
-    </button>
-  </div>
-</main>
-
-<nav class="tabbar">
-  <button class="tab" type="button">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linejoin="round"><path d="M3.500 12.500L13 4l9.500 8.500V22h-19z"/></svg><span data-cfg="cards.tabs.home">Home</span>
-  </button>
-  <button class="tab on" type="button">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h18a1 1 0 0 1 1 1v4.500a2.500 2.500 0 0 0 0 5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M7 10h6"/></svg><span data-cfg="cards.tabs.cards">Cards</span>
-  </button>
-  <button class="tab" type="button">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="3.500"/><path d="M3.500 21c0-3.800 3-6 6.500-6s6.500 2.200 6.500 6"/><path d="M16.500 5.500a3.500 3.500 0 0 1 0 7M19.500 15.500c2 .8 3 2.700 3 5.500"/></svg><span data-cfg="cards.tabs.recipients">Recipients</span>
-  </button>
-  <button class="tab" type="button">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.500" cy="6" r="2.500"/><circle cx="7" cy="19" r="2.500"/><circle cx="20" cy="19.500" r="2.500"/><path d="M13 7.500C7 8 4 12 4.500 14.500M17 21.500h-5M18.500 9.500c2.500 2 3.500 4 3.500 7"/></svg><span data-cfg="cards.tabs.payments">Payments</span>
-  </button>
-</nav>
-
-<div class="demo" data-cfg="banner.cards">UI mock &middot; placeholder data</div>
-
-<script src="render.js"></script>
-<script>
-  // Optional: if the card image exists, draw it over the placeholder card artwork.
-  (function () {
-    var c = (window.APP_CONFIG || {}).cards || {};
-    var src = c.cardImage !== undefined ? c.cardImage : 'assets/card-bg.jpg';
-    if (!src) return;
-    var img = new Image();
-    img.onload = function () {
-      var el = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-      el.setAttribute('href', src);
-      el.setAttribute('width', '300'); el.setAttribute('height', '189');
-      el.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-      document.getElementById('photo').appendChild(el);
-    };
-    img.src = src;
-  })();
-
-  var mini = document.getElementById('mini');
-  function onScroll() {
-    var t = Math.min(1, Math.max(0, (window.scrollY - 70) / 40));
-    mini.style.opacity = t;
-  }
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-</script>
-</body>
+		var mini = document.getElementById('mini');
+		function onScroll() {
+			var t = Math.min(1, Math.max(0, (window.scrollY - 70) / 40));
+			mini.style.opacity = t;
+		}
+		window.addEventListener('scroll', onScroll, { passive: true });
+		onScroll();
+		</script>
+	</body>
 </html>
