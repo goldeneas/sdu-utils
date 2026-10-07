@@ -18,7 +18,7 @@ window.APP_CONFIG = {
     amountTaken: null,               // optional; null = same as "<amount> <currency>"
     flag: "DK",                      // DK NO SE FI DE FR IT NL PL AT BE IE | "" = no flag
 
-    merchant: "FunBys",        // name under the amount and in the footer
+    merchant: "FynBus",        // name under the amount and in the footer
     footerName: null,                // optional; null = same as merchant
     category: "Bills",               // chip under the merchant ("" hides it)
 
