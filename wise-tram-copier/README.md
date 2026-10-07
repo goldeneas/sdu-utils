@@ -8,6 +8,19 @@ A static, single-file UI mock of a card-payment detail screen, built as a fronte
 - The header collapses into a compact title as you scroll, like the original screen.
 - It is not a payment record. The "UI mock" label stays visible; the install name/icons are deliberately generic.
 
+## Changing the data (`config.js`)
+
+Both screens read their text from `config.js` (loaded by `render.js`). Edit a value and reload; no build step.
+
+- Leave a key out to keep the built-in default; set it to `""` to hide that element (chip, buttons, list rows, ...).
+- `payment.*` drives `index.html` (amount, currency, flag, merchant, date, card, note, transaction no., ...).
+- `cards.*` drives `cards.html` (title, card name and last digits, artwork text, buttons, the "Manage card" list, tab bar, ...).
+- `payment.flag` supports DK, NO, SE, FI, DE, FR, IT, NL, PL, AT, BE, IE (empty hides it).
+- The banner texts are in `banner.*`.
+- The installed app's name and icons are in `manifest.webmanifest`, not in `config.js`.
+
+When online, `config.js` is always fetched fresh, so edits show on the next reload. Offline it falls back to the cached copy.
+
 ## Install as an app (PWA)
 
 The pages are wrapped as an installable, offline-capable web app: `manifest.webmanifest`, `sw.js` (offline cache),

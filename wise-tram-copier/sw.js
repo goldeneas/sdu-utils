@@ -1,11 +1,13 @@
 // Offline-first service worker. Bump VERSION to force clients to refresh the precache.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `ui-mock-${VERSION}`;
 const PRECACHE = [
   './',
   'index.html',
   'cards.html',
   'pwa.js',
+  'config.js',
+  'render.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -31,6 +33,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
+  // config.js is network-first so edits show up on the next reload (cache is the offline fallback).
+  if (new URL(req.url).pathname.endsWith('/config.js')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(req, { ignoreSearch: true }))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
