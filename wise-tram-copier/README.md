@@ -6,7 +6,16 @@ A static, single-file UI mock of a card-payment detail screen, built as a fronte
 - All data is placeholder (fictional merchant, amount, card and transaction number).
 - A "UI mock · not a real payment" label is always visible.
 - The header collapses into a compact title as you scroll, like the original screen.
-- It is not an installable app and is not a payment record.
+- It is not a payment record. The "UI mock" label stays visible; the install name/icons are deliberately generic.
+
+## Install as an app (PWA)
+
+The pages are wrapped as an installable, offline-capable web app: `manifest.webmanifest`, `sw.js` (offline cache),
+`pwa.js` (registers the worker) and `icons/`. Only a few `<head>` tags were added to the HTML pages.
+
+1. Serve the folder over HTTPS (or `localhost`), e.g. `python3 -m http.server 8000` for local testing, or GitHub Pages.
+2. Open it on your phone: Chrome/Android -> menu -> *Install app*; iOS Safari -> Share -> *Add to Home Screen*.
+3. After the first load it works offline. Bump `VERSION` in `sw.js` when you change the pages so installed copies refresh.
 
 ## Pages
 
