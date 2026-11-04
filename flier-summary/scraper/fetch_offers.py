@@ -36,7 +36,7 @@ STORES = [
 ]
 
 PAGE_LIMIT = 100  # the API rejects larger pages
-MAX_PAGES = 30
+MAX_OFFSET = 1000  # the API rejects offset + limit beyond this
 USER_AGENT = "sdu-utils-flier-summary/1.0 (+https://github.com/goldeneas/sdu-utils)"
 
 
@@ -90,20 +90,36 @@ def resolve_dealers(stores: list[dict]) -> dict[str, dict]:
     return found
 
 
-def fetch_dealer_offers(dealer_id: str) -> list[dict]:
+def fetch_paged(params: dict) -> list[dict]:
+    """Page through /offers. The API refuses offset+limit beyond 1000, so callers narrow the
+    query (one catalog at a time) and whatever was fetched before an error is kept."""
     offers: list[dict] = []
-    for page in range(MAX_PAGES):
-        batch = get_json("offers", {
-            "dealer_ids": dealer_id,
-            "r_lat": LAT, "r_lng": LNG, "r_radius": RADIUS_M,
-            "order_by": "page",
-            "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT,
-        })
+    for page in range(MAX_OFFSET // PAGE_LIMIT):
+        try:
+            batch = get_json("offers", {**params, "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT})
+        except RuntimeError as exc:
+            print(f"warning: {exc}", file=sys.stderr)
+            break
         if not isinstance(batch, list) or not batch:
             break
         offers.extend(batch)
         if len(batch) < PAGE_LIMIT:
             break
+    return offers
+
+
+def fetch_dealer_offers(dealer_id: str) -> list[dict]:
+    """All offers of a dealer's fliers valid near Odense, fetched catalog by catalog.
+
+    Big chains like Bilka run ~10 fliers with ~3000 offers in total, more than one paged
+    /offers query can return, so each catalog is fetched separately."""
+    geo = {"r_lat": LAT, "r_lng": LNG, "r_radius": RADIUS_M}
+    catalogs = get_json("catalogs", {"dealer_ids": dealer_id, **geo, "limit": 100})
+    if not isinstance(catalogs, list) or not catalogs:
+        return fetch_paged({"dealer_ids": dealer_id, **geo, "order_by": "page"})
+    offers: list[dict] = []
+    for cat in catalogs:
+        offers.extend(fetch_paged({"catalog_ids": cat["id"], **geo, "order_by": "page"}))
     return offers
 
 
@@ -121,6 +137,10 @@ def quantity_text(q: dict | None) -> str:
     parts = []
     size, unit = q.get("size") or {}, (q.get("unit") or {}).get("symbol") or ""
     lo, hi = _num(size.get("from")), _num(size.get("to"))
+    if unit == "pcs":  # the size is itself a piece count ("1 pcs" on most non-weighed items)
+        if lo and (lo > 1 or (hi and hi > 1)):
+            parts.append(f"{lo:g} stk" if not hi or hi == lo else f"{lo:g}-{hi:g} stk")
+        lo = None
     if lo:
         fmt = lambda x: f"{x:g}".replace(".", ",")
         parts.append((fmt(lo) if not hi or hi == lo else f"{fmt(lo)}-{fmt(hi)}") + (f" {unit}" if unit else ""))
