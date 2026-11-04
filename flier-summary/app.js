@@ -148,6 +148,12 @@
     return b;
   }
 
+  // The discount sits right after the product name, wherever the name is shown.
+  function saveTag(o) {
+    const d = discount(o);
+    return d >= 1 ? el('span', { class: 'save' }, `−${d}%`) : null;
+  }
+
   function storeBadge(key) {
     const s = storeInfo(key);
     return el('span', { class: 'badge', style: `--c:${s.color || '#666'}` }, s.name);
@@ -165,13 +171,12 @@
   }
 
   function offerCard(o) {
-    const d = discount(o);
     const meta = [o.quantity, o.unitPrice].filter(Boolean).join(' · ');
     const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, name(o)),
       el('div', { class: 'body' },
-        el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
-        el('h3', {}, name(o)),
+        el('div', { class: 'top' }, storeBadge(o.store)),
+        el('h3', {}, name(o), saveTag(o)),
         meta ? el('p', { class: 'meta' }, meta) : null,
         o.description ? el('p', { class: 'desc' }, o.description) : null,
         el('p', { class: 'valid' }, isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
@@ -292,11 +297,10 @@
   }
 
   function featuredCard(o) {
-    const d = discount(o);
     return el('article', { class: 'fcard', tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, name(o)),
-      el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
-      el('h3', {}, name(o)),
+      el('div', { class: 'top' }, storeBadge(o.store)),
+      el('h3', {}, saveTag(o), name(o)),  // tag first: long names are cut after two lines
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
         el('span', { class: 'price' }, kr(o.price)),
@@ -465,12 +469,12 @@
       pic,
       el('p', { class: 'zoom-hint' }, 'Tap the picture to zoom'),
       el('div', { class: 'detail-body' },
-        el('h2', {}, name(o)),
+        el('h2', {}, name(o), saveTag(o)),
         state.prefs.en && o.headingEn ? el('p', { class: 'orig', lang: 'da' }, o.heading) : null,
         el('div', { class: 'detail-price' },
           el('span', { class: 'price' }, kr(o.price)),
           o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
-          d >= 1 ? el('span', { class: 'save' }, `Save ${kr(Math.round((o.prePrice - o.price) * 100) / 100)} · −${d}%`) : null),
+          d >= 1 ? el('span', { class: 'save' }, `Save ${kr(Math.round((o.prePrice - o.price) * 100) / 100)}`) : null),
         o.description ? el('p', { class: 'detail-desc' }, o.description) : null,
         el('dl', { class: 'facts' }, rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
         others.length ? el('h3', { class: 'section' }, 'Similar offers') : null,
