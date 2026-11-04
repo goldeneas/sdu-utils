@@ -214,16 +214,41 @@
     }
     renderCats(pool.filter((o) => !state.prefs.stores.length || state.prefs.stores.includes(o.store)));
     for (const b of document.querySelectorAll('[data-when]')) b.setAttribute('aria-pressed', String(b.dataset.when === state.prefs.when));
-    $('#sort').value = state.prefs.sort;
+    for (const b of document.querySelectorAll('[data-sort]')) b.setAttribute('aria-pressed', String(b.dataset.sort === state.prefs.sort));
+    const active = activeFilters();
+    $('#filter-badge').textContent = active || '';
+    $('#filter-badge').hidden = !active;
+    $('#open-filters').setAttribute('aria-label', active ? `Filters, ${active} on` : 'Filters');
+    const n = visibleOffers().length;
+    $('#close-filters').textContent = `Show ${n} offer${n === 1 ? '' : 's'}`;
     if (document.activeElement !== $('#q')) $('#q').value = state.prefs.query;
+  }
+
+  // How many filters differ from the defaults (shown as a badge on the filter button).
+  const activeFilters = () => [state.prefs.stores.length > 0, state.prefs.cat !== 'all',
+    state.prefs.when !== 'today', state.prefs.sort !== 'store'].filter(Boolean).length;
+
+  function resetFilters() {
+    Object.assign(state.prefs, { when: 'today', stores: [], cat: 'all', sort: 'store' });
+    savePrefs(); renderLimit = 60; render();
+  }
+
+  // ---------------------------------------------------------------- filter sheet
+  function openFilters() {
+    $('#filters').hidden = false; $('#filter-scrim').hidden = false;
+    document.documentElement.classList.add('sheet-open');
+  }
+  function closeFilters() {
+    $('#filters').hidden = true; $('#filter-scrim').hidden = true;
+    document.documentElement.classList.remove('sheet-open');
   }
 
   function renderCats(pool) {
     const box = $('#cats');
     box.replaceChildren();
     const names = Object.fromEntries((state.data.categories || []).map((c) => [c.key, c.name]));
-    if (!Object.keys(names).length) { box.hidden = true; return; }
-    box.hidden = false;
+    if (!Object.keys(names).length) { $('#cats-box').hidden = true; return; }
+    $('#cats-box').hidden = false;
     // Food first; household, non-food and other last. Unknown keys from a newer scraper go before them.
     const known = ['protein', 'meat', 'dairy', 'produce', 'bakery', 'drinks', 'snacks', 'pantry', 'household', 'nonfood'];
     const extra = Object.keys(names).filter((k) => !known.includes(k));
@@ -472,7 +497,13 @@
     for (const b of document.querySelectorAll('[data-when]')) {
       b.addEventListener('click', () => { state.prefs.when = b.dataset.when; savePrefs(); renderLimit = 60; render(); });
     }
-    $('#sort').addEventListener('change', (e) => { state.prefs.sort = e.target.value; savePrefs(); render(); });
+    for (const b of document.querySelectorAll('[data-sort]')) {
+      b.addEventListener('click', () => { state.prefs.sort = b.dataset.sort; savePrefs(); render(); });
+    }
+    $('#open-filters').addEventListener('click', openFilters);
+    $('#close-filters').addEventListener('click', () => { closeFilters(); window.scrollTo(0, 0); });
+    $('#filter-scrim').addEventListener('click', closeFilters);
+    $('#reset-filters').addEventListener('click', resetFilters);
     let timer;
     $('#q').addEventListener('input', (e) => {
       clearTimeout(timer);
@@ -488,7 +519,7 @@
 
     if (location.hash === '#starred') state.prefs.tab = 'starred';
     window.addEventListener('hashchange', () => { if (!detailId()) openedFromList = false; renderDetail(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && detailId()) closeDetail(); });
+    document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (!$('#filters').hidden) closeFilters(); else if (detailId()) closeDetail(); });
     render();
     loadData();
     // Re-check when the app comes back to the foreground (an installed PWA is often left open for days).
