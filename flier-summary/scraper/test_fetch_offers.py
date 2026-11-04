@@ -114,5 +114,32 @@ class MainTest(unittest.TestCase):
             self.assertFalse(out.exists())
 
 
+
+class TranslationTest(unittest.TestCase):
+    def test_brand_names_survive_translation(self):
+        line, kept = fo._protect("Netto hakket oksekød fra Løgismose")
+        self.assertEqual(line, "BX0 hakket oksekød fra BX1")
+        self.assertEqual(fo._restore("BX0 minced beef from BX1", kept), "Netto minced beef from Løgismose")
+        self.assertIsNone(fo._restore("Net minced beef", kept))  # placeholder lost: drop the translation
+
+    def test_only_new_names_are_sent_and_failures_keep_danish(self):
+        sent = []
+
+        def fake(lines):
+            sent.append(list(lines))
+            return None if "Ukendt" in lines else [f"EN {x}" for x in lines]
+        with mock.patch.object(fo, "_translate_batch", fake), mock.patch.object(fo.time, "sleep", lambda s: None):
+            out = fo.translate_names(["Kaffe", "Mælk", "Ukendt", "Mælk"], {"Kaffe": "Coffee"})
+        self.assertEqual(out, {"Kaffe": "Coffee", "Mælk": "EN Mælk"})
+        self.assertEqual(sent[0], ["Mælk", "Ukendt"])  # one batch, then retried one by one
+
+    def test_previous_translations_are_reused(self):
+        with tempfile.TemporaryDirectory() as d:
+            prev = Path(d) / "prev.json"
+            prev.write_text(json.dumps({"offers": [{"heading": "Kaffe", "headingEn": "Coffee"}, {"heading": "Mira"}]}))
+            self.assertEqual(fo.load_known_translations(str(prev)), {"Kaffe": "Coffee"})
+            self.assertEqual(fo.load_known_translations(str(Path(d) / "missing.json")), {})
+
+
 if __name__ == "__main__":
     unittest.main()

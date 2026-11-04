@@ -10,7 +10,7 @@
   const state = {
     data: null,
     stars: load(STAR_KEY, []),
-    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all' }, load(PREF_KEY, {})),
+    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
   };
 
   function load(key, fallback) {
@@ -36,6 +36,13 @@
   }
   const starFor = (offer) => state.stars.find((s) => norm(s.key) === norm(offer.heading));
   const isStarredMatch = (offer) => state.stars.some((s) => matches(s, offer));
+
+  // ---------------------------------------------------------------- English names
+  // The nightly fetcher adds headingEn (machine translated). The setting only changes what is shown:
+  // stars, matching and the flier stay on the Danish name, so switching back and forth loses nothing.
+  let englishByHeading = new Map();
+  const name = (o) => (state.prefs.en && o.headingEn) || o.heading;
+  const starName = (star) => (state.prefs.en && !star.watch && englishByHeading.get(star.key)) || star.key;
 
   // ---------------------------------------------------------------- categories
   // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
@@ -66,6 +73,7 @@
       const res = await fetch('data/offers.json', { cache: 'no-cache' });
       if (!res.ok) throw new Error(res.status);
       state.data = await res.json();
+      englishByHeading = new Map(state.data.offers.filter((o) => o.headingEn).map((o) => [o.heading, o.headingEn]));
       refreshStarsFromData();
     } catch (err) {
       state.data = null;
@@ -133,7 +141,7 @@
     const on = !!starFor(offer);
     const b = el('button', {
       class: 'star' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on),
-      'aria-label': on ? `Unstar ${offer.heading}` : `Star ${offer.heading}`,
+      'aria-label': on ? `Unstar ${name(offer)}` : `Star ${name(offer)}`,
       onclick: (e) => { e.stopPropagation(); toggleStar(offer); },
     });
     b.innerHTML = STAR_SVG;
@@ -160,10 +168,10 @@
     const d = discount(o);
     const meta = [o.quantity, o.unitPrice].filter(Boolean).join(' · ');
     const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
-      thumb(o.image, o.heading),
+      thumb(o.image, name(o)),
       el('div', { class: 'body' },
         el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
-        el('h3', {}, o.heading),
+        el('h3', {}, name(o)),
         meta ? el('p', { class: 'meta' }, meta) : null,
         o.description ? el('p', { class: 'desc' }, o.description) : null,
         el('p', { class: 'valid' }, isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
@@ -185,13 +193,13 @@
     let list = state.data.offers.filter((o) => (when === 'today' ? isCurrent(o, t) : isUpcoming(o, t)));
     if (stores.length) list = list.filter((o) => stores.includes(o.store));
     if (state.prefs.cat !== 'all') list = list.filter((o) => inCat(o, state.prefs.cat));
-    if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + o.description); return q.every((w) => h.includes(w)); });
+    if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + (o.headingEn || '') + ' ' + o.description); return q.every((w) => h.includes(w)); });
     const order = (state.data.stores || []).map((s) => s.key);
     const cmp = {
       store: (a, b) => order.indexOf(a.store) - order.indexOf(b.store) || (a.page ?? 0) - (b.page ?? 0),
       price: (a, b) => (a.price ?? 1e9) - (b.price ?? 1e9),
       discount: (a, b) => discount(b) - discount(a),
-      name: (a, b) => a.heading.localeCompare(b.heading, 'da'),
+      name: (a, b) => name(a).localeCompare(name(b), state.prefs.en ? 'en' : 'da'),
     }[sort] || (() => 0);
     return list.sort(cmp);
   }
@@ -261,9 +269,9 @@
   function featuredCard(o) {
     const d = discount(o);
     return el('article', { class: 'fcard', tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
-      thumb(o.image, o.heading),
+      thumb(o.image, name(o)),
       el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
-      el('h3', {}, o.heading),
+      el('h3', {}, name(o)),
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
         el('span', { class: 'price' }, kr(o.price)),
@@ -326,7 +334,7 @@
       box.append(el('h2', { class: 'section' }, `On sale now · ${onSale.length}`));
       for (const { star, hits } of onSale) {
         box.append(el('div', { class: 'group' },
-          el('div', { class: 'group-head' }, el('strong', {}, star.key), star.watch ? el('span', { class: 'tag' }, 'watch word') : null,
+          el('div', { class: 'group-head' }, el('strong', {}, starName(star)), star.watch ? el('span', { class: 'tag' }, 'watch word') : null,
             unstarButton(star)),
           hits.slice(0, 6).map(offerCard),
           hits.length > 6 ? el('p', { class: 'meta pad' }, `+ ${hits.length - 6} more matches`) : null));
@@ -337,9 +345,9 @@
       for (const { star } of offSale) {
         const seen = star.lastSeen;
         box.append(el('div', { class: 'offer idle' },
-          thumb(seen?.image, star.key),
+          thumb(seen?.image, starName(star)),
           el('div', { class: 'body' },
-            el('h3', {}, star.key),
+            el('h3', {}, starName(star)),
             el('p', { class: 'meta' }, seen
               ? [`Last seen at ${storeInfo(seen.store).name}`, seen.price != null ? ` for ${kr(seen.price)}` : '', seen.till ? `, until ${fmtDay(seen.till)}` : '']
               : star.watch ? 'Watching for this word in every flier' : 'Not seen yet')),
@@ -350,7 +358,7 @@
 
   function unstarButton(star) {
     const b = el('button', {
-      class: 'star on', type: 'button', 'aria-label': `Remove ${star.key}`,
+      class: 'star on', type: 'button', 'aria-label': `Remove ${starName(star)}`,
       onclick: () => { state.stars = state.stars.filter((s) => s !== star); saveStars(); render(); },
     });
     b.innerHTML = STAR_SVG;
@@ -363,6 +371,7 @@
     $('#view-starred').hidden = tab !== 'starred';
     $('#title').textContent = tab === 'offers' ? 'Offers' : 'Starred';
     for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-current', String(b.dataset.tab === tab));
+    for (const b of document.querySelectorAll('[data-lang]')) b.setAttribute('aria-pressed', String((b.dataset.lang === 'en') === !!state.prefs.en));
 
     const live = starsOnSale().filter((r) => r.hits.length).length;
     $('#star-badge').textContent = live || '';
@@ -407,7 +416,7 @@
     }
     const d = discount(o);
     const s = storeInfo(o.store);
-    const img = el('img', { src: o.imageLarge || o.image, alt: o.heading, decoding: 'async', referrerpolicy: 'no-referrer' });
+    const img = el('img', { src: o.imageLarge || o.image, alt: name(o), decoding: 'async', referrerpolicy: 'no-referrer' });
     img.addEventListener('error', () => { if (o.image && img.src !== o.image) img.src = o.image; });
     const pic = el('div', { class: 'detail-pic', role: 'button', tabindex: '0', 'aria-label': 'Zoom picture',
       onclick: () => pic.classList.toggle('zoomed') }, img);
@@ -431,7 +440,8 @@
       pic,
       el('p', { class: 'zoom-hint' }, 'Tap the picture to zoom'),
       el('div', { class: 'detail-body' },
-        el('h2', {}, o.heading),
+        el('h2', {}, name(o)),
+        state.prefs.en && o.headingEn ? el('p', { class: 'orig', lang: 'da' }, o.heading) : null,
         el('div', { class: 'detail-price' },
           el('span', { class: 'price' }, kr(o.price)),
           o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
@@ -471,6 +481,9 @@
     for (const b of document.querySelectorAll('[data-tab]')) b.addEventListener('click', () => setTab(b.dataset.tab));
     for (const b of document.querySelectorAll('[data-when]')) {
       b.addEventListener('click', () => { state.prefs.when = b.dataset.when; savePrefs(); renderLimit = 60; render(); });
+    }
+    for (const b of document.querySelectorAll('[data-lang]')) {
+      b.addEventListener('click', () => { state.prefs.en = b.dataset.lang === 'en'; savePrefs(); render(); });
     }
     $('#sort').addEventListener('change', (e) => { state.prefs.sort = e.target.value; savePrefs(); render(); });
     let timer;
