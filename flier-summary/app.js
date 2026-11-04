@@ -10,7 +10,7 @@
   const state = {
     data: null,
     stars: load(STAR_KEY, []),
-    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '' }, load(PREF_KEY, {})),
+    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all' }, load(PREF_KEY, {})),
   };
 
   function load(key, fallback) {
@@ -35,6 +35,13 @@
     return words(star.key).every((w) => hay.includes(' ' + w + ' ') || (w.length >= 4 && hay.includes(' ' + w)));
   }
   const starFor = (offer) => state.stars.find((s) => norm(s.key) === norm(offer.heading));
+  const isStarredMatch = (offer) => state.stars.some((s) => matches(s, offer));
+
+  // ---------------------------------------------------------------- categories
+  // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
+  // entry is its main category; 'protein' is an extra tag. Offers without a main one are 'other'.
+  const mainCat = (o) => (o.cats || []).find((c) => c !== 'protein') || 'other';
+  const inCat = (o, cat) => cat === 'all' || (cat === 'protein' ? (o.cats || []).includes('protein') : mainCat(o) === cat);
 
   // ---------------------------------------------------------------- dates & money
   const now = () => new Date();
@@ -152,7 +159,7 @@
   function offerCard(o) {
     const d = discount(o);
     const meta = [o.quantity, o.unitPrice].filter(Boolean).join(' · ');
-    const card = el('article', { class: 'offer', tabindex: '0', onclick: () => card.classList.toggle('open') },
+    const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => card.classList.toggle('open') },
       thumb(o.image, o.heading),
       el('div', { class: 'body' },
         el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
@@ -177,6 +184,7 @@
     const q = words(query);
     let list = state.data.offers.filter((o) => (when === 'today' ? isCurrent(o, t) : isUpcoming(o, t)));
     if (stores.length) list = list.filter((o) => stores.includes(o.store));
+    if (state.prefs.cat !== 'all') list = list.filter((o) => inCat(o, state.prefs.cat));
     if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + o.description); return q.every((w) => h.includes(w)); });
     const order = (state.data.stores || []).map((s) => s.key);
     const cmp = {
@@ -204,9 +212,76 @@
         },
       }, s.name, el('span', { class: 'n' }, n)));
     }
+    renderCats(pool.filter((o) => !state.prefs.stores.length || state.prefs.stores.includes(o.store)));
     for (const b of document.querySelectorAll('[data-when]')) b.setAttribute('aria-pressed', String(b.dataset.when === state.prefs.when));
     $('#sort').value = state.prefs.sort;
     if (document.activeElement !== $('#q')) $('#q').value = state.prefs.query;
+  }
+
+  function renderCats(pool) {
+    const box = $('#cats');
+    box.replaceChildren();
+    const names = Object.fromEntries((state.data.categories || []).map((c) => [c.key, c.name]));
+    if (!Object.keys(names).length) { box.hidden = true; return; }
+    box.hidden = false;
+    // Food first; household, non-food and other last. Unknown keys from a newer scraper go before them.
+    const known = ['protein', 'meat', 'dairy', 'produce', 'bakery', 'drinks', 'snacks', 'pantry', 'household', 'nonfood'];
+    const extra = Object.keys(names).filter((k) => !known.includes(k));
+    const keys = ['all', ...known.slice(0, 8), ...extra, 'household', 'nonfood', 'other'];
+    names.all = 'All'; names.other = 'Other';
+    for (const key of keys) {
+      const n = key === 'all' ? pool.length : pool.filter((o) => inCat(o, key)).length;
+      const on = state.prefs.cat === key;
+      if (!n && !on) continue;
+      box.append(el('button', {
+        class: 'cat' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on),
+        onclick: () => { state.prefs.cat = on && key !== 'all' ? 'all' : key; savePrefs(); renderLimit = 60; render(); },
+      }, names[key] || key, key === 'all' ? null : el('span', { class: 'n' }, n)));
+    }
+  }
+
+  // Offers matching the stars, shown in a row above the list. Product stars come before watch
+  // words, in the order they were starred, cheapest first within each star.
+  function featuredOffers() {
+    const { when, stores } = state.prefs;
+    const t = now();
+    const pool = state.data.offers.filter((o) => (when === 'today' ? isCurrent(o, t) : isUpcoming(o, t))
+      && (!stores.length || stores.includes(o.store)) && inCat(o, state.prefs.cat));
+    const order = [...state.stars.filter((s) => !s.watch), ...state.stars.filter((s) => s.watch)];
+    const seen = new Set();
+    const out = [];
+    for (const star of order) {
+      for (const o of pool.filter((x) => matches(star, x)).sort((a, b) => (a.price ?? 1e9) - (b.price ?? 1e9))) {
+        if (!seen.has(o.id)) { seen.add(o.id); out.push(o); }
+      }
+    }
+    return out;
+  }
+
+  function featuredCard(o) {
+    const d = discount(o);
+    return el('article', { class: 'fcard' },
+      thumb(o.image, o.heading),
+      el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
+      el('h3', {}, o.heading),
+      o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
+      el('div', { class: 'fprice' },
+        el('span', { class: 'price' }, kr(o.price)),
+        o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
+        starButton(o)),
+    );
+  }
+
+  function renderFeatured() {
+    const box = $('#featured');
+    const list = state.prefs.query ? [] : featuredOffers();
+    box.hidden = !list.length;
+    if (!list.length) return;
+    box.replaceChildren(
+      el('div', { class: 'feat-head' },
+        el('h2', {}, 'Featured for you'),
+        el('span', {}, `${list.length} ${state.prefs.when === 'today' ? 'on sale' : 'coming up'}`)),
+      el('div', { class: 'rail' }, list.slice(0, 24).map(featuredCard)));
   }
 
   let renderLimit = 60;
@@ -295,7 +370,7 @@
 
     if (!state.data) return;
     $('#status').textContent = `Updated ${ago(state.data.generatedAt)} · ${state.data.location?.name || ''}`;
-    if (tab === 'offers') { renderFilters(); renderOffers(); } else renderStars();
+    if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
   }
 
   // ---------------------------------------------------------------- backup (stars live only on this device)

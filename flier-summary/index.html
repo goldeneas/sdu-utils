@@ -70,7 +70,7 @@
 
 			.row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 			.seg { display: inline-flex; background: var(--chip); border-radius: 10px; padding: 3px; }
-			.seg button { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+			.seg button { white-space: nowrap; padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
 			.seg button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 			select#sort {
 				margin-left: auto; height: 34px; border-radius: 10px; border: 1px solid var(--line);
@@ -86,6 +86,42 @@
 			.chip::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 			.chip.on { border-color: var(--c); background: var(--sheet); }
 			.chip .n { font-weight: 500; color: var(--muted); font-size: 12px; }
+			.cats { margin-top: -2px; }
+			.cat {
+				flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px;
+				border-radius: 15px; border: 1px solid var(--line); background: var(--sheet); font-size: 13px; font-weight: 600;
+			}
+			.cat .n { font-weight: 500; color: var(--muted); font-size: 12px; }
+			.cat.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+			.cat.on .n { color: inherit; opacity: .7; }
+
+			/* ---------- featured ---------- */
+			.featured { margin: 6px 0 10px; }
+			.feat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
+			.feat-head h2 { font-size: 18px; letter-spacing: -.01em; }
+			.feat-head h2::before { content: "★ "; color: var(--star); }
+			.feat-head span { font-size: 13px; color: var(--muted); }
+			.rail {
+				display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+				margin: 0 -16px; padding: 0 16px 6px; scroll-padding: 0 16px;
+			}
+			.rail::-webkit-scrollbar { display: none; }
+			.fcard {
+				flex: none; width: 152px; scroll-snap-align: start; display: flex; flex-direction: column;
+				background: var(--sheet); border: 1px solid color-mix(in srgb, var(--star) 55%, var(--line)); border-radius: 14px; padding: 8px;
+			}
+			.fcard .thumb { width: 100%; height: 104px; margin-bottom: 8px; }
+			.fcard h3 {
+				font-size: 14px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere;
+				display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+			}
+			.fcard .meta { font-size: 12px; }
+			.fprice { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px; }
+			.fprice .price { font-size: 16px; }
+			.fprice .pre { font-size: 12px; }
+			.fprice .star { margin: 0 -6px -6px auto; width: 36px; height: 36px; }
+			.offer.hl { border-color: color-mix(in srgb, var(--star) 65%, var(--line)); background: color-mix(in srgb, var(--star) 6%, var(--sheet)); }
+
 			#count { font-size: 13px; color: var(--muted); margin: 4px 2px 8px; }
 
 			/* ---------- offer cards ---------- */
@@ -181,6 +217,7 @@
 					<input id="q" type="search" placeholder="Search offers (kaffe, kylling, …)" autocomplete="off" enterkeyhint="search" aria-label="Search offers">
 				</div>
 				<div class="chips" id="stores" aria-label="Stores"></div>
+				<div class="chips cats" id="cats" aria-label="Categories" hidden></div>
 				<div class="row">
 					<div class="seg" role="group" aria-label="When">
 						<button type="button" data-when="today">Valid today</button>
@@ -193,6 +230,7 @@
 						<option value="name">A–Z</option>
 					</select>
 				</div>
+				<section id="featured" class="featured" aria-label="Featured for you" hidden></section>
 				<p id="count"></p>
 				<div class="list" id="list"></div>
 			</main>

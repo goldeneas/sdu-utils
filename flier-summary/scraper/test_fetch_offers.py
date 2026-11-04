@@ -61,6 +61,24 @@ class SlimTest(unittest.TestCase):
         self.assertEqual(fo.unit_price(10, {"unit": None}), "")
 
 
+class CategorizeTest(unittest.TestCase):
+    def test_food(self):
+        self.assertEqual(fo.categorize("Hakket dansk grisekød 8-12%"), ["meat"])
+        self.assertEqual(fo.categorize("Arla protein-milkshake*"), ["dairy", "protein"])
+        self.assertEqual(fo.categorize("Barebells spread proteinbar"), ["snacks", "protein"])
+        self.assertEqual(fo.categorize("Coca-Cola, Fanta eller Tuborg Squash"), ["drinks"])
+        self.assertEqual(fo.categorize("Godt papir"), ["household"])
+
+    def test_whole_word_terms(self):
+        self.assertEqual(fo.categorize("Bland selv slik"), ["snacks"])  # not "and" -> meat
+        self.assertEqual(fo.categorize("Raakraft hundesnacks"), ["household"])
+        self.assertEqual(fo.categorize("Dior Sauvage Parfum Spray"), ["household"])
+
+    def test_nonfood_catalog_and_unknown(self):
+        self.assertEqual(fo.categorize("Fjernstyret bil", "Bilka Nonfood Uge 46"), ["nonfood"])
+        self.assertEqual(fo.categorize("Verdi"), [])
+
+
 class MainTest(unittest.TestCase):
     def fake_get(self, path, params):
         if path == "dealers":
