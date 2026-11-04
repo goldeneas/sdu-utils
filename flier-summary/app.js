@@ -177,9 +177,7 @@
       ),
       el('div', { class: 'side' },
         starButton(o),
-        el('div', { class: 'prices' },
-          o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
-          el('span', { class: 'price' }, kr(o.price))),
+        el('div', { class: 'price' }, kr(o.price)),  // the old price is shown on the product page only
       ),
     );
     return card;
@@ -299,7 +297,6 @@
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
         el('span', { class: 'price' }, kr(o.price)),
-        o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
         starButton(o)),
     );
   }
