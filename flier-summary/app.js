@@ -378,7 +378,7 @@
     $('#star-badge').hidden = !live;
 
     if (!state.data) return;
-    $('#status').textContent = `Updated ${ago(state.data.generatedAt)} · ${state.data.location?.name || ''}`;
+    $('#status').textContent = [ago(state.data.generatedAt), (state.data.location?.name || '').toUpperCase()].filter(Boolean).join(' - ');
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
   }
