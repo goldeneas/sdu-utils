@@ -148,12 +148,6 @@
     return b;
   }
 
-  // The discount sits right after the product name, wherever the name is shown.
-  function saveTag(o) {
-    const d = discount(o);
-    return d >= 1 ? el('span', { class: 'save' }, `−${d}%`) : null;
-  }
-
   function storeBadge(key) {
     const s = storeInfo(key);
     return el('span', { class: 'badge', style: `--c:${s.color || '#666'}` }, s.name);
@@ -176,15 +170,14 @@
       thumb(o.image, name(o)),
       el('div', { class: 'body' },
         el('div', { class: 'top' }, storeBadge(o.store)),
-        el('h3', {}, name(o), saveTag(o)),
+        el('h3', {}, name(o)),
         meta ? el('p', { class: 'meta' }, meta) : null,
         o.description ? el('p', { class: 'desc' }, o.description) : null,
         el('p', { class: 'valid' }, isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
       ),
       el('div', { class: 'side' },
         starButton(o),
-        el('div', { class: 'price' }, kr(o.price)),
-        o.prePrice ? el('div', { class: 'pre' }, kr(o.prePrice)) : null,
+        el('div', { class: 'price' }, kr(o.price)),  // the old price is shown on the product page only
       ),
     );
     return card;
@@ -348,11 +341,10 @@
     return el('article', { class: 'fcard', tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, name(o)),
       el('div', { class: 'top' }, storeBadge(o.store)),
-      el('h3', {}, saveTag(o), name(o)),  // tag first: long names are cut after two lines
+      el('h3', {}, name(o)),
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
         el('span', { class: 'price' }, kr(o.price)),
-        o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
         starButton(o)),
     );
   }
@@ -517,7 +509,7 @@
       pic,
       el('p', { class: 'zoom-hint' }, 'Tap the picture to zoom'),
       el('div', { class: 'detail-body' },
-        el('h2', {}, name(o), saveTag(o)),
+        el('h2', {}, name(o)),
         state.prefs.en && o.headingEn ? el('p', { class: 'orig', lang: 'da' }, o.heading) : null,
         el('div', { class: 'detail-price' },
           el('span', { class: 'price' }, kr(o.price)),
