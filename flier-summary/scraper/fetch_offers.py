@@ -275,6 +275,7 @@ def slim(offer: dict, store_key: str) -> dict | None:
         "from": offer.get("run_from"),
         "till": offer.get("run_till"),
         "image": images.get("thumb") or images.get("view") or images.get("zoom"),
+        "imageLarge": images.get("zoom") or images.get("view"),
         "catalogId": offer.get("catalog_id"),
         "page": offer.get("catalog_page"),
         "cats": categorize(heading, offer.get("_catalog_label") or ""),

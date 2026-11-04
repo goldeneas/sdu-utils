@@ -147,7 +147,7 @@
 				font-size: 13px; color: var(--muted); margin-top: 2px;
 				display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 			}
-			.offer.open .desc { -webkit-line-clamp: unset; }
+			.offer, .fcard { cursor: pointer; }
 			.side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 64px; }
 			.price { font-size: 18px; font-weight: 750; white-space: nowrap; }
 			.pre { font-size: 13px; color: var(--muted); text-decoration: line-through; white-space: nowrap; }
@@ -181,6 +181,37 @@
 				font-size: 13px; color: var(--muted); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer;
 			}
 			.backup input { display: none; }
+
+			/* ---------- detail page ---------- */
+			html.detail-open, html.detail-open body { overflow: hidden; }
+			html.detail-open nav.tabs { display: none; }
+			.detail {
+				position: fixed; inset: 0; z-index: 20; overflow-y: auto; overscroll-behavior: contain;
+				background: var(--bg); padding: calc(var(--safe-top) + 8px) 16px calc(var(--safe-bottom) + 32px);
+			}
+			.detail > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+			.detail-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+			.detail-bar .star { margin: 0 -8px 0 auto; }
+			.back { width: 40px; height: 40px; margin-left: -8px; display: grid; place-items: center; border-radius: 50%; }
+			.back:active { background: var(--chip); }
+			.detail-pic {
+				background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+				display: grid; place-items: center; min-height: 200px; max-height: 62vh; cursor: zoom-in;
+			}
+			.detail-pic img { display: block; width: 100%; height: auto; max-height: 62vh; object-fit: contain; }
+			.detail-pic.zoomed { place-items: start; overflow: auto; cursor: zoom-out; }
+			.detail-pic.zoomed img { max-height: none; }
+			.detail-pic.zoomed img { width: 220%; max-width: none; height: auto; }
+			.zoom-hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+			.detail-body h2 { font-size: 24px; line-height: 1.2; letter-spacing: -.01em; margin-top: 14px; overflow-wrap: anywhere; }
+			.detail-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; }
+			.detail-price .price { font-size: 30px; }
+			.detail-price .pre { font-size: 16px; }
+			.detail-price .save { font-size: 13px; padding: 3px 7px; }
+			.detail-desc { font-size: 15px; color: var(--ink); margin-top: 12px; line-height: 1.45; }
+			.facts { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 16px 0 0; padding: 14px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; font-size: 15px; }
+			.facts dt { color: var(--muted); }
+			.facts dd { margin: 0; }
 
 			/* ---------- tab bar ---------- */
 			nav.tabs {
@@ -248,6 +279,8 @@
 				</div>
 			</main>
 		</div>
+
+		<section id="view-detail" class="detail" aria-label="Offer details" hidden></section>
 
 		<nav class="tabs" aria-label="Sections">
 			<button type="button" data-tab="offers">

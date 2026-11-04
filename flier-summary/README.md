@@ -4,7 +4,7 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 **Netto, 365discount, Bilka and SuperBrugsen** in one list, and lets you **star** the products you like.
 
 - **Offers** tab: everything valid today, or "Coming up" for fliers that start in the next days. Filter by store,
-  search ("kaffe", "kylling", ...), sort by store, biggest discount, lowest price or name. Tap a card to see its full text.
+  search ("kaffe", "kylling", ...), sort by store, biggest discount, lowest price or name. Tap a product to open its page with a big, zoomable picture, the full text, dates and similar offers.
   **Featured for you** at the top shows today's offers that match your stars (product stars first, then watch words),
   and matching cards in the list get a gold outline. **Category chips** (Protein, Meat & fish, Dairy & eggs, ...) come
   from keywords in the offer name, because the flier API has no categories; odd products end up in "Other".
