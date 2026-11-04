@@ -248,12 +248,60 @@
 
   // ---------------------------------------------------------------- filter sheet
   function openFilters() {
-    $('#filters').hidden = false; $('#filter-scrim').hidden = false;
+    const sheet = $('#filters');
+    sheet.style.transition = ''; sheet.style.transform = ''; $('#filter-scrim').style.opacity = '';
+    sheet.hidden = false; $('#filter-scrim').hidden = false;
     document.documentElement.classList.add('sheet-open');
   }
   function closeFilters() {
     $('#filters').hidden = true; $('#filter-scrim').hidden = true;
     document.documentElement.classList.remove('sheet-open');
+  }
+  // Slide the sheet off screen, then hide it (used after a swipe down).
+  function slideOutFilters() {
+    const sheet = $('#filters');
+    sheet.style.transition = 'transform .2s ease-out';
+    sheet.style.transform = 'translateY(100%)';
+    $('#filter-scrim').style.transition = 'opacity .2s'; $('#filter-scrim').style.opacity = '0';
+    setTimeout(closeFilters, 200);
+  }
+
+  // Swipe down to close: drag starts on the handle/header, or anywhere once the sheet is scrolled
+  // to the top. Close when dragged past a third of its height or flicked down quickly.
+  function enableSwipeToClose() {
+    const sheet = $('#filters');
+    const scrim = $('#filter-scrim');
+    let startY = null, startT = 0, dy = 0, dragging = false, fromHead = false;
+    sheet.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      startY = e.touches[0].clientY; startT = Date.now(); dy = 0; dragging = false;
+      fromHead = !!e.target.closest('.grab, .sh-head');
+    }, { passive: true });
+    sheet.addEventListener('touchmove', (e) => {
+      if (startY == null) return;
+      const d = e.touches[0].clientY - startY;
+      if (!dragging) {
+        if (d > 6 && (fromHead || sheet.scrollTop <= 0)) { dragging = true; sheet.style.transition = 'none'; }
+        else if (Math.abs(d) > 6) { startY = null; return; }
+        else return;
+      }
+      e.preventDefault();
+      dy = Math.max(0, d);
+      sheet.style.transform = `translateY(${dy}px)`;
+      scrim.style.opacity = String(Math.max(0, 1 - dy / sheet.offsetHeight));
+    }, { passive: false });
+    const end = () => {
+      if (startY == null) return;
+      startY = null;
+      if (!dragging) return;
+      dragging = false;
+      const fast = dy / Math.max(1, Date.now() - startT) > 0.5;
+      if (dy > sheet.offsetHeight / 3 || (fast && dy > 40)) { slideOutFilters(); return; }
+      sheet.style.transition = 'transform .18s ease-out'; sheet.style.transform = '';
+      scrim.style.transition = 'opacity .18s'; scrim.style.opacity = '';
+    };
+    sheet.addEventListener('touchend', end);
+    sheet.addEventListener('touchcancel', end);
   }
 
   function renderCats(pool) {
@@ -521,6 +569,7 @@
     $('#close-filters').addEventListener('click', () => { closeFilters(); window.scrollTo(0, 0); });
     $('#filter-scrim').addEventListener('click', closeFilters);
     $('#reset-filters').addEventListener('click', resetFilters);
+    enableSwipeToClose();
     let timer;
     $('#q').addEventListener('input', (e) => {
       clearTimeout(timer);
