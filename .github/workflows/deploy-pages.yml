@@ -1,0 +1,73 @@
+name: Deploy web apps to GitHub Pages
+
+# One Pages site holds every web module, each in its own folder:
+#   https://<user>.github.io/sdu-utils/wise-tram-copier/
+#   https://<user>.github.io/sdu-utils/flier-summary/
+# GitHub Pages publishes a single artifact per repo, so all modules must be deployed by this one workflow
+# (a second Pages workflow would replace the other module's files).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wise-tram-copier/**'
+      - 'flier-summary/**'
+      - '.github/workflows/deploy-pages.yml'
+  schedule:
+    # Refresh the supermarket offers every morning (03:15 UTC = 04:15/05:15 in Denmark).
+    # New fliers usually start on a Saturday or Sunday, but daily runs also catch mid-week ones.
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test the offer fetcher
+        run: python -m unittest discover -s flier-summary/scraper
+
+      # Fetch offers into the staged copy only, so nothing is committed back to the repo.
+      # If the flier API is down, keep yesterday's file from the live site instead of publishing an empty app.
+      - name: Stage site and fetch offers
+        env:
+          LIVE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          mkdir -p _site
+          cp -r wise-tram-copier _site/wise-tram-copier
+          cp -r flier-summary _site/flier-summary
+          rm -rf _site/flier-summary/scraper
+          mkdir -p _site/flier-summary/data
+          if ! python flier-summary/scraper/fetch_offers.py --out _site/flier-summary/data/offers.json; then
+            echo "::warning::Offer fetch failed; reusing the currently published offers.json"
+            curl -fsSL "$LIVE_URL/flier-summary/data/offers.json" -o _site/flier-summary/data/offers.json \
+              || echo "::warning::No published offers.json to fall back to; the app will show an error until the next run"
+          fi
+          cp .github/pages-index.html _site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
