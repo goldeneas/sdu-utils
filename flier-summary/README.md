@@ -1,7 +1,7 @@
 # flier-summary
 
 A phone-first web app (PWA) that collects this week's supermarket offers in **Odense** from
-**Netto, 365discount, Bilka and SuperBrugsen** in one list, and lets you **star** the products you like.
+**Netto, 365discount, Bilka, SuperBrugsen and Lidl** in one list, and lets you **star** the products you like.
 
 - **Offers** tab: everything valid today, or "Coming up" for fliers that start in the next days. Filter by store,
   search ("kaffe", "kylling", ...), sort by store, biggest discount, lowest price or name. Tap a product to open its page with a big, zoomable picture, the full text, dates and similar offers.
