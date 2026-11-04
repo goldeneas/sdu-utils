@@ -14,7 +14,7 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 - **Watch words**: on the Starred tab you can type a word like `Zoégas` or `oksemørbrad` to match every offer that
   contains it, even ones you have never seen.
 - **DA / EN** switch at the top: shows every product name in English instead of Danish. The setting is remembered
-  on the phone. Names are machine translated once a night by the fetcher (see below); search finds both the Danish and
+  on the phone. Names are machine translated by the fetcher when it can (see below); Google often refuses requests from GitHub's servers, so the phone translates the names on screen itself and keeps them in `localStorage`. Search finds both the Danish and
   the English name, and stars keep working on the Danish name, so switching never loses anything. The product page
   shows the original Danish name under the English one, which is handy in the shop.
 - Stars live in the browser on your phone (`localStorage`). Use **Back up stars** / **Restore** to move them to

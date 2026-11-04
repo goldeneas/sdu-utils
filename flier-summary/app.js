@@ -38,11 +38,62 @@
   const isStarredMatch = (offer) => state.stars.some((s) => matches(s, offer));
 
   // ---------------------------------------------------------------- English names
-  // The nightly fetcher adds headingEn (machine translated). The setting only changes what is shown:
-  // stars, matching and the flier stay on the Danish name, so switching back and forth loses nothing.
+  // The setting only changes what is shown: stars, matching and the flier stay on the Danish name,
+  // so switching back and forth loses nothing. Names come from headingEn when the nightly fetcher
+  // managed to translate them; otherwise the phone translates the names on screen itself (Google
+  // blocks requests from GitHub's servers, not from phones) and keeps them in localStorage.
+  const EN_KEY = 'flier-summary:en';
+  const enCache = load(EN_KEY, {});
   let englishByHeading = new Map();
-  const name = (o) => (state.prefs.en && o.headingEn) || o.heading;
-  const starName = (star) => (state.prefs.en && !star.watch && englishByHeading.get(star.key)) || star.key;
+  const wanted = new Set();
+  const tried = new Set();
+  function english(heading, fromData) {
+    const en = fromData || englishByHeading.get(heading) || enCache[heading];
+    if (!en && !tried.has(heading)) wanted.add(heading);
+    return en;
+  }
+  const name = (o) => (state.prefs.en && english(o.heading, o.headingEn)) || o.heading;
+  const sortName = (o) => (state.prefs.en && (o.headingEn || enCache[o.heading])) || o.heading;  // never asks for new translations
+  const starName = (star) => (state.prefs.en && !star.watch && english(star.key)) || star.key;
+
+  // Store and own-brand names the translator would turn into words ("Netto" -> "Net").
+  const KEEP = /(?<![\p{L}\d])(Netto|Løgismose|Princip|Premieur|Xtra!?|Änglamark|Salling|Coop|Bilka|SuperBrugsen|Brugsen|365discount|Lidl|Kærgården|Gestus|Harmonie|Irma|Graasten|Thise|Øllingegaard|Rynkeby|Tulip)(?![\p{L}\d])/giu;
+  let translating = false;
+  async function translateWanted() {
+    if (translating || !wanted.size || !navigator.onLine) return;
+    translating = true;
+    const todo = [...wanted].slice(0, 120);
+    wanted.clear();
+    todo.forEach((h) => tried.add(h));
+    let got = 0;
+    try {
+      for (let i = 0; i < todo.length;) {
+        const batch = [];
+        let size = 0;
+        while (i < todo.length && (size + todo[i].length < 2500 || !batch.length)) { size += todo[i].length + 1; batch.push(todo[i++]); }
+        const kept = batch.map(() => []);
+        const lines = batch.map((h, n) => h.replace(KEEP, (m) => { kept[n].push(m); return `BX${kept[n].length - 1}`; }));
+        const res = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=da&tl=en&dt=t', {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+          body: 'q=' + encodeURIComponent(lines.join('\n')),
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        const out = data[0].map((seg) => seg[0] || '').join('').split('\n').map((x) => x.trim());
+        if (out.length !== batch.length) continue;
+        out.forEach((en, n) => {
+          let ok = !!en;
+          kept[n].forEach((word, k) => { if (!en.includes(`BX${k}`)) ok = false; });
+          if (!ok) return;
+          kept[n].forEach((word, k) => { en = en.replace(`BX${k}`, word); });
+          enCache[batch[n]] = en;
+          got++;
+        });
+      }
+    } catch { /* offline or blocked: names stay Danish */ }
+    translating = false;
+    if (got) { save(EN_KEY, enCache); render(); }
+  }
 
   // ---------------------------------------------------------------- categories
   // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
@@ -191,13 +242,13 @@
     let list = state.data.offers.filter((o) => (when === 'today' ? isCurrent(o, t) : isUpcoming(o, t)));
     if (stores.length) list = list.filter((o) => stores.includes(o.store));
     if (state.prefs.cat !== 'all') list = list.filter((o) => inCat(o, state.prefs.cat));
-    if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + (o.headingEn || '') + ' ' + o.description); return q.every((w) => h.includes(w)); });
+    if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + (o.headingEn || enCache[o.heading] || '') + ' ' + o.description); return q.every((w) => h.includes(w)); });
     const order = (state.data.stores || []).map((s) => s.key);
     const cmp = {
       store: (a, b) => order.indexOf(a.store) - order.indexOf(b.store) || (a.page ?? 0) - (b.page ?? 0),
       price: (a, b) => (a.price ?? 1e9) - (b.price ?? 1e9),
       discount: (a, b) => discount(b) - discount(a),
-      name: (a, b) => name(a).localeCompare(name(b), state.prefs.en ? 'en' : 'da'),
+      name: (a, b) => sortName(a).localeCompare(sortName(b), state.prefs.en ? 'en' : 'da'),
     }[sort] || (() => 0);
     return list.sort(cmp);
   }
@@ -450,6 +501,7 @@
     $('#status').textContent = [ago(state.data.generatedAt), (state.data.location?.name || '').toUpperCase()].filter(Boolean).join(' - ');
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
+    if (state.prefs.en) translateWanted();
   }
 
   // ---------------------------------------------------------------- detail page
@@ -510,7 +562,7 @@
       el('p', { class: 'zoom-hint' }, 'Tap the picture to zoom'),
       el('div', { class: 'detail-body' },
         el('h2', {}, name(o)),
-        state.prefs.en && o.headingEn ? el('p', { class: 'orig', lang: 'da' }, o.heading) : null,
+        name(o) !== o.heading ? el('p', { class: 'orig', lang: 'da' }, o.heading) : null,
         el('div', { class: 'detail-price' },
           el('span', { class: 'price' }, kr(o.price)),
           o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
