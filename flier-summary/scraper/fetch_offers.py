@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -36,7 +37,7 @@ STORES = [
 ]
 
 PAGE_LIMIT = 100  # the API rejects larger pages
-MAX_PAGES = 30
+MAX_OFFSET = 1000  # the API rejects offset + limit beyond this
 USER_AGENT = "sdu-utils-flier-summary/1.0 (+https://github.com/goldeneas/sdu-utils)"
 
 
@@ -90,21 +91,123 @@ def resolve_dealers(stores: list[dict]) -> dict[str, dict]:
     return found
 
 
-def fetch_dealer_offers(dealer_id: str) -> list[dict]:
+def fetch_paged(params: dict) -> list[dict]:
+    """Page through /offers. The API refuses offset+limit beyond 1000, so callers narrow the
+    query (one catalog at a time) and whatever was fetched before an error is kept."""
     offers: list[dict] = []
-    for page in range(MAX_PAGES):
-        batch = get_json("offers", {
-            "dealer_ids": dealer_id,
-            "r_lat": LAT, "r_lng": LNG, "r_radius": RADIUS_M,
-            "order_by": "page",
-            "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT,
-        })
+    for page in range(MAX_OFFSET // PAGE_LIMIT):
+        try:
+            batch = get_json("offers", {**params, "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT})
+        except RuntimeError as exc:
+            print(f"warning: {exc}", file=sys.stderr)
+            break
         if not isinstance(batch, list) or not batch:
             break
         offers.extend(batch)
         if len(batch) < PAGE_LIMIT:
             break
     return offers
+
+
+def fetch_dealer_offers(dealer_id: str) -> list[dict]:
+    """All offers of a dealer's fliers valid near Odense, fetched catalog by catalog.
+
+    Big chains like Bilka run ~10 fliers with ~3000 offers in total, more than one paged
+    /offers query can return, so each catalog is fetched separately."""
+    geo = {"r_lat": LAT, "r_lng": LNG, "r_radius": RADIUS_M}
+    catalogs = get_json("catalogs", {"dealer_ids": dealer_id, **geo, "limit": 100})
+    if not isinstance(catalogs, list) or not catalogs:
+        return fetch_paged({"dealer_ids": dealer_id, **geo, "order_by": "page"})
+    offers: list[dict] = []
+    for cat in catalogs:
+        batch = fetch_paged({"catalog_ids": cat["id"], **geo, "order_by": "page"})
+        for o in batch:
+            o["_catalog_label"] = cat.get("label") or ""
+        offers.extend(batch)
+    return offers
+
+
+# ---------------------------------------------------------------- categories
+# The API's category_ids are empty for every offer, so categories come from keywords in the
+# offer heading. Danish glues words together ("grisekød", "proteinbar"), so a term matches
+# anywhere inside a word; "=term" must be a whole word and "term$" must end a word.
+# The first category that matches wins; "protein" is an extra tag on top of it.
+CATEGORIES = [
+    ("household", "Household & care", [
+        "vaskemiddel", "skyllemiddel", "opvask", "toiletpapir", "køkkenrulle", "papir", "shampoo", "balsam",
+        "tandpasta", "tandbørste", "deodorant", "deo", "bleer", "ble$", "sæbe", "showergel", "rengøring",
+        "affaldspose", "skraldepose", "barberskrab", "hudpleje", "creme", "makeup", "mascara", "vatrondel",
+        "plaster", "læbestift", "pleje", "kosmetik", "hårtørrer", "trimmer", "massage", "baume", "parfum", "=edp", "=edt", "eau de", "bodylotion", "serum", "neglelak", "hårkur", "barbermaskine", "tandtråd", "vaskeklude", "viskestykke", "opvaskemiddel", "kattegrus", "kattemad", "hundemad", "hunde", "katte", "foder"]),
+    ("meat", "Meat & fish", [
+        "kød", "kylling", "gris", "okse", "kalv", "=lam", "lammekød", "bacon", "pølse", "medister", "skinke", "hakket",
+        "fars", "steak", "bøf", "kalkun", "andebryst", "andelår", "flæsk", "frikadelle", "leverpostej", "salami", "pålæg",
+        "spegepølse", "mørbrad", "filet", "laks", "fisk", "rejer", "torsk", "=tun", "tunfisk", "sild",
+        "makrel", "rødspætte", "kebab", "salsiccia", "schnitzel", "nuggets", "ribbe", "culotte", "entrecote", "roastbeef", "hamburger"]),
+    ("dairy", "Dairy & eggs", [
+        "mælk", "=ost", "ost$", "oste", "skyr", "yoghurt", "smør", "fløde", "hytteost", "kvark", "=æg",
+        "æg$", "cheese", "mozzarella", "feta", "parmesan", "cheddar", "brie", "creme fraiche", "cremefraiche",
+        "budding", "mousse", "kefir", "ymer", "a38", "koldskål", "margarine", "lurpak", "risalamande", "kærgården", "bregott", "riberhus", "castello", "arla"]),
+    ("drinks", "Drinks", [
+        "=øl", "øl$", "pilsner", "=vin", "vin$", "rødvin", "hvidvin", "rosé", "cava", "prosecco", "champagne",
+        "sodavand", "juice", "cola", "kaffe", "=te", "vand$", "saft", "spiritus", "=gin", "vodka", "whisky",
+        "rom$", "likør", "energidrik", "drik", "smoothie", "cider", "nektar", "kakao", "espresso", "kapsler",
+        "pepsi", "gløgg", "brevte", "=brut", "chablis", "barolo", "rioja", "chianti", "bordeaux", "primitivo", "amarone", "ripasso", "latte", "chai", "kombucha", "mineralvand", "danskvand", "ribena", "rynkeby", "=0.0", "faxe", "tuborg", "carlsberg", "red bull", "monster", "booster", "fanta", "sprite", "drink"]),
+    ("bakery", "Bread & bakery", [
+        "brød", "boller", "bolle$", "rugbrød", "toast", "kage", "wienerbrød", "croissant", "baguette",
+        "pitabrød", "tortilla", "wraps", "knækbrød", "kringle", "snegl", "muffin", "donut", "flûte",
+        "pizzabund", "pastel de nata", "brioche", "rundstykke"]),
+    ("produce", "Fruit & veg", [
+        "æble", "banan", "kartof", "tomat", "agurk", "salat", "=løg", "løg$", "gulerød", "gulerødder",
+        "frugt", "grønt", "grøntsag", "appelsin", "mandarin", "clementin", "pære", "druer", "avocado",
+        "peberfrugt", "broccoli", "blomkål", "kål", "porre", "champignon", "svampe", "citron", "lime",
+        "melon", "ananas", "jordbær", "blåbær", "hindbær", "bær$", "kiwi", "spinat", "majs",
+        "hvidløg", "ingefær", "krydderurt", "persille", "rødbede", "selleri", "pastinak", "græskar"]),
+    ("snacks", "Snacks & sweets", [
+        "chips", "slik", "chokolade", "kiks", "nødder", "=is", "isvaffel", "flødeis", "isvaffel", "bar$", "popcorn",
+        "vingummi", "lakrids", "marcipan", "småkager", "cookies", "snack", "mandler", "peanuts", "flødebolle",
+        "pebernødder", "konfekt", "karamel", "bolsjer", "pringles", "haribo", "toms", "anthon berg",
+        "ritter sport", "m&m", "kinder", "twist", "guldbarre"]),
+    ("pantry", "Pantry & frozen", [
+        "pasta", "spaghetti", "=ris", "ris$", "nudler", "mel$", "hvedemel", "sukker", "olie", "ketchup",
+        "sauce", "dressing", "mayonnaise", "remoulade", "sennep", "konserves", "müsli", "musli", "granola",
+        "cornflakes", "havregryn", "morgenmad", "krydderi", "bouillon", "suppe", "pesto", "pizza", "lasagne",
+        "færdigret", "frost", "frossen", "fritter", "pommes", "bønner", "kikærter", "linser", "marmelade",
+        "syltetøj", "nutella", "honning", "peanutbutter", "jordnøddesmør", "eddike", "salt$", "dåse", "taco"]),
+]
+CATEGORY_NAMES = {key: name for key, name, _ in CATEGORIES} | {"protein": "Protein", "nonfood": "Non-food"}
+NONFOOD_CATALOG = ("nonfood", "non-food", "legetøj", "trend", "prosonic", "elektronik", "bolig", "have")
+
+
+def _term_re(term: str) -> str:
+    if term.startswith("="):
+        return rf"(?<![a-z0-9æøå]){re.escape(term[1:])}(?![a-z0-9æøå])"
+    if term.endswith("$"):
+        return rf"{re.escape(term[:-1])}(?![a-z0-9æøå])"
+    return re.escape(term)
+
+
+def _build_category_res():
+    return [(key, re.compile("|".join(_term_re(t) for t in terms))) for key, _, terms in CATEGORIES]
+
+
+_CATEGORY_RES = _build_category_res()
+
+
+def categorize(heading: str, catalog_label: str = "") -> list[str]:
+    """Return e.g. ['dairy', 'protein']. Offers from non-food fliers are 'nonfood'."""
+    text = " " + heading.lower().replace("-", " ") + " "
+    cats: list[str] = []
+    label = catalog_label.lower()
+    if any(w in label for w in NONFOOD_CATALOG):
+        cats.append("nonfood")
+    else:
+        for key, rx in _CATEGORY_RES:
+            if rx.search(text):
+                cats.append(key)
+                break
+    if "protein" in text:
+        cats.append("protein")
+    return cats
 
 
 def _num(value) -> float | None:
@@ -121,6 +224,10 @@ def quantity_text(q: dict | None) -> str:
     parts = []
     size, unit = q.get("size") or {}, (q.get("unit") or {}).get("symbol") or ""
     lo, hi = _num(size.get("from")), _num(size.get("to"))
+    if unit == "pcs":  # the size is itself a piece count ("1 pcs" on most non-weighed items)
+        if lo and (lo > 1 or (hi and hi > 1)):
+            parts.append(f"{lo:g} stk" if not hi or hi == lo else f"{lo:g}-{hi:g} stk")
+        lo = None
     if lo:
         fmt = lambda x: f"{x:g}".replace(".", ",")
         parts.append((fmt(lo) if not hi or hi == lo else f"{fmt(lo)}-{fmt(hi)}") + (f" {unit}" if unit else ""))
@@ -170,6 +277,7 @@ def slim(offer: dict, store_key: str) -> dict | None:
         "image": images.get("thumb") or images.get("view") or images.get("zoom"),
         "catalogId": offer.get("catalog_id"),
         "page": offer.get("catalog_page"),
+        "cats": categorize(heading, offer.get("_catalog_label") or ""),
     }
 
 
@@ -212,6 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "location": {"name": "Odense", "lat": LAT, "lng": LNG, "radius": RADIUS_M},
         "stores": stores_out,
+        "categories": [{"key": k, "name": n} for k, n in CATEGORY_NAMES.items()],
         "offers": offers_out,
     }
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

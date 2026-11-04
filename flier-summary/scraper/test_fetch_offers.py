@@ -50,16 +50,42 @@ class SlimTest(unittest.TestCase):
         self.assertEqual(fo.quantity_text(q), "1,5 l · 4 stk")
         self.assertEqual(fo.unit_price(30.0, q), "5,00 kr/l")
 
+    def test_pcs_unit(self):
+        one = {"unit": {"symbol": "pcs", "si": {"symbol": "pcs", "factor": 1}}, "size": {"from": 1, "to": 1}, "pieces": {"from": 1, "to": 1}}
+        self.assertEqual(fo.quantity_text(one), "")
+        self.assertEqual(fo.quantity_text(dict(one, size={"from": 10, "to": 10})), "10 stk")
+        self.assertEqual(fo.quantity_text(dict(one, pieces={"from": 2, "to": 2})), "2 stk")
+
     def test_missing_quantity(self):
         self.assertEqual(fo.quantity_text(None), "")
         self.assertEqual(fo.unit_price(10, {"unit": None}), "")
+
+
+class CategorizeTest(unittest.TestCase):
+    def test_food(self):
+        self.assertEqual(fo.categorize("Hakket dansk grisekød 8-12%"), ["meat"])
+        self.assertEqual(fo.categorize("Arla protein-milkshake*"), ["dairy", "protein"])
+        self.assertEqual(fo.categorize("Barebells spread proteinbar"), ["snacks", "protein"])
+        self.assertEqual(fo.categorize("Coca-Cola, Fanta eller Tuborg Squash"), ["drinks"])
+        self.assertEqual(fo.categorize("Godt papir"), ["household"])
+
+    def test_whole_word_terms(self):
+        self.assertEqual(fo.categorize("Bland selv slik"), ["snacks"])  # not "and" -> meat
+        self.assertEqual(fo.categorize("Raakraft hundesnacks"), ["household"])
+        self.assertEqual(fo.categorize("Dior Sauvage Parfum Spray"), ["household"])
+
+    def test_nonfood_catalog_and_unknown(self):
+        self.assertEqual(fo.categorize("Fjernstyret bil", "Bilka Nonfood Uge 46"), ["nonfood"])
+        self.assertEqual(fo.categorize("Verdi"), [])
 
 
 class MainTest(unittest.TestCase):
     def fake_get(self, path, params):
         if path == "dealers":
             return [{"id": s["id"], "name": s["name"], "branding": {"color": "ff0000"}} for s in fo.STORES]
-        if params["dealer_ids"] == "9ba51" and params["offset"] == 0:
+        if path == "catalogs":
+            return [{"id": "cat1"}, {"id": "cat2"}] if params["dealer_ids"] == "9ba51" else []
+        if params.get("catalog_ids") == "cat1" and params["offset"] == 0:
             return [OFFER, OFFER]  # duplicate is removed
         return []
 
@@ -71,6 +97,15 @@ class MainTest(unittest.TestCase):
         self.assertEqual(len(data["offers"]), 1)
         self.assertEqual([s["count"] for s in data["stores"]], [1, 0, 0, 0])
         self.assertEqual(data["stores"][0]["color"], "#ff0000")
+
+    def test_pagination_cap_keeps_fetched_offers(self):
+        def fake(path, params):
+            if params["offset"] >= fo.MAX_OFFSET - fo.PAGE_LIMIT:
+                raise RuntimeError("HTTP Error 400: PAGINATION_MAX_REACHED")
+            return [dict(OFFER, id=f"o{params['offset'] + i}") for i in range(fo.PAGE_LIMIT)]
+        with mock.patch.object(fo, "get_json", fake):
+            offers = fo.fetch_paged({"catalog_ids": "x"})
+        self.assertEqual(len(offers), fo.MAX_OFFSET - fo.PAGE_LIMIT)
 
     def test_no_offers_fails_without_writing(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(fo, "get_json", lambda p, q: []):

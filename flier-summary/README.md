@@ -5,6 +5,9 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 
 - **Offers** tab: everything valid today, or "Coming up" for fliers that start in the next days. Filter by store,
   search ("kaffe", "kylling", ...), sort by store, biggest discount, lowest price or name. Tap a card to see its full text.
+  **Featured for you** at the top shows today's offers that match your stars (product stars first, then watch words),
+  and matching cards in the list get a gold outline. **Category chips** (Protein, Meat & fish, Dairy & eggs, ...) come
+  from keywords in the offer name, because the flier API has no categories; odd products end up in "Other".
 - **Starred** tab: the products you starred. Stars remember the *product name*, not this week's offer, so a starred
   item lights up under "On sale now" whenever any of the four stores has it in a flier again (the red badge on the
   tab counts these). Items not on sale show where and for how much you last saw them.
