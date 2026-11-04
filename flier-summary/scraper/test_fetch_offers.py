@@ -95,7 +95,7 @@ class MainTest(unittest.TestCase):
             self.assertEqual(fo.main(["--out", str(out)]), 0)
             data = json.loads(out.read_text())
         self.assertEqual(len(data["offers"]), 1)
-        self.assertEqual([s["count"] for s in data["stores"]], [1, 0, 0, 0])
+        self.assertEqual([s["count"] for s in data["stores"]], [1] + [0] * (len(fo.STORES) - 1))
         self.assertEqual(data["stores"][0]["color"], "#ff0000")
 
     def test_pagination_cap_keeps_fetched_offers(self):
