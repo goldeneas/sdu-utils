@@ -133,6 +133,18 @@ class TranslationTest(unittest.TestCase):
         self.assertEqual(out, {"Kaffe": "Coffee", "Mælk": "EN Mælk"})
         self.assertEqual(sent[0], ["Mælk", "Ukendt"])  # one batch, then retried one by one
 
+    def test_unreachable_service_stops_at_once(self):
+        calls = []
+
+        def fake(lines):
+            calls.append(lines)
+            raise fo.TranslateError("HTTP Error 429")
+        names = [f"Vare {i} " + "x" * 200 for i in range(100)]  # many batches
+        with mock.patch.object(fo, "_translate_batch", fake), mock.patch.object(fo.time, "sleep", lambda s: None):
+            out = fo.translate_names(names, {"Kaffe": "Coffee"})
+        self.assertEqual(out, {})
+        self.assertEqual(len(calls), 1)
+
     def test_previous_translations_are_reused(self):
         with tempfile.TemporaryDirectory() as d:
             prev = Path(d) / "prev.json"

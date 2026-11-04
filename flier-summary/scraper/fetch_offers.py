@@ -289,6 +289,11 @@ def slim(offer: dict, store_key: str) -> dict | None:
 # joined by newlines and keeps the line breaks, so one request translates ~100 names.
 TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
 TRANSLATE_BATCH_CHARS = 3500
+TRANSLATE_BUDGET_S = 120  # stop translating after this long; the rest stays Danish until the next run
+
+
+class TranslateError(RuntimeError):
+    """The translation service is unreachable or refusing requests."""
 # Store and own-brand names the translator would otherwise turn into words ("Netto" -> "Net",
 # "Løgismose" -> "Onion mash"). They are swapped for placeholders like "BX0" while translating.
 KEEP_WORDS = ["Netto", "Løgismose", "Princip", "Premieur", "Xtra!", "Xtra", "Änglamark", "Salling", "Coop",
@@ -320,19 +325,22 @@ def _translate_batch(lines: list[str]) -> list[str] | None:
     params = urllib.parse.urlencode({"client": "gtx", "sl": "da", "tl": "en", "dt": "t"})
     req = urllib.request.Request(f"{TRANSLATE_URL}?{params}", data=body,
                                  headers={"User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"})
-    for attempt in range(3):
+    last: Exception | None = None
+    for attempt in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=30) as res:
+            with urllib.request.urlopen(req, timeout=20) as res:
                 data = json.load(res)
             text = "".join(seg[0] for seg in data[0] if seg and isinstance(seg[0], str))
             out = [line.strip() for line in text.split("\n")]
             if len(out) != len(lines):
                 return None
             return [_restore(en, kept) or "" for en, (_, kept) in zip(out, protected)]
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, TypeError, IndexError) as exc:
-            print(f"warning: translation request failed: {exc}", file=sys.stderr)
-            time.sleep(2 ** attempt)
-    return None
+        except (json.JSONDecodeError, TypeError, IndexError):
+            return None  # odd answer for this batch: the caller retries it name by name
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last = exc
+            time.sleep(2)
+    raise TranslateError(str(last))
 
 
 def translate_names(names: list[str], known: dict[str, str]) -> dict[str, str]:
@@ -351,18 +359,29 @@ def translate_names(names: list[str], known: dict[str, str]) -> dict[str, str]:
         size += len(n) + 1
     if cur:
         batches.append(cur)
-    failed = 0
-    for batch in batches:
-        out = _translate_batch(batch)
-        if out is None:
-            out = [(_translate_batch([n]) or [""])[0] for n in batch] if len(batch) > 1 else [""]
-        for da, en in zip(batch, out):
-            if en:
-                result[da] = en
-            else:
-                failed += 1
-        time.sleep(0.3)
-    print(f"translated {len(todo) - failed} new names ({len(result)} total, {failed} failed)", file=sys.stderr)
+    deadline = time.monotonic() + TRANSLATE_BUDGET_S
+    done = 0
+    try:
+        for batch in batches:
+            if time.monotonic() > deadline:
+                print("warning: translation time budget used up; the rest stays Danish", file=sys.stderr)
+                break
+            out = _translate_batch(batch)
+            if out is None:
+                out = []
+                for n in batch:
+                    if time.monotonic() > deadline:
+                        break
+                    out.append((_translate_batch([n]) or [""])[0])
+            for da, en in zip(batch, out):
+                if en:
+                    result[da] = en
+                    done += 1
+            time.sleep(0.3)
+    except TranslateError as exc:
+        # Blocked or down: give up for tonight instead of retrying thousands of names.
+        print(f"warning: translation stopped: {exc}", file=sys.stderr)
+    print(f"translated {done} of {len(todo)} new names ({len(result)} total)", file=sys.stderr)
     return result
 
 
