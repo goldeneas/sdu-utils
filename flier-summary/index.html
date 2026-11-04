@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<meta name="robots" content="noindex">
+		<meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
+		<meta name="theme-color" content="#151513" media="(prefers-color-scheme: dark)">
+		<title>Flier Summary</title>
+		<link rel="manifest" href="manifest.webmanifest">
+		<link rel="apple-touch-icon" href="icons/icon-180.png">
+		<link rel="icon" href="icons/icon-192.png">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-title" content="Tilbud">
+		<meta name="apple-mobile-web-app-status-bar-style" content="default">
+		<style>
+			:root {
+				--bg: #f4f3ef;
+				--sheet: #ffffff;
+				--ink: #171714;
+				--muted: #66665f;
+				--line: #e2e1db;
+				--chip: #ebeae4;
+				--accent: #b4231a;
+				--star: #e8a400;
+				--safe-top: env(safe-area-inset-top, 0px);
+				--safe-bottom: env(safe-area-inset-bottom, 0px);
+				--font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+				color-scheme: light dark;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #151513;
+					--sheet: #1f1f1c;
+					--ink: #f1f0ea;
+					--muted: #a3a29a;
+					--line: #33332e;
+					--chip: #2a2a26;
+					--accent: #ff6b5e;
+				}
+			}
+
+			* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+			html { background: var(--bg); }
+			body {
+				margin: 0; background: var(--bg); color: var(--ink);
+				font-family: var(--font); font-size: 16px; line-height: 1.3;
+				-webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+			}
+			button, input, select { font: inherit; color: inherit; }
+			button { border: 0; background: none; padding: 0; cursor: pointer; }
+			h1, h2, h3, p { margin: 0; }
+			[hidden] { display: none !important; }
+
+			.app { max-width: 640px; margin: 0 auto; padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 96px); }
+
+			header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+			header.top h1 { font-size: 28px; letter-spacing: -.02em; }
+			#status { font-size: 13px; color: var(--muted); text-align: right; }
+
+			/* ---------- controls ---------- */
+			.search { position: relative; margin-bottom: 10px; }
+			.search input {
+				width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+				background: var(--sheet); padding: 0 14px 0 40px; font-size: 16px; outline: none;
+			}
+			.search input:focus { border-color: var(--muted); }
+			.search svg { position: absolute; left: 13px; top: 13px; color: var(--muted); }
+
+			.row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+			.seg { display: inline-flex; background: var(--chip); border-radius: 10px; padding: 3px; }
+			.seg button { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+			.seg button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+			select#sort {
+				margin-left: auto; height: 34px; border-radius: 10px; border: 1px solid var(--line);
+				background: var(--sheet); padding: 0 8px; font-size: 14px;
+			}
+
+			.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px 8px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+			.chips::-webkit-scrollbar { display: none; }
+			.chip {
+				flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+				border-radius: 17px; background: var(--chip); font-size: 14px; font-weight: 600; border: 2px solid transparent;
+			}
+			.chip::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+			.chip.on { border-color: var(--c); background: var(--sheet); }
+			.chip .n { font-weight: 500; color: var(--muted); font-size: 12px; }
+			#count { font-size: 13px; color: var(--muted); margin: 4px 2px 8px; }
+
+			/* ---------- offer cards ---------- */
+			.list { display: grid; gap: 8px; }
+			.offer {
+				display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: start;
+				background: var(--sheet); border-radius: 14px; padding: 10px; border: 1px solid var(--line);
+			}
+			.thumb { width: 72px; height: 72px; border-radius: 10px; background: #fff; border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; }
+			@media (prefers-color-scheme: dark) { .thumb { background: #2b2b27; } }
+			.thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+			.body { min-width: 0; }
+			.top { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
+			.badge {
+				font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+				color: color-mix(in srgb, var(--c) 62%, black); background: color-mix(in srgb, var(--c) 16%, transparent); padding: 2px 6px; border-radius: 5px;
+			}
+			@media (prefers-color-scheme: dark) { .badge { color: color-mix(in srgb, var(--c) 55%, white); } }
+			.save { font-size: 11px; font-weight: 700; color: #fff; background: var(--accent); padding: 2px 6px; border-radius: 5px; }
+			.offer h3 { font-size: 16px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+			.meta, .valid { font-size: 13px; color: var(--muted); margin-top: 2px; }
+			.desc {
+				font-size: 13px; color: var(--muted); margin-top: 2px;
+				display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+			}
+			.offer.open .desc { -webkit-line-clamp: unset; }
+			.side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 64px; }
+			.price { font-size: 18px; font-weight: 750; white-space: nowrap; }
+			.pre { font-size: 13px; color: var(--muted); text-decoration: line-through; white-space: nowrap; }
+
+			.star { width: 40px; height: 40px; margin: -6px -6px 0 0; display: grid; place-items: center; border-radius: 50%; }
+			.star svg { fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linejoin: round; }
+			.star.on svg { fill: var(--star); stroke: var(--star); }
+			.star:active { background: var(--chip); }
+
+			.more { width: 100%; height: 44px; border-radius: 12px; background: var(--chip); font-weight: 600; margin-top: 4px; }
+			.empty { color: var(--muted); text-align: center; padding: 40px 12px; }
+
+			/* ---------- starred ---------- */
+			form#watch { display: flex; gap: 8px; margin-bottom: 6px; }
+			form#watch input {
+				flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+				background: var(--sheet); padding: 0 14px; font-size: 16px; outline: none;
+			}
+			form#watch button { height: 44px; padding: 0 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-weight: 650; }
+			.hint { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+			.section { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 2px 8px; }
+			.group { display: grid; gap: 6px; margin-bottom: 12px; }
+			.group-head { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+			.group-head strong { font-size: 17px; }
+			.group-head .star { margin: 0 -8px 0 auto; }
+			.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+			.offer.idle { opacity: .85; }
+			.pad { padding: 0 4px; }
+			.backup { display: flex; gap: 8px; justify-content: center; margin-top: 28px; }
+			.backup button, .backup label {
+				font-size: 13px; color: var(--muted); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer;
+			}
+			.backup input { display: none; }
+
+			/* ---------- tab bar ---------- */
+			nav.tabs {
+				position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 14px); z-index: 10;
+				display: flex; gap: 4px; padding: 5px; border-radius: 26px;
+				background: color-mix(in srgb, var(--sheet) 88%, transparent);
+				-webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+				border: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,.14);
+			}
+			nav.tabs button {
+				position: relative; display: flex; align-items: center; gap: 6px;
+				height: 42px; padding: 0 18px; border-radius: 21px; font-weight: 650; font-size: 15px; color: var(--muted);
+			}
+			nav.tabs button[aria-current="true"] { background: var(--ink); color: var(--bg); }
+			nav.tabs svg { fill: currentColor; }
+			#star-badge {
+				min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff;
+				font-size: 11px; font-weight: 700; display: inline-grid; place-items: center;
+			}
+		</style>
+		<script src="pwa.js" defer></script>
+		<script src="app.js"></script>
+	</head>
+	<body>
+		<div class="app">
+			<header class="top">
+				<h1 id="title">Offers</h1>
+				<p id="status">Loading…</p>
+			</header>
+
+			<main id="view-offers">
+				<div class="search">
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+					<input id="q" type="search" placeholder="Search offers (kaffe, kylling, …)" autocomplete="off" enterkeyhint="search" aria-label="Search offers">
+				</div>
+				<div class="chips" id="stores" aria-label="Stores"></div>
+				<div class="row">
+					<div class="seg" role="group" aria-label="When">
+						<button type="button" data-when="today">Valid today</button>
+						<button type="button" data-when="upcoming">Coming up</button>
+					</div>
+					<select id="sort" aria-label="Sort">
+						<option value="store">By store</option>
+						<option value="discount">Biggest discount</option>
+						<option value="price">Lowest price</option>
+						<option value="name">A–Z</option>
+					</select>
+				</div>
+				<p id="count"></p>
+				<div class="list" id="list"></div>
+			</main>
+
+			<main id="view-starred" hidden>
+				<form id="watch" autocomplete="off">
+					<input id="watch-word" type="text" placeholder="Watch a word, e.g. Zoégas" aria-label="Word to watch" enterkeyhint="done">
+					<button type="submit">Watch</button>
+				</form>
+				<p class="hint">Stars match by product name in every store's flier, so they show up again whenever the product is back on sale.</p>
+				<div class="list" id="starred"></div>
+				<div class="backup">
+					<button type="button" id="export">Back up stars</button>
+					<label>Restore<input type="file" id="import" accept="application/json,.json"></label>
+				</div>
+			</main>
+		</div>
+
+		<nav class="tabs" aria-label="Sections">
+			<button type="button" data-tab="offers">
+				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z"/></svg>Offers
+			</button>
+			<button type="button" data-tab="starred">
+				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.83 5.74 6.33.92-4.58 4.47 1.08 6.3L12 17.25l-5.66 2.98 1.08-6.3L2.84 9.46l6.33-.92z"/></svg>Starred
+				<span id="star-badge" hidden></span>
+			</button>
+		</nav>
+	</body>
+</html>
