@@ -13,6 +13,10 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
   tab counts these). Items not on sale show where and for how much you last saw them.
 - **Watch words**: on the Starred tab you can type a word like `Zoégas` or `oksemørbrad` to match every offer that
   contains it, even ones you have never seen.
+- **DA / EN** switch at the top: shows every product name in English instead of Danish. The setting is remembered
+  on the phone. Names are machine translated once a night by the fetcher (see below); search finds both the Danish and
+  the English name, and stars keep working on the Danish name, so switching never loses anything. The product page
+  shows the original Danish name under the English one, which is handy in the shop.
 - Stars live in the browser on your phone (`localStorage`). Use **Back up stars** / **Restore** to move them to
   another device or keep a copy before clearing site data.
 
@@ -26,6 +30,11 @@ small `data/offers.json` that the app loads. Only the Python standard library is
 python3 flier-summary/scraper/fetch_offers.py           # writes flier-summary/data/offers.json
 python3 -m unittest discover -s flier-summary/scraper  # offline tests
 ```
+
+The fetcher also adds an English `headingEn` to each offer using Google Translate's free web endpoint (no key).
+Store and own-brand names in `KEEP_WORDS` are left untouched, so "Netto" does not become "Net". The deploy passes
+yesterday's published file as `--previous`, so only new product names are translated each night; if translation
+fails the offers simply stay in Danish. Use `--no-translate` to skip it.
 
 The store list (names, dealer ids) and the location are at the top of `fetch_offers.py`. If a dealer id stops
 working the script looks the chain up by name and prints a note.

@@ -283,9 +283,106 @@ def slim(offer: dict, store_key: str) -> dict | None:
     }
 
 
+# ---------------------------------------------------------------- English names
+# Product names are translated once per night here, so the app can switch to English without
+# any API key or network call on the phone. Google's free web endpoint takes a batch of lines
+# joined by newlines and keeps the line breaks, so one request translates ~100 names.
+TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
+TRANSLATE_BATCH_CHARS = 3500
+# Store and own-brand names the translator would otherwise turn into words ("Netto" -> "Net",
+# "Løgismose" -> "Onion mash"). They are swapped for placeholders like "BX0" while translating.
+KEEP_WORDS = ["Netto", "Løgismose", "Princip", "Premieur", "Xtra!", "Xtra", "Änglamark", "Salling", "Coop",
+              "Bilka", "SuperBrugsen", "Brugsen", "365discount", "Kærgården", "Gestus", "Harmonie", "Irma",
+              "Galbani", "Graasten", "Thise", "Naturmælk", "Øllingegaard", "Rynkeby", "Tulip", "Steff Houlberg"]
+_KEEP_RE = re.compile("|".join(rf"(?<![\wæøå]){re.escape(w)}(?![\wæøå])" for w in KEEP_WORDS), re.IGNORECASE)
+
+
+def _protect(line: str) -> tuple[str, list[str]]:
+    kept: list[str] = []
+
+    def sub(m: re.Match) -> str:
+        kept.append(m.group(0))
+        return f"BX{len(kept) - 1}"
+    return _KEEP_RE.sub(sub, line), kept
+
+
+def _restore(line: str, kept: list[str]) -> str | None:
+    for i in reversed(range(len(kept))):
+        if f"BX{i}" not in line:
+            return None
+        line = line.replace(f"BX{i}", kept[i])
+    return line
+
+
+def _translate_batch(lines: list[str]) -> list[str] | None:
+    protected = [_protect(line) for line in lines]
+    body = urllib.parse.urlencode({"q": "\n".join(p for p, _ in protected)}).encode()
+    params = urllib.parse.urlencode({"client": "gtx", "sl": "da", "tl": "en", "dt": "t"})
+    req = urllib.request.Request(f"{TRANSLATE_URL}?{params}", data=body,
+                                 headers={"User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                data = json.load(res)
+            text = "".join(seg[0] for seg in data[0] if seg and isinstance(seg[0], str))
+            out = [line.strip() for line in text.split("\n")]
+            if len(out) != len(lines):
+                return None
+            return [_restore(en, kept) or "" for en, (_, kept) in zip(out, protected)]
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, TypeError, IndexError) as exc:
+            print(f"warning: translation request failed: {exc}", file=sys.stderr)
+            time.sleep(2 ** attempt)
+    return None
+
+
+def translate_names(names: list[str], known: dict[str, str]) -> dict[str, str]:
+    """Return {danish name: english name} for every name that could be translated.
+
+    `known` holds last night's translations, so only new names are sent. A batch whose line
+    count comes back wrong is retried one name at a time; failures just keep the Danish name."""
+    result = {n: known[n] for n in names if n in known}
+    todo = [n for n in dict.fromkeys(names) if n not in result and "\n" not in n]
+    batches, cur, size = [], [], 0
+    for n in todo:
+        if cur and size + len(n) > TRANSLATE_BATCH_CHARS:
+            batches.append(cur)
+            cur, size = [], 0
+        cur.append(n)
+        size += len(n) + 1
+    if cur:
+        batches.append(cur)
+    failed = 0
+    for batch in batches:
+        out = _translate_batch(batch)
+        if out is None:
+            out = [(_translate_batch([n]) or [""])[0] for n in batch] if len(batch) > 1 else [""]
+        for da, en in zip(batch, out):
+            if en:
+                result[da] = en
+            else:
+                failed += 1
+        time.sleep(0.3)
+    print(f"translated {len(todo) - failed} new names ({len(result)} total, {failed} failed)", file=sys.stderr)
+    return result
+
+
+def load_known_translations(path: str | None) -> dict[str, str]:
+    """English names from a previous offers.json (the one currently published)."""
+    if not path:
+        return {}
+    try:
+        offers = json.loads(Path(path).read_text(encoding="utf-8")).get("offers", [])
+    except (OSError, ValueError, AttributeError) as exc:
+        print(f"note: no previous translations ({exc})", file=sys.stderr)
+        return {}
+    return {o["heading"]: o["headingEn"] for o in offers if isinstance(o, dict) and o.get("headingEn") and o.get("heading")}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "data" / "offers.json"))
+    ap.add_argument("--previous", help="earlier offers.json whose English names are reused instead of re-translated")
+    ap.add_argument("--no-translate", action="store_true", help="skip the English names")
     args = ap.parse_args(argv)
 
     dealers = resolve_dealers(STORES)
@@ -315,6 +412,13 @@ def main(argv: list[str] | None = None) -> int:
     if not offers_out:
         print("error: no offers fetched from any store; not writing output", file=sys.stderr)
         return 1
+
+    if not args.no_translate:
+        english = translate_names([o["heading"] for o in offers_out], load_known_translations(args.previous))
+        for o in offers_out:
+            en = english.get(o["heading"])
+            if en and en != o["heading"]:
+                o["headingEn"] = en
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
