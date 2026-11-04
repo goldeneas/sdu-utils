@@ -1,5 +1,5 @@
 // Offline-capable service worker. Bump VERSION when you change the app files so installed copies refresh.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `flier-summary-${VERSION}`;
 const PRECACHE = [
   './',

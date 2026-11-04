@@ -159,7 +159,7 @@
   function offerCard(o) {
     const d = discount(o);
     const meta = [o.quantity, o.unitPrice].filter(Boolean).join(' · ');
-    const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => card.classList.toggle('open') },
+    const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, o.heading),
       el('div', { class: 'body' },
         el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
@@ -260,7 +260,7 @@
 
   function featuredCard(o) {
     const d = discount(o);
-    return el('article', { class: 'fcard' },
+    return el('article', { class: 'fcard', tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, o.heading),
       el('div', { class: 'top' }, storeBadge(o.store), d >= 5 ? el('span', { class: 'save' }, `−${d}%`) : null),
       el('h3', {}, o.heading),
@@ -371,6 +371,78 @@
     if (!state.data) return;
     $('#status').textContent = `Updated ${ago(state.data.generatedAt)} · ${state.data.location?.name || ''}`;
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
+    renderDetail();
+  }
+
+  // ---------------------------------------------------------------- detail page
+  // Tapping an offer opens #offer/<id> as a full-screen page over the list, so the phone's back
+  // gesture closes it and the list keeps its scroll position.
+  const detailId = () => (location.hash.startsWith('#offer/') ? decodeURIComponent(location.hash.slice(7)) : null);
+  let openedFromList = false;
+
+  function openDetail(o) {
+    openedFromList = true;
+    location.hash = 'offer/' + encodeURIComponent(o.id);
+  }
+  function closeDetail() {
+    if (openedFromList) { openedFromList = false; history.back(); } else { history.replaceState(null, '', location.pathname + location.search); renderDetail(); }
+  }
+
+  const daysLeft = (iso) => Math.ceil((new Date(iso) - now()) / 86400000);
+
+  function renderDetail() {
+    const box = $('#view-detail');
+    const id = detailId();
+    document.documentElement.classList.toggle('detail-open', !!id);
+    box.hidden = !id;
+    if (!id) { box.replaceChildren(); return; }
+    if (!state.data) { box.replaceChildren(el('p', { class: 'empty' }, 'Loading…')); return; }
+    const o = state.data.offers.find((x) => x.id === id);
+    const back = el('button', { class: 'back', type: 'button', 'aria-label': 'Back', onclick: closeDetail });
+    back.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+    if (!o) {
+      box.replaceChildren(el('div', { class: 'detail-bar' }, back),
+        el('p', { class: 'empty' }, 'This offer is no longer in the fliers.'));
+      return;
+    }
+    const d = discount(o);
+    const s = storeInfo(o.store);
+    const img = el('img', { src: o.imageLarge || o.image, alt: o.heading, decoding: 'async', referrerpolicy: 'no-referrer' });
+    img.addEventListener('error', () => { if (o.image && img.src !== o.image) img.src = o.image; });
+    const pic = el('div', { class: 'detail-pic', role: 'button', tabindex: '0', 'aria-label': 'Zoom picture',
+      onclick: () => pic.classList.toggle('zoomed') }, img);
+    const t = now();
+    const upcoming = isUpcoming(o, t);
+    const left = o.till ? daysLeft(o.till) : null;
+    const when = upcoming ? `Starts ${fmtDay(o.from)}, until ${fmtDay(o.till)}`
+      : [o.from ? `${fmtDay(o.from)} – ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`,
+        left != null ? (left <= 1 ? 'last day today' : `${left} days left`) : ''].filter(Boolean).join(' · ');
+    const others = state.data.offers
+      .filter((x) => x.id !== o.id && (isCurrent(x, t) || isUpcoming(x, t)) && matches({ key: o.heading }, x))
+      .sort((a, b) => (a.price ?? 1e9) - (b.price ?? 1e9)).slice(0, 6);
+    const rows = [
+      o.quantity ? ['Amount', o.quantity] : null,
+      o.unitPrice ? ['Unit price', o.unitPrice] : null,
+      ['Valid', when],
+      o.page ? ['In the flier', `${s.name}, page ${o.page}`] : null,
+    ].filter(Boolean);
+    box.replaceChildren(
+      el('div', { class: 'detail-bar' }, back, el('span', { class: 'badge', style: `--c:${s.color || '#666'}` }, s.name), starButton(o)),
+      pic,
+      el('p', { class: 'zoom-hint' }, 'Tap the picture to zoom'),
+      el('div', { class: 'detail-body' },
+        el('h2', {}, o.heading),
+        el('div', { class: 'detail-price' },
+          el('span', { class: 'price' }, kr(o.price)),
+          o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
+          d >= 1 ? el('span', { class: 'save' }, `Save ${kr(Math.round((o.prePrice - o.price) * 100) / 100)} · −${d}%`) : null),
+        o.description ? el('p', { class: 'detail-desc' }, o.description) : null,
+        el('dl', { class: 'facts' }, rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
+        others.length ? el('h3', { class: 'section' }, 'Similar offers') : null,
+        others.length ? el('div', { class: 'list' }, others.map(offerCard)) : null,
+      ),
+    );
+    box.scrollTop = 0;
   }
 
   // ---------------------------------------------------------------- backup (stars live only on this device)
@@ -415,6 +487,8 @@
     $('#import').addEventListener('change', (e) => { if (e.target.files[0]) importStars(e.target.files[0]); e.target.value = ''; });
 
     if (location.hash === '#starred') state.prefs.tab = 'starred';
+    window.addEventListener('hashchange', () => { if (!detailId()) openedFromList = false; renderDetail(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && detailId()) closeDetail(); });
     render();
     loadData();
     // Re-check when the app comes back to the foreground (an installed PWA is often left open for days).
