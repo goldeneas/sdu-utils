@@ -49,8 +49,16 @@
   const tried = new Set();
   function english(heading, fromData) {
     const en = fromData || englishByHeading.get(heading) || enCache[heading];
-    if (!en && !tried.has(heading)) wanted.add(heading);
+    if (!en && !tried.has(heading)) { wanted.add(heading); scheduleTranslate(); }
     return en;
+  }
+  // Any render that shows a name we don't have yet (the first paint, "Show more", a filter change,
+  // the detail page) queues it here, so translation doesn't depend on which code path drew it.
+  let translateQueued = false;
+  function scheduleTranslate() {
+    if (translateQueued) return;
+    translateQueued = true;
+    setTimeout(() => { translateQueued = false; translateWanted(); }, 0);
   }
   const name = (o) => (state.prefs.en && english(o.heading, o.headingEn)) || o.heading;
   const sortName = (o) => (state.prefs.en && (o.headingEn || enCache[o.heading])) || o.heading;  // never asks for new translations
@@ -93,7 +101,9 @@
     } catch { /* offline or blocked: names stay Danish */ }
     translating = false;
     if (got) { save(EN_KEY, enCache); render(); }
+    if (wanted.size) scheduleTranslate();  // names that were drawn while this batch was running
   }
+  window.addEventListener('online', () => { if (state.prefs.en) translateWanted(); });
 
   // ---------------------------------------------------------------- categories
   // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
@@ -501,7 +511,6 @@
     $('#status').textContent = [ago(state.data.generatedAt), (state.data.location?.name || '').toUpperCase()].filter(Boolean).join(' - ');
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
-    if (state.prefs.en) translateWanted();
   }
 
   // ---------------------------------------------------------------- detail page
