@@ -24,6 +24,7 @@
 				--chip: #ebeae4;
 				--accent: #b4231a;
 				--star: #e8a400;
+				--green: #1e9a4b;
 				--safe-top: env(safe-area-inset-top, 0px);
 				--safe-bottom: env(safe-area-inset-bottom, 0px);
 				--font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -38,6 +39,7 @@
 					--line: #33332e;
 					--chip: #2a2a26;
 					--accent: #ff6b5e;
+					--green: #45cf78;
 				}
 			}
 
@@ -191,8 +193,7 @@
 			.bk { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; }
 			.bk svg { fill: none; stroke: var(--muted); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 			.bk:active { background: var(--chip); }
-			.bk.on { background: var(--ink); }
-			.bk.on svg { stroke: var(--bg); }
+			.bk.on svg { stroke: var(--green); stroke-width: 2.4; }
 			.fprice .bk { margin: 0 -2px -6px auto; width: 36px; height: 36px; }
 			.fprice .bk + .star { margin-left: 0; }
 			.more { width: 100%; height: 44px; border-radius: 12px; background: var(--chip); font-weight: 600; margin-top: 4px; }
