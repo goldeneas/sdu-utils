@@ -24,6 +24,7 @@
 				--chip: #ebeae4;
 				--accent: #b4231a;
 				--star: #e8a400;
+				--green: #1e9a4b;
 				--safe-top: env(safe-area-inset-top, 0px);
 				--safe-bottom: env(safe-area-inset-bottom, 0px);
 				--font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -38,6 +39,7 @@
 					--line: #33332e;
 					--chip: #2a2a26;
 					--accent: #ff6b5e;
+					--green: #45cf78;
 				}
 			}
 
@@ -186,6 +188,15 @@
 			.star.on svg { fill: var(--star); stroke: var(--star); }
 			.star:active { background: var(--chip); }
 
+			.side .acts { display: flex; margin: -6px -6px 0 0; }
+			.side .acts .star { margin: 0; }
+			.bk { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; }
+			.bk svg { fill: none; stroke: var(--muted); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+			.bk:active { background: var(--chip); }
+			.bk.on svg { stroke: var(--green); fill: var(--green); }
+			.bk svg .h { fill: none; }
+			.fprice .bk { margin: 0 -2px -6px auto; width: 36px; height: 36px; }
+			.fprice .bk + .star { margin-left: 0; }
 			.more { width: 100%; height: 44px; border-radius: 12px; background: var(--chip); font-weight: 600; margin-top: 4px; }
 			.empty { color: var(--muted); text-align: center; padding: 40px 12px; }
 
@@ -242,6 +253,57 @@
 			.facts dt { color: var(--muted); }
 			.facts dd { margin: 0; }
 
+			/* ---------- cart ---------- */
+			#cart-form { display: flex; gap: 8px; margin-bottom: 6px; }
+			#cart-form input {
+				flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+				background: var(--sheet); padding: 0 14px; font-size: 16px; outline: none;
+			}
+			#cart-form button { height: 44px; padding: 0 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-weight: 650; }
+			.citem {
+				display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+				background: var(--sheet); border-radius: 14px; padding: 8px 6px 8px 8px; border: 1px solid var(--line);
+			}
+			.citem.has-pic { grid-template-columns: auto 52px 1fr auto; }
+			.citem .thumb { width: 52px; height: 52px; border-radius: 8px; }
+			.citem .body { cursor: default; }
+			.citem.link .body, .citem.link .thumb { cursor: pointer; }
+			.citem h3 { font-size: 16px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+			.citem .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+			.citem .meta .price { font-size: 14px; color: var(--ink); }
+			.citem .deal { color: var(--accent); font-weight: 600; cursor: pointer; }
+			.citem.done { opacity: .55; }
+			.citem.done h3 { text-decoration: line-through; }
+			.tick {
+				width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%;
+			}
+			.tick span {
+				width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center;
+			}
+			.tick[aria-checked="true"] span { background: var(--ink); border-color: var(--ink); }
+			.tick svg { stroke: var(--bg); opacity: 0; }
+			.tick[aria-checked="true"] svg { opacity: 1; }
+			.rm { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); }
+			.rm:active, .tick:active { background: var(--chip); }
+			.cart-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; padding: 0 2px; }
+			.cart-foot .total { font-size: 14px; color: var(--muted); }
+			.cart-foot .total b { color: var(--ink); font-size: 16px; }
+			.cart-foot .acts { display: flex; gap: 8px; margin-left: auto; }
+			.cart-foot button { font-size: 14px; font-weight: 600; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); }
+			.cart-foot button.danger { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+			.cartbtn {
+				display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; margin-top: 14px;
+				border-radius: 14px; background: var(--ink); color: var(--bg); font-weight: 700; font-size: 16px;
+			}
+			.cartbtn svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+			.cartbtn.in { background: var(--chip); color: var(--ink); }
+			#cart-badge {
+				min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ink); color: var(--bg);
+				font-size: 11px; font-weight: 700; display: inline-grid; place-items: center;
+			}
+			nav.tabs button[aria-current="true"] #cart-badge { background: var(--bg); color: var(--ink); }
+			nav.tabs .cart-ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 			/* ---------- tab bar ---------- */
 			nav.tabs {
 				position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 14px); z-index: 10;
@@ -252,7 +314,7 @@
 			}
 			nav.tabs button {
 				position: relative; display: flex; align-items: center; gap: 6px;
-				height: 42px; padding: 0 18px; border-radius: 21px; font-weight: 650; font-size: 15px; color: var(--muted);
+				height: 42px; padding: 0 15px; border-radius: 21px; font-weight: 650; font-size: 15px; color: var(--muted);
 			}
 			nav.tabs button[aria-current="true"] { background: var(--ink); color: var(--bg); }
 			nav.tabs svg { fill: currentColor; }
@@ -303,6 +365,22 @@
 					<label>Restore<input type="file" id="import" accept="application/json,.json"></label>
 				</div>
 			</main>
+
+			<main id="view-cart" hidden>
+				<form id="cart-form" autocomplete="off">
+					<input id="cart-word" type="text" placeholder="Add an item, e.g. mælk" aria-label="Item to buy" enterkeyhint="done">
+					<button type="submit">Add</button>
+				</form>
+				<p class="hint">A one-off shopping list. Add products from their offer page or type anything here. Tick items off as you shop; unlike stars, nothing comes back next week.</p>
+				<div class="list" id="cart"></div>
+				<div class="cart-foot" id="cart-foot" hidden>
+					<p class="total" id="cart-total"></p>
+					<div class="acts">
+						<button type="button" id="cart-clear-done">Clear ticked</button>
+						<button type="button" class="danger" id="cart-empty">Empty cart</button>
+					</div>
+				</div>
+			</main>
 		</div>
 
 		<div class="scrim" id="filter-scrim" hidden></div>
@@ -339,6 +417,10 @@
 			<button type="button" data-tab="starred">
 				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.83 5.74 6.33.92-4.58 4.47 1.08 6.3L12 17.25l-5.66 2.98 1.08-6.3L2.84 9.46l6.33-.92z"/></svg>Starred
 				<span id="star-badge" hidden></span>
+			</button>
+			<button type="button" data-tab="cart">
+				<svg class="cart-ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>Cart
+				<span id="cart-badge" hidden></span>
 			</button>
 		</nav>
 	</body>
