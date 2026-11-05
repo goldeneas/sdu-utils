@@ -13,7 +13,7 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
   tab counts these). Items not on sale show where and for how much you last saw them.
 - **Watch words**: on the Starred tab you can type a word like `Zoégas` or `oksemørbrad` to match every offer that
   contains it, even ones you have never seen.
-- **Cart** tab: a one-off shopping list, separate from stars. Tap **Add to cart** on a product page to add that
+- **Cart** tab: a one-off shopping list, separate from stars. Tap the basket next to the star on any offer (or **Add to cart** on its product page) to add that
   exact offer (store, price, picture, end date), or type anything ("mælk") at the top of the tab; typed items show
   the cheapest offer that matches them today. Tick items off as you shop, remove one with ×, clear the ticked ones,
   or empty the whole cart. Unlike stars, nothing comes back next week. The badge on the tab counts what is left to buy.

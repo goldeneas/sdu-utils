@@ -202,6 +202,19 @@
     return b;
   }
 
+  const BASKET_SVG = '<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>';
+
+  function basketButton(offer) {
+    const on = !!inCart(offer);
+    const b = el('button', {
+      class: 'bk' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on),
+      'aria-label': on ? `Remove ${name(offer)} from cart` : `Add ${name(offer)} to cart`,
+      onclick: (e) => { e.stopPropagation(); toggleCart(offer); },
+    });
+    b.innerHTML = BASKET_SVG;
+    return b;
+  }
+
   function storeBadge(key) {
     const s = storeInfo(key);
     return el('span', { class: 'badge', style: `--c:${s.color || '#666'}` }, s.name);
@@ -230,7 +243,7 @@
         el('p', { class: 'valid' }, isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
       ),
       el('div', { class: 'side' },
-        starButton(o),
+        el('div', { class: 'acts' }, basketButton(o), starButton(o)),
         el('div', { class: 'price' }, kr(o.price)),  // the old price is shown on the product page only
       ),
     );
@@ -399,7 +412,7 @@
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
         el('span', { class: 'price' }, kr(o.price)),
-        starButton(o)),
+        basketButton(o), starButton(o)),
     );
   }
 
