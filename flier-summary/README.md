@@ -13,6 +13,10 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
   tab counts these). Items not on sale show where and for how much you last saw them.
 - **Watch words**: on the Starred tab you can type a word like `Zoégas` or `oksemørbrad` to match every offer that
   contains it, even ones you have never seen.
+- **Cart** tab: a one-off shopping list, separate from stars. Tap **Add to cart** on a product page to add that
+  exact offer (store, price, picture, end date), or type anything ("mælk") at the top of the tab; typed items show
+  the cheapest offer that matches them today. Tick items off as you shop, remove one with ×, clear the ticked ones,
+  or empty the whole cart. Unlike stars, nothing comes back next week. The badge on the tab counts what is left to buy.
 - **DA / EN** switch at the top: shows every product name in English instead of Danish. The setting is remembered
   on the phone. Names are machine translated by the fetcher when it can (see below); Google often refuses requests from GitHub's servers, so the phone translates the names on screen itself and keeps them in `localStorage`. Search finds both the Danish and
   the English name, and stars keep working on the Danish name, so switching never loses anything. The product page

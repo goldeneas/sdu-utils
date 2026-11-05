@@ -5,11 +5,13 @@
 
   const STAR_KEY = 'flier-summary:stars';
   const PREF_KEY = 'flier-summary:prefs';
+  const CART_KEY = 'flier-summary:cart';
   const $ = (sel) => document.querySelector(sel);
 
   const state = {
     data: null,
     stars: load(STAR_KEY, []),
+    cart: load(CART_KEY, []),
     prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
   };
 
@@ -21,6 +23,7 @@
   }
   const saveStars = () => save(STAR_KEY, state.stars);
   const savePrefs = () => save(PREF_KEY, state.prefs);
+  const saveCart = () => save(CART_KEY, state.cart);
 
   // ---------------------------------------------------------------- matching
   // A star remembers the product name, not the offer id, so it matches again in next week's fliers
@@ -485,18 +488,124 @@
     return b;
   }
 
+  // ---------------------------------------------------------------- shopping cart
+  // A one-off list, unlike stars: an item is either a specific offer (added from its product page,
+  // keeps the store, price and picture it had) or free text ("mælk"). Free-text items show the
+  // cheapest offer that matches them today, so you can see where it is on sale.
+  const inCart = (o) => state.cart.find((c) => c.offer?.id === o.id);
+
+  function toggleCart(o) {
+    const existing = inCart(o);
+    if (existing) state.cart = state.cart.filter((c) => c !== existing);
+    else {
+      state.cart.unshift({
+        id: 'o:' + o.id, addedAt: new Date().toISOString(), done: false,
+        offer: { id: o.id, heading: o.heading, headingEn: o.headingEn, store: o.store, price: o.price, image: o.image, till: o.till, quantity: o.quantity },
+      });
+    }
+    saveCart(); render();
+  }
+
+  function addCartText(text) {
+    const t = text.trim();
+    if (!t) return;
+    if (state.cart.some((c) => !c.offer && norm(c.text) === norm(t))) return;
+    state.cart.unshift({ id: 't:' + Date.now(), addedAt: new Date().toISOString(), done: false, text: t });
+    saveCart(); render();
+  }
+
+  const setCart = (list) => { state.cart = list; saveCart(); render(); };
+
+  function bestDealFor(text) {
+    if (!state.data || words(text).length === 0) return null;
+    const t = now();
+    const hits = state.data.offers.filter((o) => isCurrent(o, t) && matches({ key: text }, o));
+    return hits.length ? { best: hits.reduce((a, b) => ((b.price ?? 1e9) < (a.price ?? 1e9) ? b : a)), n: hits.length } : null;
+  }
+
+  const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const X_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  function cartRow(item) {
+    const o = item.offer;
+    const live = o && state.data?.offers.find((x) => x.id === o.id);
+    const label = o ? name(live || o) : item.text;
+    const tick = el('button', {
+      class: 'tick', type: 'button', role: 'checkbox', 'aria-checked': String(!!item.done), 'aria-label': `Got ${label}`,
+      onclick: () => { item.done = !item.done; saveCart(); render(); },
+    }, el('span'));
+    tick.firstChild.innerHTML = CHECK_SVG;
+    const rm = el('button', { class: 'rm', type: 'button', 'aria-label': `Remove ${label}`,
+      onclick: () => setCart(state.cart.filter((c) => c !== item)) });
+    rm.innerHTML = X_SVG;
+
+    let meta;
+    if (o) {
+      const ended = o.till && new Date(o.till) < now();
+      meta = [storeBadge(o.store), o.price != null ? el('span', { class: 'price' }, kr(o.price)) : null,
+        o.till ? el('span', {}, ended ? 'offer ended' : `until ${fmtDay(o.till)}`) : null];
+    } else {
+      const deal = item.done ? null : bestDealFor(item.text);
+      meta = deal ? [el('span', { class: 'deal', onclick: () => openDetail(deal.best) },
+        `On sale at ${storeInfo(deal.best.store).name}, ${kr(deal.best.price)}${deal.n > 1 ? ` (+${deal.n - 1} more)` : ''}`)] : null;
+    }
+    const open = live ? () => openDetail(live) : null;
+    return el('div', { class: 'citem' + (o ? ' has-pic' : '') + (live ? ' link' : '') + (item.done ? ' done' : '') },
+      tick,
+      o ? (() => { const th = thumb(o.image, label); if (open) th.addEventListener('click', open); return th; })() : null,
+      el('div', { class: 'body', onclick: open },
+        el('h3', {}, label),
+        meta ? el('p', { class: 'meta' }, meta) : null),
+      rm);
+  }
+
+  function renderCart() {
+    const box = $('#cart');
+    box.replaceChildren();
+    const todo = state.cart.filter((c) => !c.done);
+    const done = state.cart.filter((c) => c.done);
+    $('#cart-foot').hidden = !state.cart.length;
+    $('#cart-clear-done').hidden = !done.length;
+    if (!state.cart.length) {
+      box.append(el('p', { class: 'empty' }, 'Your cart is empty. Open an offer and tap "Add to cart", or type an item above.'));
+      return;
+    }
+    todo.forEach((c) => box.append(cartRow(c)));
+    if (done.length) {
+      box.append(el('h2', { class: 'section' }, `In the basket · ${done.length}`));
+      done.forEach((c) => box.append(cartRow(c)));
+    }
+    const priced = state.cart.filter((c) => c.offer?.price != null);
+    const total = Math.round(priced.reduce((a, c) => a + c.offer.price, 0) * 100) / 100;
+    $('#cart-total').replaceChildren(...(priced.length ? ['Offers total ', el('b', {}, kr(total))] : [`${state.cart.length} item${state.cart.length === 1 ? '' : 's'}`]));
+  }
+
+  function cartButton(o) {
+    const on = !!inCart(o);
+    const b = el('button', { class: 'cartbtn' + (on ? ' in' : ''), type: 'button', 'aria-pressed': String(on), onclick: () => toggleCart(o) });
+    b.innerHTML = on
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>In your cart · tap to remove'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>Add to cart';
+    return b;
+  }
+
   function render() {
     const tab = state.prefs.tab;
     $('#view-offers').hidden = tab !== 'offers';
     $('#view-starred').hidden = tab !== 'starred';
-    $('#title').textContent = tab === 'offers' ? 'Offers' : 'Starred';
+    $('#view-cart').hidden = tab !== 'cart';
+    $('#title').textContent = { offers: 'Offers', starred: 'Starred', cart: 'Cart' }[tab] || 'Offers';
     for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-current', String(b.dataset.tab === tab));
     for (const b of document.querySelectorAll('[data-lang]')) b.setAttribute('aria-pressed', String((b.dataset.lang === 'en') === !!state.prefs.en));
 
     const live = starsOnSale().filter((r) => r.hits.length).length;
     $('#star-badge').textContent = live || '';
     $('#star-badge').hidden = !live;
+    const toBuy = state.cart.filter((c) => !c.done).length;
+    $('#cart-badge').textContent = toBuy || '';
+    $('#cart-badge').hidden = !toBuy;
 
+    if (tab === 'cart') renderCart();  // the cart works before the offers have loaded
     if (!state.data) return;
     $('#status').textContent = [ago(state.data.generatedAt), (state.data.location?.name || '').toUpperCase()].filter(Boolean).join(' - ');
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
@@ -567,6 +676,7 @@
           el('span', { class: 'price' }, kr(o.price)),
           o.prePrice ? el('span', { class: 'pre' }, kr(o.prePrice)) : null,
           d >= 1 ? el('span', { class: 'save' }, `Save ${kr(Math.round((o.prePrice - o.price) * 100) / 100)}`) : null),
+        cartButton(o),
         o.description ? el('p', { class: 'detail-desc' }, o.description) : null,
         el('dl', { class: 'facts' }, rows.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
         others.length ? el('h3', { class: 'section' }, 'Similar offers') : null,
@@ -624,10 +734,18 @@
       addWatchWord($('#watch-word').value);
       $('#watch-word').value = '';
     });
+    $('#cart-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      addCartText($('#cart-word').value);
+      $('#cart-word').value = '';
+    });
+    $('#cart-clear-done').addEventListener('click', () => setCart(state.cart.filter((c) => !c.done)));
+    $('#cart-empty').addEventListener('click', () => { if (confirm('Empty the cart? This removes every item.')) setCart([]); });
     $('#export').addEventListener('click', exportStars);
     $('#import').addEventListener('change', (e) => { if (e.target.files[0]) importStars(e.target.files[0]); e.target.value = ''; });
 
     if (location.hash === '#starred') state.prefs.tab = 'starred';
+    if (location.hash === '#cart') state.prefs.tab = 'cart';
     window.addEventListener('hashchange', () => { if (!detailId()) openedFromList = false; renderDetail(); });
     document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (!$('#filters').hidden) closeFilters(); else if (detailId()) closeDetail(); });
     render();
