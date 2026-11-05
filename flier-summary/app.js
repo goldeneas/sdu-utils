@@ -113,13 +113,6 @@
   const kr = (n) => (n == null ? '' : (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')) + ' kr');
   const discount = (o) => (o.prePrice && o.price ? Math.round((1 - o.price / o.prePrice) * 100) : 0);
 
-  function ago(iso) {
-    const mins = Math.round((Date.now() - new Date(iso)) / 60000);
-    if (mins < 60) return `${Math.max(mins, 1)} min ago`;
-    const h = Math.round(mins / 60);
-    if (h < 36) return `${h} h ago`;
-    return `${Math.round(h / 24)} days ago`;
-  }
 
   // ---------------------------------------------------------------- data
   async function loadData() {
@@ -422,9 +415,7 @@
     box.hidden = !list.length;
     if (!list.length) return;
     box.replaceChildren(
-      el('div', { class: 'feat-head' },
-        el('h2', {}, 'Featured for you'),
-        el('span', {}, `${list.length} ${state.prefs.when === 'today' ? 'on sale' : 'coming up'}`)),
+      el('div', { class: 'feat-head' }, el('h2', {}, 'Featured for you')),
       el('div', { class: 'rail' }, list.slice(0, 24).map(featuredCard)));
   }
 
@@ -620,7 +611,7 @@
 
     if (tab === 'cart') renderCart();  // the cart works before the offers have loaded
     if (!state.data) return;
-    $('#status').textContent = [ago(state.data.generatedAt), (state.data.location?.name || '').toUpperCase()].filter(Boolean).join(' - ');
+    $('#status').textContent = '';  // only used for "Loading…" and load errors
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
     if (state.prefs.en) translateWanted();
