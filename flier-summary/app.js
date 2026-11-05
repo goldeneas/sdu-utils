@@ -195,7 +195,7 @@
     return b;
   }
 
-  const BASKET_SVG = '<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>';
+  const BASKET_SVG = '<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path class="h" d="M3 4h2.2l.9 4"/><path d="M6.1 8h14.4l-1.8 6.3a1.5 1.5 0 0 1-1.5 1.1H8.8a1.5 1.5 0 0 1-1.5-1.2z"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>';
 
   function basketButton(offer) {
     const on = !!inCart(offer);
