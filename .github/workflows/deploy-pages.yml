@@ -14,7 +14,6 @@ on:
       - 'wise-tram-copier/**'
       - 'flier-summary/**'
       - 'central-canteen/**'
-      - '.github/pages-index.html'
       - '.github/workflows/deploy-pages.yml'
   schedule:
     # Refresh the supermarket offers every morning (03:15 UTC = 04:15/05:15 in Denmark).
@@ -82,7 +81,6 @@ jobs:
             curl -fsSL "$LIVE_URL/flier-summary/data/offers.json" -o _site/flier-summary/data/offers.json \
               || echo "::warning::No published offers.json to fall back to; the app will show an error until the next run"
           fi
-          cp .github/pages-index.html _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
