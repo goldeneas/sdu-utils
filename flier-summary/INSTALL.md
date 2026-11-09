@@ -31,6 +31,6 @@ Open <http://localhost:8000/>.
 | --- | --- |
 | "Could not load offers" | `data/offers.json` is missing. Check the latest *Deploy web apps* run in the Actions tab; run it again by hand. |
 | A store shows 0 offers | Check the freshness label and filters. The API may have no matching fliers; failed downloads use saved offers if available. |
-| Offers look old | The label below the title shows `Oggi` for today’s data or `Stale` for older, incomplete or failed updates. Close and reopen online; the workflow runs every morning. |
+| Offers look old | The label below the title shows `Oggi` for a file generated today, otherwise its date (without a time). Close and reopen online; the workflow runs every morning. |
 | An in-store offer is missing | The app covers published fliers near Odense. Local shelf promotions, clearance and Netto+ offers may be absent; check the branch and source flier. |
 | Stars are gone | They are stored per browser. Use **Back up stars** regularly, and **Restore** on the new device or after clearing data. |

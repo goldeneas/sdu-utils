@@ -10,7 +10,6 @@
 
   const state = {
     data: null,
-    refreshFailed: false,
     stars: load(STAR_KEY, []),
     cart: load(CART_KEY, []),
     prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
@@ -134,12 +133,10 @@
       const data = await res.json();
       if (!Array.isArray(data.offers) || !Array.isArray(data.stores)) throw new Error('Invalid offers file');
       state.data = data;
-      state.refreshFailed = false;
       englishByHeading = new Map(state.data.offers.filter((o) => o.headingEn).map((o) => [o.heading, o.headingEn]));
       refreshStarsFromData();
     } catch (err) {
-      state.refreshFailed = true;
-      $('#status').textContent = 'Stale';
+      if (!state.data) $('#status').textContent = '';
     }
     render();
   }
@@ -629,8 +626,9 @@
     const updated = new Date(state.data.generatedAt);
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit' });
     const current = Number.isFinite(updated.getTime()) && day.format(updated) === day.format(now());
-    const incomplete = state.data.stores.some((s) => s.status === 'cached' || s.status === 'unavailable');
-    $('#status').textContent = current && !incomplete && !state.refreshFailed ? 'Oggi' : 'Stale';
+    $('#status').textContent = current ? 'Oggi' : Number.isFinite(updated.getTime())
+      ? new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Copenhagen', day: '2-digit', month: '2-digit', year: 'numeric' }).format(updated)
+      : '';
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
   }

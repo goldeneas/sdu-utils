@@ -50,9 +50,10 @@ and `fetchedAt`; cached data retains its original timestamp across repeated fail
 saved copy is marked unavailable. If there are no offers at all, the fetcher exits non-zero without writing
 and the workflow attempts to reuse the whole published file.
 
-Below each page title the app shows only `Oggi` or `Stale`. `Oggi` means the file was generated
-today in Denmark (Europe/Copenhagen), no store is marked cached/unavailable and the last refresh
-did not fail. Otherwise it shows `Stale`. A failed refresh keeps already loaded offers visible.
+Below each page title the app shows `Oggi` if the file was generated today in Denmark
+(Europe/Copenhagen), otherwise the generation date as `DD/MM/YYYY`, without a time. If the date
+is unknown, the label is empty. A failed refresh keeps already loaded offers and their date visible.
+This label describes the file generation date; individual stores may still use saved offers after a failed download.
 
 ## How collection and search work
 

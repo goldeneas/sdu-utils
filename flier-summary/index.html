@@ -55,11 +55,13 @@
 			h1, h2, h3, p { margin: 0; }
 			[hidden] { display: none !important; }
 
-			.app { max-width: 640px; margin: 0 auto; padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 96px); }
+			/* Keep the title below the native top-edge fade, including at scroll position zero. */
+			.app { max-width: 640px; margin: 0 auto; padding: calc(var(--safe-top) + 32px) 16px calc(var(--safe-bottom) + 96px); }
 
 			header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 			header.top h1 { font-size: 28px; letter-spacing: -.02em; }
 			#status { margin-top: 2px; font-size: 13px; color: var(--muted); }
+			#status:empty { display: none; }
 			header.top .lang { align-self: center; flex: none; }
 			header.top .lang button { padding: 4px 9px; font-size: 13px; }
 			.detail-body .orig { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
@@ -330,7 +332,7 @@
 			<header class="top">
 				<div class="page-heading">
 					<h1 id="title">Offers</h1>
-					<p id="status" role="status">Stale</p>
+					<p id="status" role="status"></p>
 				</div>
 				<div class="seg lang" role="group" aria-label="Product names">
 					<button type="button" data-lang="da" lang="da" aria-pressed="true">DA</button>
