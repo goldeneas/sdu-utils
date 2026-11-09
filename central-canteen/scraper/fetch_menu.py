@@ -160,9 +160,18 @@ def fetch_rendered(monday: date) -> str:
                     # Confirm every required weekday card before extracting the rendered DOM.
                     for i in range(5):
                         page.locator('#menu-' + (monday + timedelta(days=i)).isoformat() + ' .menubody').wait_for(state='attached')
-                    return page.content()
+                    # Dates and opening hours can render before the async dishes arrive.
+                    # Do not mistake that intermediate Blazor render for an empty menu.
+                    page.wait_for_function("""() => [...document.querySelectorAll('[id^="menu-"] .menubody .menu_ret_ny')]
+                        .some(e => e.textContent.trim())""", timeout=30000)
+                    rendered = page.content()
+                    parse_menu(rendered, monday)
+                    return rendered
                 except Exception:
                     if attempt == 2:
+                        bodies = page.locator('[id^="menu-"] .menubody')
+                        preview = bodies.first.inner_html()[:1800] if bodies.count() else '(no dated menu bodies)'
+                        print(f'warning: source menu body preview: {preview}', file=sys.stderr)
                         raise
             raise RuntimeError('Menu selection failed')
         finally:
