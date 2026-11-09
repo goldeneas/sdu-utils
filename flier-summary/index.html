@@ -59,10 +59,7 @@
 
 			header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 			header.top h1 { font-size: 28px; letter-spacing: -.02em; }
-			#status { font-size: 13px; color: var(--muted); text-align: right; }
-			#status { margin-left: auto; }
-			#data-health { margin: 12px 0; font-size: 13px; color: var(--muted); }
-			#data-health { padding: 12px; border: 1px solid currentColor; border-radius: 10px; }
+			#status { margin-top: 2px; font-size: 13px; color: var(--muted); }
 			header.top .lang { align-self: center; flex: none; }
 			header.top .lang button { padding: 4px 9px; font-size: 13px; }
 			.detail-body .orig { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
@@ -331,15 +328,16 @@
 	<body>
 		<div class="app">
 			<header class="top">
-				<h1 id="title">Offers</h1>
-				<p id="status">Loading…</p>
+				<div class="page-heading">
+					<h1 id="title">Offers</h1>
+					<p id="status" role="status">Stale</p>
+				</div>
 				<div class="seg lang" role="group" aria-label="Product names">
 					<button type="button" data-lang="da" lang="da" aria-pressed="true">DA</button>
 					<button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
 				</div>
 			</header>
 
-			<p id="data-health" role="status" hidden></p>
 			<main id="view-offers">
 				<div class="sbar">
 					<div class="search">

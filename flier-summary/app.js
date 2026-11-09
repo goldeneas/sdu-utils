@@ -139,7 +139,7 @@
       refreshStarsFromData();
     } catch (err) {
       state.refreshFailed = true;
-      $('#status').textContent = 'Could not load offers. Open the app online once, or check that data/offers.json exists.';
+      $('#status').textContent = 'Stale';
     }
     render();
   }
@@ -627,19 +627,10 @@
     if (tab === 'cart') renderCart();  // the cart works before the offers have loaded
     if (!state.data) return;
     const updated = new Date(state.data.generatedAt);
-    const hasDate = Number.isFinite(updated.getTime());
-    const stale = !hasDate || now() - updated > 36 * 3600000;
-    $('#status').textContent = hasDate ? `Updated ${updated.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}` : 'Update time unknown';
-    const issues = state.data.stores.filter((s) => s.status === 'cached' || s.status === 'unavailable');
-    $('#data-health').textContent = [
-      !navigator.onLine ? 'Offline: showing saved offers.' : '',
-      state.refreshFailed ? 'Refresh failed: showing the last loaded offers.' : '',
-      stale ? 'Offer data may be outdated.' : '',
-      ...issues.map((s) => s.status === 'cached'
-        ? `${s.name}: download incomplete or failed; showing saved offers${s.fetchedAt ? ` from ${new Date(s.fetchedAt).toLocaleString('en-GB')}` : ''}.`
-        : `${s.name}: offers currently unavailable.`),
-    ].filter(Boolean).join(' ');
-    $('#data-health').hidden = !$('#data-health').textContent;
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const current = Number.isFinite(updated.getTime()) && day.format(updated) === day.format(now());
+    const incomplete = state.data.stores.some((s) => s.status === 'cached' || s.status === 'unavailable');
+    $('#status').textContent = current && !incomplete && !state.refreshFailed ? 'Oggi' : 'Stale';
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
   }

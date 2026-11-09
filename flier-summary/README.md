@@ -50,8 +50,9 @@ and `fetchedAt`; cached data retains its original timestamp across repeated fail
 saved copy is marked unavailable. If there are no offers at all, the fetcher exits non-zero without writing
 and the workflow attempts to reuse the whole published file.
 
-The app shows the file generation time and warnings for saved/unavailable store data, offline mode,
-refresh failures and files older than 36 hours. A failed refresh keeps already loaded offers visible.
+Below each page title the app shows only `Oggi` or `Stale`. `Oggi` means the file was generated
+today in Denmark (Europe/Copenhagen), no store is marked cached/unavailable and the last refresh
+did not fail. Otherwise it shows `Stale`. A failed refresh keeps already loaded offers visible.
 
 ## How collection and search work
 
@@ -83,7 +84,7 @@ Other possible causes are a nightly update that has not yet run, an upstream omi
 a download failure, a remembered filter, a validity date mismatch, or an English name that was never
 translated. Previously, page failures returned partial lists without a completeness marker and failed
 chains could be published with zero offers while other chains succeeded. The per-store fallback and
-visible health warnings address those failure modes. Descriptions were also truncated at 300 characters;
+freshness label address those failure modes. Descriptions were also truncated at 300 characters;
 they are now kept in full for search and offer conditions.
 
 For a specific missing-offer investigation, record the product, branch, price, visit time and whether
