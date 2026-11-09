@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151513" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Canteen">
+  <title>Central Canteen</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header class="top">
+      <div><p class="eyebrow">Lunch, planned.</p><h1>Central Canteen</h1><p id="updated" class="muted" aria-live="polite"></p></div>
+      <button id="refresh" type="button" aria-label="Refresh menu" title="Refresh menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg></button>
+    </header>
+    <div class="week-heading"><h2 id="week">This week</h2><p id="range" class="muted"></p></div>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <nav id="days" aria-label="Jump to a day"></nav>
+    <div id="menu" aria-live="polite"><p class="empty">Loading this week’s menu…</p></div>
+    <footer>
+      <a href="https://jtkmenu.torvekoekken.dk/86" target="_blank" rel="noopener noreferrer">View original menu <span aria-hidden="true">↗</span></a>
+      <details><summary>Install on iPhone</summary><p>Open this page in Safari, tap Share, then Add to Home Screen. The last downloaded menu is available offline.</p></details>
+    </footer>
+  </main>
+</body>
+</html>

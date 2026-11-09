@@ -1,5 +1,5 @@
 // Offline-capable service worker. Bump VERSION when you change the app files so installed copies refresh.
-const VERSION = 'v13';
+const VERSION = 'v14';
 const CACHE = `flier-summary-${VERSION}`;
 const PRECACHE = [
   './',
@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('flier-summary-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

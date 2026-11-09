@@ -1,0 +1,71 @@
+{
+  "source": "https://jtkmenu.torvekoekken.dk/86",
+  "canteen": "The Central Canteen",
+  "canteenId": "701",
+  "weekStart": "2026-11-09",
+  "days": [
+    {
+      "date": "2026-11-09",
+      "hours": "07:45 – 18:00",
+      "sections": [
+        {
+          "title": "Varme retter",
+          "text": "Paprika stew with beans\n\nPaprika stew with turkey"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "date": "2026-11-10",
+      "hours": "07:45 – 18:00",
+      "sections": [
+        {
+          "title": "Varme retter",
+          "text": "Green curry with chickpeas and rise\n\nGreen curry with chicken and rice"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "date": "2026-11-11",
+      "hours": "07:45 – 18:00",
+      "sections": [
+        {
+          "title": "Varme retter",
+          "text": "Lasagna with Belugalentels\n\nLasagna with beef"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "date": "2026-11-12",
+      "hours": "07:45 – 18:00",
+      "sections": [
+        {
+          "title": "Varme retter",
+          "text": "Falafel with hummus and flat bread\n\ngyros with greens and flat bread"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "date": "2026-11-13",
+      "hours": "07:45 – 18:00",
+      "sections": [
+        {
+          "title": "Varme retter",
+          "text": "Bean tacos with creme fraiche and salsa\n\nChicken tacos with creme fraiche and salsa"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "date": "2026-11-14",
+      "hours": "09:00 – 13:30",
+      "sections": [],
+      "note": "Menu endnu ikke planlagt."
+    }
+  ],
+  "generatedAt": "2026-11-09T10:24:37+00:00",
+  "acquisition": "saved-source"
+}

@@ -1,5 +1,5 @@
 // Offline-first service worker. Bump VERSION to force clients to refresh the precache.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `ui-mock-${VERSION}`;
 const PRECACHE = [
   './',
@@ -26,7 +26,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('ui-mock-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

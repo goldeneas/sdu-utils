@@ -3,6 +3,7 @@ name: Deploy web apps to GitHub Pages
 # One Pages site holds every web module, each in its own folder:
 #   https://<user>.github.io/sdu-utils/wise-tram-copier/
 #   https://<user>.github.io/sdu-utils/flier-summary/
+#   https://<user>.github.io/sdu-utils/central-canteen/
 # GitHub Pages publishes a single artifact per repo, so all modules must be deployed by this one workflow
 # (a second Pages workflow would replace the other module's files).
 
@@ -12,6 +13,8 @@ on:
     paths:
       - 'wise-tram-copier/**'
       - 'flier-summary/**'
+      - 'central-canteen/**'
+      - '.github/pages-index.html'
       - '.github/workflows/deploy-pages.yml'
   schedule:
     # Refresh the supermarket offers every morning (03:15 UTC = 04:15/05:15 in Denmark).
@@ -47,6 +50,14 @@ jobs:
       - name: Test the offer fetcher
         run: python -m unittest discover -s flier-summary/scraper
 
+      - name: Test the canteen menu parser
+        run: python -m unittest discover -s central-canteen/scraper
+
+      - name: Install the menu browser
+        run: |
+          python -m pip install -r central-canteen/scraper/requirements.txt
+          python -m playwright install --with-deps chromium
+
       # Fetch offers into the staged copy only, so nothing is committed back to the repo.
       # If the flier API is down, keep yesterday's file from the live site instead of publishing an empty app.
       - name: Stage site and fetch offers
@@ -56,6 +67,12 @@ jobs:
           mkdir -p _site
           cp -r wise-tram-copier _site/wise-tram-copier
           cp -r flier-summary _site/flier-summary
+          cp -r central-canteen _site/central-canteen
+          rm -rf _site/central-canteen/scraper
+          rm -f _site/central-canteen/seed-menu.json
+          mkdir -p _site/central-canteen/data
+          curl -fsSL "$LIVE_URL/central-canteen/data/menu.json" -o "$RUNNER_TEMP/previous-menu.json" || true
+          python central-canteen/scraper/fetch_menu.py --out _site/central-canteen/data/menu.json --previous "$RUNNER_TEMP/previous-menu.json" --seed central-canteen/seed-menu.json
           rm -rf _site/flier-summary/scraper
           mkdir -p _site/flier-summary/data
           # Yesterday's file supplies translations and per-store fallback data for failed/incomplete downloads.
