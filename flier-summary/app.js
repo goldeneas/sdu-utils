@@ -10,6 +10,7 @@
 
   const state = {
     data: null,
+    refreshFailed: false,
     stars: load(STAR_KEY, []),
     cart: load(CART_KEY, []),
     prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
@@ -106,7 +107,8 @@
     if (got) { save(EN_KEY, enCache); render(); }
     if (wanted.size) scheduleTranslate();  // names that were drawn while this batch was running
   }
-  window.addEventListener('online', () => { if (state.prefs.en) translateWanted(); });
+  window.addEventListener('online', () => { loadData(); if (state.prefs.en) translateWanted(); });
+  window.addEventListener('offline', () => { if (state.data) render(); });
 
   // ---------------------------------------------------------------- categories
   // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
@@ -129,11 +131,14 @@
     try {
       const res = await fetch('data/offers.json', { cache: 'no-cache' });
       if (!res.ok) throw new Error(res.status);
-      state.data = await res.json();
+      const data = await res.json();
+      if (!Array.isArray(data.offers) || !Array.isArray(data.stores)) throw new Error('Invalid offers file');
+      state.data = data;
+      state.refreshFailed = false;
       englishByHeading = new Map(state.data.offers.filter((o) => o.headingEn).map((o) => [o.heading, o.headingEn]));
       refreshStarsFromData();
     } catch (err) {
-      state.data = null;
+      state.refreshFailed = true;
       $('#status').textContent = 'Could not load offers. Open the app online once, or check that data/offers.json exists.';
     }
     render();
@@ -621,7 +626,20 @@
 
     if (tab === 'cart') renderCart();  // the cart works before the offers have loaded
     if (!state.data) return;
-    $('#status').textContent = '';  // only used for "Loading…" and load errors
+    const updated = new Date(state.data.generatedAt);
+    const hasDate = Number.isFinite(updated.getTime());
+    const stale = !hasDate || now() - updated > 36 * 3600000;
+    $('#status').textContent = hasDate ? `Updated ${updated.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}` : 'Update time unknown';
+    const issues = state.data.stores.filter((s) => s.status === 'cached' || s.status === 'unavailable');
+    $('#data-health').textContent = [
+      !navigator.onLine ? 'Offline: showing saved offers.' : '',
+      state.refreshFailed ? 'Refresh failed: showing the last loaded offers.' : '',
+      stale ? 'Offer data may be outdated.' : '',
+      ...issues.map((s) => s.status === 'cached'
+        ? `${s.name}: download incomplete or failed; showing saved offers${s.fetchedAt ? ` from ${new Date(s.fetchedAt).toLocaleString('en-GB')}` : ''}.`
+        : `${s.name}: offers currently unavailable.`),
+    ].filter(Boolean).join(' ');
+    $('#data-health').hidden = !$('#data-health').textContent;
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
   }

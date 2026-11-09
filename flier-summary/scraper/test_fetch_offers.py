@@ -1,4 +1,4 @@
-"""Offline tests for the offer normalisation. Run: python3 -m unittest discover flier-summary/scraper"""
+"""Offline tests for offer collection, fallback, normalisation and translation. Run: python3 -m unittest discover flier-summary/scraper"""
 import json
 import tempfile
 import unittest
@@ -92,26 +92,97 @@ class MainTest(unittest.TestCase):
     def test_writes_json(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(fo, "get_json", self.fake_get):
             out = Path(d) / "offers.json"
-            self.assertEqual(fo.main(["--out", str(out)]), 0)
+            self.assertEqual(fo.main(["--out", str(out), "--no-translate"]), 0)
             data = json.loads(out.read_text())
         self.assertEqual(len(data["offers"]), 1)
         self.assertEqual([s["count"] for s in data["stores"]], [1] + [0] * (len(fo.STORES) - 1))
         self.assertEqual(data["stores"][0]["color"], "#ff0000")
 
-    def test_pagination_cap_keeps_fetched_offers(self):
+    def test_page_error_rejects_incomplete_download(self):
         def fake(path, params):
             if params["offset"] >= fo.MAX_OFFSET - fo.PAGE_LIMIT:
                 raise RuntimeError("HTTP Error 400: PAGINATION_MAX_REACHED")
             return [dict(OFFER, id=f"o{params['offset'] + i}") for i in range(fo.PAGE_LIMIT)]
         with mock.patch.object(fo, "get_json", fake):
-            offers = fo.fetch_paged({"catalog_ids": "x"})
-        self.assertEqual(len(offers), fo.MAX_OFFSET - fo.PAGE_LIMIT)
+            with self.assertRaisesRegex(RuntimeError, "PAGINATION_MAX_REACHED"):
+                fo.fetch_paged({"catalog_ids": "x"})
 
     def test_no_offers_fails_without_writing(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(fo, "get_json", lambda p, q: []):
             out = Path(d) / "offers.json"
-            self.assertEqual(fo.main(["--out", str(out)]), 1)
+            self.assertEqual(fo.main(["--out", str(out), "--no-translate"]), 1)
             self.assertFalse(out.exists())
+
+
+class ReliabilityTest(unittest.TestCase):
+    def test_pagination_reaches_second_page(self):
+        def fake(path, params):
+            return [dict(OFFER, id=str(params["offset"] + i))
+                    for i in range(fo.PAGE_LIMIT if params["offset"] == 0 else 1)]
+        with mock.patch.object(fo, "get_json", fake):
+            self.assertEqual(len(fo.fetch_paged({})), fo.PAGE_LIMIT + 1)
+
+    def test_pagination_limit_is_not_silently_accepted(self):
+        with mock.patch.object(fo, "get_json", return_value=[OFFER] * fo.PAGE_LIMIT):
+            with self.assertRaisesRegex(RuntimeError, "completeness"):
+                fo.fetch_paged({})
+
+    def test_malformed_page_is_a_failure(self):
+        with mock.patch.object(fo, "get_json", return_value={"error": "unavailable"}):
+            with self.assertRaisesRegex(RuntimeError, "non-list"):
+                fo.fetch_paged({})
+
+    def test_one_failed_catalog_rejects_whole_store(self):
+        def fake(path, params):
+            if path == "catalogs":
+                return [{"id": "one"}, {"id": "two"}]
+            if params["catalog_ids"] == "two":
+                raise RuntimeError("failed catalog")
+            return [OFFER]
+        with mock.patch.object(fo, "get_json", fake):
+            with self.assertRaisesRegex(RuntimeError, "failed catalog"):
+                fo.fetch_dealer_offers("9ba51")
+
+    def test_failed_store_reuses_previous_without_replacing_healthy_store(self):
+        with tempfile.TemporaryDirectory() as d:
+            old = fo.slim(OFFER, "netto")
+            previous = Path(d) / "previous.json"
+            previous.write_text(json.dumps({
+                "generatedAt": "2026-11-08T00:00:00+00:00",
+                "stores": [{"key": "netto", "fetchedAt": "2026-11-07T00:00:00+00:00"}],
+                "offers": [old],
+            }))
+            def fetch(dealer):
+                if dealer == "9ba51":
+                    raise RuntimeError("failed page")
+                return [dict(OFFER, id=dealer)]
+            dealers = {s["key"]: {"id": s["id"]} for s in fo.STORES}
+            for attempt in range(2):
+                out = Path(d) / f"out{attempt}.json"
+                with mock.patch.object(fo, "resolve_dealers", return_value=dealers), mock.patch.object(fo, "fetch_dealer_offers", fetch):
+                    self.assertEqual(fo.main(["--out", str(out), "--previous", str(previous), "--no-translate"]), 0)
+                data = json.loads(out.read_text())
+                self.assertEqual(data["stores"][0]["status"], "cached")
+                self.assertEqual(data["stores"][0]["fetchedAt"], "2026-11-07T00:00:00+00:00")
+                self.assertEqual(data["stores"][1]["status"], "ok")
+                self.assertIn(old, data["offers"])
+                self.assertEqual(len(data["offers"]), len(fo.STORES))
+                previous = out
+
+    def test_failed_store_without_previous_is_visible(self):
+        dealers = {s["key"]: {"id": s["id"]} for s in fo.STORES}
+        def fetch(dealer):
+            if dealer == "9ba51":
+                raise RuntimeError("failed page")
+            return [dict(OFFER, id=dealer)]
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(fo, "resolve_dealers", return_value=dealers), mock.patch.object(fo, "fetch_dealer_offers", fetch):
+            out = Path(d) / "out.json"
+            fo.main(["--out", str(out), "--no-translate"])
+            self.assertEqual(json.loads(out.read_text())["stores"][0]["status"], "unavailable")
+
+    def test_full_description_is_kept_for_search_and_conditions(self):
+        description = "x" * 350 + " Netto+ special condition"
+        self.assertEqual(fo.slim(dict(OFFER, description=description), "netto")["description"], description)
 
 
 

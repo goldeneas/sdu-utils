@@ -58,7 +58,7 @@ jobs:
           cp -r flier-summary _site/flier-summary
           rm -rf _site/flier-summary/scraper
           mkdir -p _site/flier-summary/data
-          # Yesterday's file supplies the English names already translated, so only new products are sent.
+          # Yesterday's file supplies translations and per-store fallback data for failed/incomplete downloads.
           curl -fsSL "$LIVE_URL/flier-summary/data/offers.json" -o "$RUNNER_TEMP/previous-offers.json" || true
           if ! python flier-summary/scraper/fetch_offers.py --out _site/flier-summary/data/offers.json --previous "$RUNNER_TEMP/previous-offers.json"; then
             echo "::warning::Offer fetch failed; reusing the currently published offers.json"

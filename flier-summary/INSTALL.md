@@ -30,6 +30,7 @@ Open <http://localhost:8000/>.
 | Problem | Fix |
 | --- | --- |
 | "Could not load offers" | `data/offers.json` is missing. Check the latest *Deploy web apps* run in the Actions tab; run it again by hand. |
-| A store shows 0 offers | Its flier API returned nothing for that run (between fliers, or the API changed). Look for warnings in the run log. |
-| Offers look old | The status line says when they were fetched. Close and reopen the app; the workflow runs every morning. |
+| A store shows 0 offers | Check the availability warning and filters. The API may have no matching fliers; failed downloads use saved offers if available. |
+| Offers look old | Check the update time and any per-store saved-data warning. Close and reopen online; the workflow runs every morning. |
+| An in-store offer is missing | The app covers published fliers near Odense. Local shelf promotions, clearance and Netto+ offers may be absent; check the branch and source flier. |
 | Stars are gone | They are stored per browser. Use **Back up stars** regularly, and **Restore** on the new device or after clearing data. |

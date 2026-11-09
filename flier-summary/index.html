@@ -61,6 +61,9 @@
 			header.top h1 { font-size: 28px; letter-spacing: -.02em; }
 			#status { font-size: 13px; color: var(--muted); text-align: right; }
 			#status { margin-left: auto; }
+			.coverage, #data-health { margin: 12px 0; font-size: 13px; color: var(--muted); }
+			.coverage summary { cursor: pointer; }
+			#data-health { padding: 12px; border: 1px solid currentColor; border-radius: 10px; }
 			header.top .lang { align-self: center; flex: none; }
 			header.top .lang button { padding: 4px 9px; font-size: 13px; }
 			.detail-body .orig { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
@@ -337,6 +340,13 @@
 				</div>
 			</header>
 
+			<p id="data-health" role="status" hidden></p>
+			<details class="coverage">
+				<summary>Which offers are included?</summary>
+				<p>Published flier offers from eTilbudsavis for stores within 15 km of central Odense.
+				In-store-only discounts, clearance prices and Netto+ offers may be missing. Offers can vary by branch.
+				The list refreshes daily; searching here searches the downloaded fliers.</p>
+			</details>
 			<main id="view-offers">
 				<div class="sbar">
 					<div class="search">

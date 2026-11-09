@@ -93,21 +93,16 @@ def resolve_dealers(stores: list[dict]) -> dict[str, dict]:
 
 
 def fetch_paged(params: dict) -> list[dict]:
-    """Page through /offers. The API refuses offset+limit beyond 1000, so callers narrow the
-    query (one catalog at a time) and whatever was fetched before an error is kept."""
+    """Page through /offers, rejecting incomplete responses rather than publishing gaps."""
     offers: list[dict] = []
     for page in range(MAX_OFFSET // PAGE_LIMIT):
-        try:
-            batch = get_json("offers", {**params, "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT})
-        except RuntimeError as exc:
-            print(f"warning: {exc}", file=sys.stderr)
-            break
-        if not isinstance(batch, list) or not batch:
-            break
+        batch = get_json("offers", {**params, "limit": PAGE_LIMIT, "offset": page * PAGE_LIMIT})
+        if not isinstance(batch, list):
+            raise RuntimeError("offers API returned a non-list response")
         offers.extend(batch)
         if len(batch) < PAGE_LIMIT:
-            break
-    return offers
+            return offers
+    raise RuntimeError(f"offers pagination reached {MAX_OFFSET}; completeness cannot be verified")
 
 
 def fetch_dealer_offers(dealer_id: str) -> list[dict]:
@@ -117,7 +112,11 @@ def fetch_dealer_offers(dealer_id: str) -> list[dict]:
     /offers query can return, so each catalog is fetched separately."""
     geo = {"r_lat": LAT, "r_lng": LNG, "r_radius": RADIUS_M}
     catalogs = get_json("catalogs", {"dealer_ids": dealer_id, **geo, "limit": 100})
-    if not isinstance(catalogs, list) or not catalogs:
+    if not isinstance(catalogs, list):
+        raise RuntimeError("catalogs API returned a non-list response")
+    if len(catalogs) >= 100:
+        raise RuntimeError("catalog listing reached its limit; completeness cannot be verified")
+    if not catalogs:
         return fetch_paged({"dealer_ids": dealer_id, **geo, "order_by": "page"})
     offers: list[dict] = []
     for cat in catalogs:
@@ -268,7 +267,7 @@ def slim(offer: dict, store_key: str) -> dict | None:
         "id": offer.get("id"),
         "store": store_key,
         "heading": heading,
-        "description": " ".join((offer.get("description") or "").split())[:300],
+        "description": " ".join((offer.get("description") or "").split()),
         "price": price,
         "prePrice": pre if pre and price and pre > price else None,
         "quantity": quantity_text(q),
@@ -400,24 +399,36 @@ def load_known_translations(path: str | None) -> dict[str, str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "data" / "offers.json"))
-    ap.add_argument("--previous", help="earlier offers.json whose English names are reused instead of re-translated")
+    ap.add_argument("--previous", help="earlier offers.json for translations and per-store fallback on fetch failure")
     ap.add_argument("--no-translate", action="store_true", help="skip the English names")
     args = ap.parse_args(argv)
 
+    previous = {}
+    if args.previous:
+        try:
+            previous = json.loads(Path(args.previous).read_text(encoding="utf-8"))
+            if not isinstance(previous, dict) or not isinstance(previous.get("offers"), list) or not isinstance(previous.get("stores"), list):
+                previous = {}
+        except (OSError, ValueError):
+            pass
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     dealers = resolve_dealers(STORES)
     stores_out, offers_out = [], []
     for store in STORES:
         dealer = dealers.get(store["key"])
         entry = {"key": store["key"], "name": store["name"], "count": 0}
+        raw = []
+        error = "dealer could not be resolved"
         if dealer:
             branding = dealer.get("branding") or {}
             entry["color"] = "#" + (branding.get("color") or dealer.get("color") or "666666").lstrip("#")
             entry["logo"] = branding.get("logo") or dealer.get("logo")
             try:
                 raw = fetch_dealer_offers(dealer["id"])
+                error = ""
             except RuntimeError as exc:
                 print(f"warning: {store['name']}: {exc}", file=sys.stderr)
-                raw = []
+                error = str(exc)
             seen = set()
             for o in raw:
                 s = slim(o, store["key"])
@@ -425,7 +436,20 @@ def main(argv: list[str] | None = None) -> int:
                     seen.add(s["id"])
                     offers_out.append(s)
             entry["count"] = len(seen)
-        print(f"{store['name']}: {entry['count']} offers", file=sys.stderr)
+        entry["status"] = "ok"
+        entry["fetchedAt"] = generated_at
+        if error:
+            old_entry = next((s for s in previous.get("stores", []) if s.get("key") == store["key"]), {})
+            old_offers = [o for o in previous.get("offers", []) if o.get("store") == store["key"]]
+            entry["status"] = "cached" if old_offers else "unavailable"
+            entry["fetchedAt"] = old_entry.get("fetchedAt", previous.get("generatedAt")) if old_offers else None
+            entry["error"] = error
+            entry["count"] = len(old_offers)
+            offers_out.extend(old_offers)
+            for field in ("color", "logo"):
+                if field not in entry and field in old_entry:
+                    entry[field] = old_entry[field]
+        print(f"{store['name']}: {entry['count']} offers ({entry['status']})", file=sys.stderr)
         stores_out.append(entry)
 
     if not offers_out:
@@ -442,7 +466,8 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generatedAt": generated_at,
+        "source": {"name": "eTilbudsavis", "coverage": "published-fliers"},
         "location": {"name": "Odense", "lat": LAT, "lng": LNG, "radius": RADIUS_M},
         "stores": stores_out,
         "categories": [{"key": k, "name": n} for k, n in CATEGORY_NAMES.items()],
