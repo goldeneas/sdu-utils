@@ -195,7 +195,7 @@ def _collect_google(
                     elapsed = time.monotonic() - t0
                     eta = elapsed / done * (len(tasks) - done)
                     print(
-                        f"  [{done}/{len(tasks)}] {len(fares)} tariffe, {len(errors)} errori"
+                        f"  Completate {done}/{len(tasks)} richieste · {len(fares)} tariffe, {len(errors)} errori"
                         f" · {elapsed / 60:.1f} min trascorsi, ~{eta / 60:.0f} min rimanenti",
                         flush=True,
                     )

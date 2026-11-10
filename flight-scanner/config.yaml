@@ -38,7 +38,7 @@ sources:
 google_flights:
   airlines: []              # [] = tutte le compagnie (consigliato: il filtro per prezzo basta);
                             # oppure solo alcune, es. [W6, U2, D8, DY, VY, HV] (Norwegian = D8/DY)
-  workers: 4                # richieste in parallelo
+  workers: 8                # richieste in parallelo (i log ogni 25 sono solo avanzamento)
   date_step: 1              # 1 = ogni giorno; 2 = un giorno sì e uno no (più veloce)
   max_queries: 0            # tetto di sicurezza (0 = nessun limite)
   delay_seconds: 0.5        # pausa di ogni worker tra una richiesta e l'altra

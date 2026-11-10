@@ -69,6 +69,11 @@ Edit `config.yaml` and push to `main` to update the scheduled search.
 | `sources.*` | Enable fare sources and combinations with different return airports |
 | `google_flights.*` | Airlines, concurrency, date spacing, query limit and request delay |
 
+Google Flights uses **8 concurrent requests**, with a 0.5-second pause per worker.
+The progress line printed every 25 completed requests is a reporting interval;
+it does not limit or batch the scan. Tune `google_flights.workers` to change
+concurrency. Actual speed depends on provider latency and throttling.
+
 ## Development
 
 Python 3.10+ is required for the scheduled scanner. The PWA is buildless HTML,

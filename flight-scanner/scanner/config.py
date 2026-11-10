@@ -40,7 +40,7 @@ class SourcesConfig:
 @dataclass
 class GoogleFlightsConfig:
     airlines: list[str] = field(default_factory=list)  # [] = tutte le compagnie
-    workers: int = 4              # richieste in parallelo
+    workers: int = 8              # richieste in parallelo
     date_step: int = 1            # 1 = ogni giorno; 2 = un giorno sì e uno no, ecc.
     max_queries: int = 0          # tetto di sicurezza (0 = nessun limite)
     delay_seconds: float = 0.5    # pausa di ogni worker tra una richiesta e l'altra
@@ -95,7 +95,7 @@ def load_config(path: str | os.PathLike = "config.yaml") -> Config:
         ),
         google=GoogleFlightsConfig(
             airlines=_clean_codes(g.get("airlines")),
-            workers=int(g.get("workers", 4)),
+            workers=int(g.get("workers", 8)),
             date_step=int(g.get("date_step", 1)),
             max_queries=int(g.get("max_queries", 0)),
             delay_seconds=float(g.get("delay_seconds", 0.5)),
