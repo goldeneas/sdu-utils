@@ -9,20 +9,10 @@ name: Deploy web apps to GitHub Pages
 # (a second Pages workflow would replace the other module's files).
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'wise-tram-copier/**'
-      - 'flier-summary/**'
-      - 'central-canteen/**'
-      - 'flight-scanner/**'
-      - '.github/workflows/deploy-pages.yml'
-      - '.github/pages-root.html'
   schedule:
     # Refresh offers, menus and flight results daily (03:15 UTC = 04:15/05:15 in Denmark).
     # New fliers usually start on a Saturday or Sunday, but daily runs also catch mid-week ones.
     - cron: '15 3 * * *'
-  workflow_dispatch:
 
 permissions:
   contents: read
