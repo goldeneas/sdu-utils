@@ -21,7 +21,8 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
 
 The shared `.github/workflows/deploy-pages.yml` workflow runs every day at
 **03:15 UTC** (04:15 in winter / 05:15 in summer in Italy and Denmark).
-It runs only on that schedule; pushing changes does not trigger a run.
+It can also be started manually from **Actions → Deploy web apps to GitHub Pages
+→ Run workflow**. Pushing changes does not trigger a run.
 Scheduled runs use the default branch and may be delayed by GitHub.
 Pages must use **Source: GitHub Actions**, as the other modules do.
 
