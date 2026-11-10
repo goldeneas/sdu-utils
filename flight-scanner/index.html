@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f5f3ee" />
+    <meta
+      name="description"
+      content="The best round-trip flight finds from Billund, Copenhagen and Malmö to Italy, scanned daily."
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Flights" />
+    <title>Flight Scanner</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+    <script src="pwa.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <a class="brand" href="./" aria-label="Flight Scanner home"
+          ><span class="brand-icon" aria-hidden="true">↗</span> Flight
+          Scanner</a
+        >
+        <div class="header-actions">
+          <button id="install" class="quiet" type="button" hidden>
+            Install app <span aria-hidden="true">↓</span></button
+          ><span class="daily"><span class="dot"></span> Scanned daily</span>
+        </div>
+      </header>
+      <section class="hero" aria-labelledby="title">
+        <div class="hero-copy">
+          <p class="eyebrow">A little closer to Italy</p>
+          <h1 id="title">Good flights.<br /><em>Great prices.</em></h1>
+          <p class="intro">
+            The best round trips we’ve found, in one place.<br />Pick a flight.
+            Plan your next escape.
+          </p>
+        </div>
+        <aside class="route-note" aria-label="Search overview">
+          <div class="note-heading">
+            <span class="eyebrow">Your departure board</span
+            ><span aria-hidden="true">↗</span>
+          </div>
+          <p id="origin-summary" class="origin-summary">
+            Billund · Copenhagen · Malmö
+          </p>
+          <div class="route-line">
+            <span id="origin-codes">BLL / CPH / MMX</span
+            ><span class="flight-line" aria-hidden="true">✈</span
+            ><span>ITALY</span>
+          </div>
+          <p id="search-summary" class="muted">Finding your next round trip…</p>
+          <p id="window" class="window muted"></p>
+        </aside>
+      </section>
+      <section class="results-section" aria-labelledby="results-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Less searching, more going</p>
+            <h2 id="results-title">The latest finds</h2>
+          </div>
+          <button id="refresh" class="quiet refresh" type="button">
+            <span aria-hidden="true">↻</span> Refresh
+          </button>
+        </div>
+        <div class="scan-meta">
+          <p id="updated" class="muted" role="status">
+            Loading the latest scan…
+          </p>
+          <span id="best" class="best" hidden></span>
+        </div>
+        <p id="notice" class="notice" role="status" hidden></p>
+        <div class="toolbar">
+          <div class="view-switch" role="group" aria-label="Results view">
+            <button type="button" data-view="top" aria-pressed="true">
+              Top deals</button
+            ><button type="button" data-view="airports" aria-pressed="false">
+              By destination
+            </button>
+          </div>
+          <div class="filters">
+            <label
+              >From
+              <select id="origin">
+                <option value="">All airports</option>
+              </select></label
+            ><label
+              >To
+              <select id="destination">
+                <option value="">All destinations</option>
+              </select></label
+            ><label
+              >Sort
+              <select id="sort">
+                <option value="price">Lowest price</option>
+                <option value="date">Soonest departure</option>
+              </select></label
+            >
+          </div>
+        </div>
+        <p id="result-count" class="result-count muted" aria-live="polite"></p>
+        <div id="results" class="results" aria-live="polite" aria-busy="true">
+          <div class="empty">
+            <span class="empty-icon" aria-hidden="true">↗</span>
+            <h3>Checking the departure board</h3>
+            <p>The latest flight finds will appear here.</p>
+          </div>
+        </div>
+      </section>
+      <footer>
+        <div>
+          <p class="footer-brand">
+            A better way to get away. <span aria-hidden="true">↗</span>
+          </p>
+          <p>
+            Prices are per person, round trip, and may change. Bags and extras
+            may cost more. Check prices before booking.
+          </p>
+          <p>
+            Refresh loads the latest published results. The scanner runs
+            automatically every day at 03:15 UTC.
+          </p>
+        </div>
+        <details>
+          <summary>Take it with you</summary>
+          <p>
+            On iPhone, open in Safari, tap Share, then Add to Home Screen. On
+            Android or desktop, use your browser’s Install app option. Your last
+            loaded results stay available offline.
+          </p>
+        </details>
+      </footer>
+      <noscript
+        ><p class="notice">
+          Enable JavaScript to view and filter the flight results.
+        </p></noscript
+      >
+    </main>
+  </body>
+</html>

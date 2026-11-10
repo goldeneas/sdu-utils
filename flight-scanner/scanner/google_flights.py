@@ -12,7 +12,6 @@ from __future__ import annotations
 import os
 import re
 from datetime import date, datetime
-from pathlib import Path
 
 from .models import OneWayFare
 from .travelpayouts import ApiError
@@ -25,7 +24,6 @@ CONSENT_COOKIES = {
     "SOCS": os.getenv("GOOGLE_SOCS", "CAESHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmRlIAEaBgiAo_CmBg"),
     "CONSENT": "YES+cb",
 }
-DEBUG_FILE = Path("debug_dumps") / "google_flights_error.html"
 
 
 def _explain_bad_page(html: str) -> str:
@@ -175,13 +173,7 @@ def get_flights_with_consent(query):
         from fast_flights.exceptions import FlightsNotFound
         if isinstance(exc, FlightsNotFound):
             raise
-        return _fail(html, exc)
-
-
-def _fail(html: str, exc: Exception):
-    DEBUG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DEBUG_FILE.write_text(html, encoding="utf-8")
-    raise ApiError(f"{_explain_bad_page(html)} · HTML salvato in {DEBUG_FILE}") from exc
+        raise ApiError(_explain_bad_page(html)) from exc
 
 
 def _to_dt(sd) -> datetime:

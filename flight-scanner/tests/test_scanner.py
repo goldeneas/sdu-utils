@@ -84,12 +84,11 @@ class FakeClient:
         return offers(item(60)) if m == "2026-10" else []
 
 
-def test_run_search(capsys):
+def test_run_search():
     c = cfg(request_delay_seconds=0)
     fc = FakeClient()
     top = run_search(c, client=fc, today=TODAY)
     assert len(fc.calls) == 2 and len(top) == 1 and top[0].price == 60
-    assert "€  60.00" in capsys.readouterr().out
 
 
 def fare(o, d, day, price):
@@ -120,7 +119,7 @@ def test_open_jaw_combination():
     got = combine_one_way(fares, *args, open_jaw=True)
     assert sorted(o.price for o in got) == [45, 90]
     jaw = next(o for o in got if o.price == 45)
-    assert jaw.open_jaw and jaw.return_origin == "MXP" and "ritorno MXP→CPH" in jaw.summary
+    assert jaw.open_jaw and jaw.return_origin == "MXP"
     same = combine_one_way(fares, *args, open_jaw=False)
     assert [o.price for o in same] == [90] and not same[0].open_jaw
 
@@ -160,26 +159,6 @@ def test_max_nights():
     assert o == []  # 16 notti > 14
 
 
-def test_leg_prices_shown(capsys):
-    from scanner.output import render_results
-    o = combine_one_way([fare("CPH", "FCO", "2026-10-12", 20), fare("FCO", "CPH", "2026-10-17", 25)],
-                        ["CPH"], ["FCO"], 100, 3, True)
-    render_results(o, 100, 10)
-    out = capsys.readouterr().out
-    assert "€20.00" in out and "€25.00" in out and "Ryanair" in out
-    lines = out.splitlines()
-    i = next(n for n, l in enumerate(lines) if "Andata:" in l)
-    assert "originIata=CPH" in lines[i + 1] and "Ritorno:" in lines[i + 2] and "originIata=FCO" in lines[i + 3]
-
-
-def test_arrival_in_output(capsys):
-    from scanner.output import render_results
-    o = offers(item(80, dep="2026-10-12T22:30:00+02:00", duration_to=175))[0]
-    render_results([o], 100, 10)
-    out = capsys.readouterr().out
-    assert "22:30 CPH → 01:25 (+1) NAP" in out
-
-
 def test_pick_top_unique():
     from scanner.search import pick_top
     fares = [
@@ -193,16 +172,6 @@ def test_pick_top_unique():
     assert len(pick_top(combos, 10, False)) == 4
 
 
-def _file_cfg(path, fmt, per_airport=2):
-    from scanner.config import OutputConfig
-    return Config(
-        search=SearchConfig(max_price=60, min_nights=3, window_days=30, request_delay_seconds=0),
-        airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP", "NAP"]),
-        sources=SourcesConfig(travelpayouts=False, ryanair=True, google_flights=False, open_jaw=False),
-        output=OutputConfig(file=str(path), format=fmt, top_per_airport=per_airport),
-    )
-
-
 class FakeRyanair2:
     def search_month(self, o, d, m):
         if m != "2026-10":
@@ -213,34 +182,6 @@ class FakeRyanair2:
             ("CPH", "MXP"): [fare("CPH", "MXP", "2026-10-12", 90)],   # sopra soglia
             ("MXP", "CPH"): [fare("MXP", "CPH", "2026-10-17", 80)],
         }.get((o, d), [])
-
-
-def test_file_has_top_and_per_airport_ignoring_threshold(tmp_path, capsys):
-    import csv
-    import json
-    out = tmp_path / "r.txt"
-    top = run_search(_file_cfg(out, "txt"), ryanair=FakeRyanair2(), today=TODAY)
-    assert [o.price for o in top] == [45]            # CLI/top: solo ≤ soglia (60), 1 volo ripetuto escluso
-    txt = out.read_text(encoding="utf-8")
-    assert "Migliori 1 offerte" in txt and "RIEPILOGO PER AEROPORTO" in txt
-    assert "### FCO — migliori 1" in txt and "### MXP — migliori 1" in txt and "€ 170.00" in txt  # MXP 90+80 oltre soglia
-    assert "### NAP — nessun volo trovato" in txt
-    assert "RIEPILOGO" not in capsys.readouterr().out   # il terminale resta com'era
-
-    out = tmp_path / "r.csv"
-    run_search(_file_cfg(out, "csv"), ryanair=FakeRyanair2(), today=TODAY)
-    rows = list(csv.DictReader(out.open(encoding="utf-8")))
-    assert [r["section"] for r in rows] == ["top", "aeroporto", "aeroporto"]
-    assert [r["airport"] for r in rows if r["section"] == "aeroporto"] == ["FCO", "MXP"]
-
-    out = tmp_path / "r.json"
-    run_search(_file_cfg(out, "json"), ryanair=FakeRyanair2(), today=TODAY)
-    data = json.loads(out.read_text(encoding="utf-8"))
-    assert set(data) == {"top", "per_airport"} and list(data["per_airport"]) == ["FCO", "MXP", "NAP"]
-
-    out = tmp_path / "off.txt"
-    run_search(_file_cfg(out, "txt", per_airport=0), ryanair=FakeRyanair2(), today=TODAY)
-    assert "RIEPILOGO" not in out.read_text(encoding="utf-8")
 
 
 def test_rejection_reasons():
@@ -314,7 +255,7 @@ def test_google_client_uses_getter_and_handles_errors():
         pass
 
 
-def test_run_search_google_combines_with_other_carriers(capsys):
+def test_run_search_google_combines_with_other_carriers():
     from scanner.config import GoogleFlightsConfig
 
     class FakeGoogle:
@@ -337,7 +278,6 @@ def test_run_search_google_combines_with_other_carriers(capsys):
     top = run_search(c, google=FakeGoogle(), today=TODAY)
     assert [o.price for o in top] == [87.0]
     assert top[0].airline == "Wizz Air" and top[0].source == "google" and top[0].nights == 7
-    assert "[google]" in capsys.readouterr().out
 
 
 def test_google_tasks_ranges():
@@ -354,18 +294,16 @@ def test_google_tasks_ranges():
     assert len(google_tasks(c, [("CPH", "NAP")], TODAY + dt.timedelta(days=1), TODAY + dt.timedelta(days=10))) == 5
 
 
-def test_google_bad_page_is_explained(tmp_path, monkeypatch):
+def test_google_bad_page_is_explained(monkeypatch):
     import scanner.google_flights as gf
     from scanner.travelpayouts import ApiError
-    monkeypatch.setattr(gf, "DEBUG_FILE", tmp_path / "dbg.html")
     monkeypatch.setattr(gf, "fetch_html", lambda q: "<html><title>Before you continue</title>consent.google.com</html>")
     c = gf.GoogleFlightsClient()
     try:
         c.search_day("CPH", "FCO", dt.date(2026, 10, 31))
         assert False
     except ApiError as exc:
-        assert "consenso" in str(exc) and "dbg.html" in str(exc) and "Before you continue" in str(exc)
-    assert (tmp_path / "dbg.html").exists()
+        assert "consenso" in str(exc) and "Before you continue" in str(exc)
 
 
 def _raw_flight(price, code_from="CPH", code_to="NAP", dep=(16, 35), arr=(19, 10)):
@@ -458,3 +396,19 @@ def test_empty_results_page_is_no_flights_not_error():
         assert False
     except ValueError:
         pass
+
+
+def test_report_has_top_and_per_airport_results_ignoring_budget():
+    from scanner.report import SearchReport
+    cfg = Config(
+        search=SearchConfig(max_price=60, min_nights=3, window_days=30,
+                            request_delay_seconds=0, top_per_airport=2),
+        airports=AirportsConfig(origins=["CPH"], destinations=["FCO", "MXP", "NAP"]),
+        sources=SourcesConfig(travelpayouts=False, ryanair=True, google_flights=False, open_jaw=False),
+    )
+    report = SearchReport()
+    top = run_search(cfg, ryanair=FakeRyanair2(), today=TODAY, report=report)
+    assert [o.price for o in top] == [45]
+    assert [o.price for o in report.per_airport["FCO"]] == [45]
+    assert [o.price for o in report.per_airport["MXP"]] == [170]
+    assert report.per_airport["NAP"] == []

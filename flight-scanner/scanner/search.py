@@ -9,8 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .config import Config
 from .models import FlightOption, OneWayFare
-from .notifier import resolve_ntfy
-from .output import render_results, write_results_file
+from .report import SearchReport, SourceReport
 from .google_flights import GoogleFlightsClient
 from .ryanair import RyanairClient
 from .travelpayouts import ApiError, TravelpayoutsClient
@@ -152,7 +151,11 @@ def google_tasks(cfg: Config, routes, start: dt.date, end: dt.date):
     return tasks[: g.max_queries] if g.max_queries > 0 else tasks
 
 
-def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -> list[OneWayFare]:
+def _collect_google(
+    cfg: Config, client, routes, start: dt.date, end: dt.date,
+    status: SourceReport | None = None,
+) -> list[OneWayFare]:
+    status = status if status is not None else SourceReport()
     g = cfg.google
     tasks = google_tasks(cfg, routes, start, end)
     print(
@@ -180,10 +183,13 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
             for res in pool.map(work, tasks):
                 done += 1
                 if isinstance(res, ApiError):
+                    status.failed += 1
                     errors.append(str(res))
                     if len(errors) >= 10 and len(errors) > done // 2:  # quasi tutto fallisce: blocco
                         aborted = True
-                elif res:
+                        status.aborted = True
+                elif res is not None:
+                    status.succeeded += 1
                     fares += res
                 if not aborted and (done in (1, 5) or done % 25 == 0 or done == len(tasks)):
                     elapsed = time.monotonic() - t0
@@ -195,6 +201,7 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
                     )
     except KeyboardInterrupt:
         aborted = True
+        status.aborted = True
         print("  interrotto dall'utente: uso le tariffe raccolte finora")
     stats = getattr(client, "stats", None)
     if stats:
@@ -202,8 +209,6 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
             f"  pagine ricevute: {stats['pagine']} · con almeno una tariffa: {stats['con_voli']} · "
             f"voci nelle pagine: {stats['voci']} (scartate senza prezzo/formato: {stats['scartate']})"
         )
-        if stats["pagine"] and not fares:
-            print("  [!] nessuna tariffa letta: esegui `python -m scanner.inspect_dump --fetch CPH FCO <data>`")
     if aborted and errors:
         print("  [e] troppi errori, interrompo Google Flights. Primo errore:")
         print(f"      {errors[0]}")
@@ -213,8 +218,15 @@ def _collect_google(cfg: Config, client, routes, start: dt.date, end: dt.date) -
 
 
 def run_search(
-    cfg: Config, client=None, ryanair=None, google=None, today: dt.date | None = None
+    cfg: Config, client=None, ryanair=None, google=None, today: dt.date | None = None,
+    *, report: SearchReport | None = None,
 ) -> list[FlightOption]:
+    report = report if report is not None else SearchReport()
+    report.per_airport = {}
+    report.sources = {
+        name: SourceReport() for name in ("travelpayouts", "ryanair", "google_flights")
+        if getattr(cfg.sources, name)
+    }
     s = cfg.search
     src = cfg.sources
     today = today or dt.date.today()  # noqa: DTZ011
@@ -231,7 +243,6 @@ def run_search(
         ryanair = RyanairClient(s.currency)
     if src.google_flights and google is None:
         google = GoogleFlightsClient(s.currency, cfg.google.airlines, s.max_transfers)
-    notifier = resolve_ntfy(cfg)
 
     names = [
         n for n, on in (
@@ -260,7 +271,10 @@ def run_search(
                 try:
                     raw += client.search_month(origin, dest, month)
                 except ApiError as exc:
+                    report.sources["travelpayouts"].failed += 1
                     print(f"  [warn] {origin}→{dest} {month}: {exc}")
+                else:
+                    report.sources["travelpayouts"].succeeded += 1
                 _pause(cfg)
             rejected: Counter = Counter()
             valid = filter_offers(raw, cfg, start, end, ignore_price=True, rejected=rejected)
@@ -288,8 +302,11 @@ def run_search(
                 try:
                     got = ryanair.search_month(a, b, month)
                 except ApiError as exc:
+                    report.sources["ryanair"].failed += 1
                     print(f"  [warn] {a}→{b} {month}: {exc}")
                     got = []
+                else:
+                    report.sources["ryanair"].succeeded += 1
                 fares += [
                     f for f in got
                     if start <= f.departure_at.date() <= end + dt.timedelta(days=s.max_nights)
@@ -300,7 +317,7 @@ def run_search(
                 print(f"  {a}→{b}: {n} giorni con tariffa")
 
     if src.google_flights:
-        fares += _collect_google(cfg, google, routes, start, end)
+        fares += _collect_google(cfg, google, routes, start, end, report.sources["google_flights"])
 
     if src.ryanair or src.google_flights:
         combos = combine_one_way(
@@ -317,6 +334,7 @@ def run_search(
     candidates = filter_offers(candidates, cfg, start, end, ignore_price=True)
     found = [o for o in candidates if o.price <= s.max_price]
     top = pick_top(found, s.top_n, s.unique_flights)
+    report.per_airport = top_per_airport(candidates, dests, s.top_per_airport, s.unique_flights)
     counts = Counter(o.source for o in found)
     print(
         f"\nTotale ≤ soglia: {len(found)} ("
@@ -325,20 +343,4 @@ def run_search(
         + (" (senza voli ripetuti)" if s.unique_flights else "")
     )
 
-    if notifier and cfg.ntfy.notify_new_best and found:
-        notifier.notify_new_best(found[0], None)
-
-    render_results(top, s.max_price, s.top_n)
-    if cfg.output.file:
-        by_airport = None
-        if cfg.output.top_per_airport > 0:
-            by_airport = top_per_airport(
-                candidates, dests, cfg.output.top_per_airport, s.unique_flights
-            )
-        write_results_file(
-            top, cfg.output.file, cfg.output.format, by_airport, s.max_price, s.top_n
-        )
-        print(f"\nRisultati salvati in: {cfg.output.file}")
-    if notifier:
-        notifier.notify_summary(top, s.max_price)
     return top

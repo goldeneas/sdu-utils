@@ -5,6 +5,7 @@
 search:
   currency: EUR
   max_price: 100            # soglia "deal": prezzo max A/R (€) per 1 persona
+  top_per_airport: 3        # migliori offerte per destinazione, anche sopra soglia
   top_n: 10                 # quanti risultati mostrare a fine ricerca
   exclude_next_days: 0      # escludi i prossimi N giorni (es. 15 con window_days 60 = partenze dal giorno 16 al 60)
   window_days: 60           # finestra delle PARTENZE (da domani); il ritorno può cadere dopo
@@ -15,7 +16,7 @@ search:
   request_delay_seconds: 0.5  # pausa tra una richiesta e l'altra
 
 airports:
-  origins: ["BLL", "CPH"]
+  origins: ["BLL", "CPH", "MMX"]  # Billund, Copenaghen, Malmö
   destinations:
     - NAP
     - QSR
@@ -41,15 +42,3 @@ google_flights:
   date_step: 1              # 1 = ogni giorno; 2 = un giorno sì e uno no (più veloce)
   max_queries: 0            # tetto di sicurezza (0 = nessun limite)
   delay_seconds: 0.5        # pausa di ogni worker tra una richiesta e l'altra
-
-ntfy:
-  enabled: true             # false = nessuna notifica
-  server: ntfy.sh           # sovrascrivibile con env NTFY_SERVER
-  topic: ""                 # vuoto = letto da env NTFY_TOPIC
-  notify_new_best: true     # notifica quando viene trovato un nuovo best deal
-
-output:
-  file: ""                  # es. "risultati.csv" (vuoto = solo terminale)
-  format: csv               # csv | txt | json
-  top_per_airport: 3        # solo su file: sotto la top, i migliori N per aeroporto di arrivo
-                            # (ignorando la soglia di prezzo; 0 = disattivato)

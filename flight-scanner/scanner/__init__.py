@@ -1,3 +1,1 @@
-"""Flight Scanner: trova voli convenienti via Google Flights (scraping)."""
-
-__version__ = "0.1.0"
+"""Daily flight discovery and public snapshots for the Flight Scanner PWA."""

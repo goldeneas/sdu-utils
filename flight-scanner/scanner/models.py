@@ -5,13 +5,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 
-def _human_minutes(minutes: int | None) -> str:
-    if minutes is None:
-        return "n/d"
-    h, m = divmod(minutes, 60)
-    return f"{h}h {m:02d}m" if h else f"{m}m"
-
-
 @dataclass
 class OneWayFare:
     """Una singola tratta con il suo prezzo."""
@@ -75,34 +68,8 @@ class FlightOption:
         return (self.return_date - self.departure_date).days
 
     @property
-    def duration_out_human(self) -> str:
-        return _human_minutes(self.duration_out)
-
-    @property
-    def duration_back_human(self) -> str:
-        return _human_minutes(self.duration_back)
-
-    @staticmethod
-    def stops_human(n: int) -> str:
-        if n == 0:
-            return "diretto"
-        return f"{n} scalo" if n == 1 else f"{n} scali"
-
-    @property
     def key(self) -> tuple:
         return (
             self.origin, self.destination, self.return_origin, self.return_destination,
             self.departure_at, self.return_at,
-        )
-
-    @property
-    def summary(self) -> str:
-        back = (
-            f" ritorno {self.return_origin}→{self.return_destination}"
-            if self.open_jaw else ""
-        )
-        return (
-            f"€{self.price:.2f} {self.origin}→{self.destination}{back} "
-            f"{self.departure_date.isoformat()} → {self.return_date.isoformat()} "
-            f"({self.airline})"
         )

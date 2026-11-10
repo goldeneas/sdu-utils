@@ -1,3 +1,5 @@
 PyYAML>=6.0
 requests>=2.31.0
 fast-flights>=3.1.0
+# fast-flights imports typing_extensions.override but does not declare it.
+typing_extensions>=4.12.0

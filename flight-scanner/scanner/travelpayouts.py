@@ -75,7 +75,7 @@ def parse_offer(item: dict, origin: str, destination: str, currency: str) -> Fli
 class TravelpayoutsClient:
     def __init__(self, token: str, currency: str = "EUR", session=None, retries: int = 3):
         if not token:
-            raise ApiError("Token Travelpayouts mancante (TRAVELPAYOUTS_TOKEN in .env)")
+            raise ApiError("Token Travelpayouts mancante (TRAVELPAYOUTS_TOKEN)")
         self.token = token
         self.currency = currency
         self.retries = retries

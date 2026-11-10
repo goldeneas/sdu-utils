@@ -4,6 +4,7 @@ name: Deploy web apps to GitHub Pages
 #   https://<user>.github.io/sdu-utils/wise-tram-copier/
 #   https://<user>.github.io/sdu-utils/flier-summary/
 #   https://<user>.github.io/sdu-utils/central-canteen/
+#   https://<user>.github.io/sdu-utils/flight-scanner/
 # GitHub Pages publishes a single artifact per repo, so all modules must be deployed by this one workflow
 # (a second Pages workflow would replace the other module's files).
 
@@ -14,10 +15,11 @@ on:
       - 'wise-tram-copier/**'
       - 'flier-summary/**'
       - 'central-canteen/**'
+      - 'flight-scanner/**'
       - '.github/workflows/deploy-pages.yml'
       - '.github/pages-root.html'
   schedule:
-    # Refresh the supermarket offers every morning (03:15 UTC = 04:15/05:15 in Denmark).
+    # Refresh offers, menus and flight results daily (03:15 UTC = 04:15/05:15 in Denmark).
     # New fliers usually start on a Saturday or Sunday, but daily runs also catch mid-week ones.
     - cron: '15 3 * * *'
   workflow_dispatch:
@@ -32,7 +34,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  flights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - id: pages
+        uses: actions/configure-pages@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: flight-scanner/requirements.txt
+      - name: Install and test the flight scanner
+        working-directory: flight-scanner
+        run: |
+          python -m pip install -r requirements.txt pytest
+          python -m pytest tests
+      - name: Scan flights and prepare public results
+        working-directory: flight-scanner
+        env:
+          LIVE_URL: ${{ steps.pages.outputs.base_url }}
+          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+          PYTHONUNBUFFERED: '1'
+          PREVIOUS_FLIGHTS_PATH: ${{ runner.temp }}/previous-flights.json
+        run: |
+          curl -fsSL --max-time 30 "$LIVE_URL/flight-scanner/data/flights.json" -o "$RUNNER_TEMP/previous-flights.json" || true
+          # Bound unofficial provider calls so failures cannot hold up all the other PWAs.
+          timeout 45m python -m scanner.publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flight-results
+          path: flight-scanner/data/flights.json
+          if-no-files-found: error
+          retention-days: 1
+
   deploy:
+    needs: flights
+    # A broken or timed-out flight source must not prevent the other modules from publishing.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -69,6 +109,10 @@ jobs:
           cp -r wise-tram-copier _site/wise-tram-copier
           cp -r flier-summary _site/flier-summary
           cp -r central-canteen _site/central-canteen
+          # Publish only static flight assets; keep the scanner and its config out of Pages.
+          mkdir -p _site/flight-scanner/data
+          cp flight-scanner/index.html flight-scanner/style.css flight-scanner/app.js flight-scanner/pwa.js flight-scanner/sw.js flight-scanner/manifest.webmanifest _site/flight-scanner/
+          cp -r flight-scanner/icons _site/flight-scanner/icons
           rm -rf _site/central-canteen/scraper
           rm -f _site/central-canteen/seed-menu.json
           mkdir -p _site/central-canteen/data
@@ -82,6 +126,36 @@ jobs:
             echo "::warning::Offer fetch failed; reusing the currently published offers.json"
             curl -fsSL "$LIVE_URL/flier-summary/data/offers.json" -o _site/flier-summary/data/offers.json \
               || echo "::warning::No published offers.json to fall back to; the app will show an error until the next run"
+          fi
+
+      - name: Retrieve flight results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: flight-results
+          path: _site/flight-scanner/data
+
+      - name: Preserve published flights if the scanner job failed
+        env:
+          LIVE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ ! -f _site/flight-scanner/data/flights.json ]; then
+            echo "::warning::Flight scan did not produce an artifact; keeping the last published results"
+            if curl -fsSL --max-time 30 "$LIVE_URL/flight-scanner/data/flights.json" -o "$RUNNER_TEMP/fallback-flights.json"; then
+              python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          try:
+              data = json.loads((Path(os.environ['RUNNER_TEMP']) / 'fallback-flights.json').read_text())
+              assert data['schema_version'] == 1 and data.get('generated_at') and isinstance(data['top'], list)
+              data.update(status='stale', attempted_at=datetime.now(timezone.utc).isoformat())
+              Path('_site/flight-scanner/data/flights.json').write_text(json.dumps(data))
+          except (ValueError, KeyError, TypeError, AssertionError):
+              print('::warning::Previous flight snapshot is invalid; the PWA will show its first-scan state')
+          PY
+            fi
           fi
 
       - uses: actions/upload-pages-artifact@v3
