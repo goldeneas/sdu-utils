@@ -1,5 +1,5 @@
 // Keep this cache scoped to flight-scanner; sibling PWAs share the Pages origin.
-const CACHE = "flight-scanner-v1";
+const CACHE = "flight-scanner-v2";
 // Keep data across app-shell updates, including an update during a failed daily scan.
 const DATA_CACHE = "flight-scanner-data";
 const SHELL = [
@@ -56,18 +56,22 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || !url.href.startsWith(self.registration.scope))
     return;
-  const isData = url.origin + url.pathname === DATA;
-  const key = isData ? DATA : request;
+  const isLatest = url.origin + url.pathname === DATA;
+  const isHistory = url.pathname.startsWith(
+    new URL("data/history/", self.registration.scope).pathname,
+  );
+  const isData = isLatest || isHistory;
+  const key = isLatest ? DATA : request;
   event.respondWith(
     (async () => {
       const cache = await caches.open(isData ? DATA_CACHE : CACHE);
       try {
         const response = await fetch(request, {
           cache: "no-cache",
-          signal: AbortSignal.timeout(7000),
+          signal: AbortSignal.timeout(isData ? 45000 : 7000),
         });
         if (!response.ok) throw new Error("Unavailable");
-        if (isData) {
+        if (isLatest) {
           // Do not replace a working offline snapshot with a malformed response.
           const data = await response.clone().json();
           if (data.schema_version !== 1 || !Array.isArray(data.top))

@@ -69,7 +69,11 @@ class FlightOption:
 
     @property
     def key(self) -> tuple:
+        """Identify a quote without dropping alternative airlines, prices or sources."""
         return (
             self.origin, self.destination, self.return_origin, self.return_destination,
             self.departure_at, self.return_at,
+            self.airline, self.source, self.currency, self.price, self.price_out, self.price_back,
+            self.arrival_out, self.arrival_back, self.transfers, self.return_transfers,
+            self.duration_out, self.duration_back, self.link, self.return_link,
         )

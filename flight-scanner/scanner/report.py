@@ -17,4 +17,5 @@ class SourceReport:
 class SearchReport:
     sources: dict[str, SourceReport] = field(default_factory=dict)
     per_airport: dict[str, list[FlightOption]] = field(default_factory=dict)
+    flights: list[FlightOption] = field(default_factory=list)
 

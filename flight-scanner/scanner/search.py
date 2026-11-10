@@ -31,7 +31,7 @@ def filter_offers(
     s = cfg.search
     rejected = rejected if rejected is not None else Counter()
     seen, out = set(), []
-    for o in sorted(offers, key=lambda o: o.price):  # a parità di voli resta il più economico
+    for o in sorted(offers, key=lambda o: o.price):  # deduplica solo le offerte identiche
         if not (start <= o.departure_date <= end):  # solo la partenza è vincolata alla finestra
             rejected["fuori finestra"] += 1
             continue
@@ -223,6 +223,7 @@ def run_search(
 ) -> list[FlightOption]:
     report = report if report is not None else SearchReport()
     report.per_airport = {}
+    report.flights = []
     report.sources = {
         name: SourceReport() for name in ("travelpayouts", "ryanair", "google_flights")
         if getattr(cfg.sources, name)
@@ -332,6 +333,8 @@ def run_search(
         candidates += valid
 
     candidates = filter_offers(candidates, cfg, start, end, ignore_price=True)
+    # Preserve every matching itinerary before selecting optional legacy highlights.
+    report.flights = candidates
     found = [o for o in candidates if o.price <= s.max_price]
     top = pick_top(found, s.top_n, s.unique_flights)
     report.per_airport = top_per_airport(candidates, dests, s.top_per_airport, s.unique_flights)

@@ -734,3 +734,49 @@ footer summary {
   white-space: nowrap;
   border: 0;
 }
+
+.scan-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 20px;
+  font-size: 0.78rem;
+}
+.scan-controls label {
+  color: var(--muted);
+}
+.scan-controls select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--white);
+  padding: 10px;
+  max-width: 100%;
+}
+.scan-controls #history-status {
+  font-size: 0.7rem;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px 0 0;
+  font-size: 0.78rem;
+}
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (max-width: 650px) {
+  .scan-controls select {
+    flex: 1;
+    min-width: 0;
+  }
+  .scan-controls #history-status {
+    width: 100%;
+  }
+  .pagination {
+    gap: 10px;
+  }
+}

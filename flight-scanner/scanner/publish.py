@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import gzip
 import json
 import os
 from dataclasses import asdict
@@ -45,14 +46,15 @@ def load_previous(path: str | None) -> dict | None:
     if not path:
         return None
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        source = Path(path)
+        data = json.loads(gzip.decompress(source.read_bytes()) if source.suffix == ".gz" else source.read_text(encoding="utf-8"))
         if (data.get("schema_version") == 1 and data.get("generated_at")
                 and isinstance(data.get("top"), list)
                 and isinstance(data.get("per_airport"), dict)
                 and isinstance(data.get("search"), dict)):
             datetime.fromisoformat(data["generated_at"])
             return data
-    except (OSError, ValueError, TypeError, AttributeError):
+    except (OSError, ValueError, TypeError, AttributeError, EOFError):
         pass
     return None
 
@@ -94,7 +96,7 @@ def publish(
         request_failures = any(s.failed or s.aborted for s in report.sources.values())
         partial = bool(skipped) or request_failures
         # Empty responses are valid, but cannot erase good data when some requests failed.
-        has_results = bool(top) or any(report.per_airport.values())
+        has_results = bool(report.flights) or bool(top) or any(report.per_airport.values())
         error = not succeeded or (not has_results and request_failures)
     except Exception:
         # Provider exceptions may embed request details: never put them in public JSON.
@@ -113,6 +115,8 @@ def publish(
             "search": search_metadata(cfg, now.date()),
             "sources": {name: asdict(s) for name, s in report.sources.items()},
             "skipped_sources": skipped,
+            "flights": [] if error else [flight_data(f) for f in report.flights],
+            # Retain these small highlights for already-installed versions of the PWA.
             "top": [] if error else [flight_data(f) for f in top],
             "per_airport": {} if error else {
                 a: [flight_data(f) for f in options] for a, options in report.per_airport.items()
@@ -120,7 +124,7 @@ def publish(
         }
     out.parent.mkdir(parents=True, exist_ok=True)
     temp = out.with_suffix(out.suffix + ".tmp")
-    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    temp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n", encoding="utf-8")
     temp.replace(out)
     if error:
         print(f"::warning::Flight data status: {data['status']}")

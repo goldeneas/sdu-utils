@@ -27,11 +27,24 @@ concurrency:
 jobs:
   flights:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pages: read
     steps:
       - uses: actions/checkout@v4
       - id: pages
         uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: flight-scanner/package-lock.json
+      - name: Test the flight browser app
+        working-directory: flight-scanner
+        run: |
+          npm ci
+          npm test
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -53,12 +66,19 @@ jobs:
           curl -fsSL --max-time 30 "$LIVE_URL/flight-scanner/data/flights.json" -o "$RUNNER_TEMP/previous-flights.json" || true
           # Bound unofficial provider calls so failures cannot hold up all the other PWAs.
           timeout 45m python -m scanner.publish
+      - name: Preserve scan history on the data branch
+        if: ${{ !cancelled() }}
+        working-directory: flight-scanner
+        env:
+          PREVIOUS_FLIGHTS_PATH: ${{ runner.temp }}/previous-flights.json
+        run: python -m scanner.history
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: flight-results
-          path: flight-scanner/data/flights.json
+          path: flight-scanner/data/
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 90
 
   deploy:
     needs: flights
@@ -119,6 +139,23 @@ jobs:
               || echo "::warning::No published offers.json to fall back to; the app will show an error until the next run"
           fi
 
+      - name: Restore saved flight history
+        run: |
+          if git fetch --depth=1 origin refs/heads/flight-data; then
+            git worktree add --detach "$RUNNER_TEMP/saved-flight-history" FETCH_HEAD
+            mkdir -p _site/flight-scanner/data/history
+            if [ -f "$RUNNER_TEMP/saved-flight-history/index.json" ]; then
+              cp "$RUNNER_TEMP/saved-flight-history/index.json" _site/flight-scanner/data/history/index.json
+              cp -r "$RUNNER_TEMP/saved-flight-history/scans" _site/flight-scanner/data/history/scans
+            fi
+            if [ -f "$RUNNER_TEMP/saved-flight-history/latest.json.gz" ]; then
+              gzip -dc "$RUNNER_TEMP/saved-flight-history/latest.json.gz" > "$RUNNER_TEMP/fallback-flights.json"
+            fi
+            git worktree remove "$RUNNER_TEMP/saved-flight-history"
+          else
+            echo "::warning::Flight history branch is not available yet"
+          fi
+
       - name: Retrieve flight results
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -132,7 +169,7 @@ jobs:
         run: |
           if [ ! -f _site/flight-scanner/data/flights.json ]; then
             echo "::warning::Flight scan did not produce an artifact; keeping the last published results"
-            if curl -fsSL --max-time 30 "$LIVE_URL/flight-scanner/data/flights.json" -o "$RUNNER_TEMP/fallback-flights.json"; then
+            if [ -f "$RUNNER_TEMP/fallback-flights.json" ] || curl -fsSL --max-time 30 "$LIVE_URL/flight-scanner/data/flights.json" -o "$RUNNER_TEMP/fallback-flights.json"; then
               python - <<'PY'
           import json
           import os

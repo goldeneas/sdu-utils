@@ -40,8 +40,8 @@
           <p class="eyebrow">A little closer to Italy</p>
           <h1 id="title">Good flights.<br /><em>Great prices.</em></h1>
           <p class="intro">
-            The best round trips we’ve found, in one place.<br />Pick a flight.
-            Plan your next escape.
+            Every round trip we’ve found, in one place.<br />Pick a flight. Plan
+            your next escape.
           </p>
         </div>
         <aside class="route-note" aria-label="Search overview">
@@ -65,7 +65,7 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Less searching, more going</p>
-            <h2 id="results-title">The latest finds</h2>
+            <h2 id="results-title">All your flight finds</h2>
           </div>
           <button id="refresh" class="quiet refresh" type="button">
             <span aria-hidden="true">↻</span> Refresh
@@ -78,12 +78,19 @@
           <span id="best" class="best" hidden></span>
         </div>
         <p id="notice" class="notice" role="status" hidden></p>
+        <div class="scan-controls">
+          <label for="scan">Scan</label>
+          <select id="scan">
+            <option value="">Latest published scan</option>
+          </select>
+          <span id="history-status" class="muted" role="status"></span>
+        </div>
         <div class="toolbar">
           <div class="view-switch" role="group" aria-label="Results view">
-            <button type="button" data-view="top" aria-pressed="true">
-              Top deals</button
-            ><button type="button" data-view="airports" aria-pressed="false">
-              By destination
+            <button type="button" data-view="all" aria-pressed="true">
+              All flights</button
+            ><button type="button" data-view="budget" aria-pressed="false">
+              Within budget
             </button>
           </div>
           <div class="filters">
@@ -114,6 +121,18 @@
             <p>The latest flight finds will appear here.</p>
           </div>
         </div>
+        <nav
+          id="pagination"
+          class="pagination"
+          aria-label="Result pages"
+          hidden
+        >
+          <button id="previous-page" class="quiet" type="button">
+            ← Previous
+          </button>
+          <span id="page-status" class="muted" role="status"></span>
+          <button id="next-page" class="quiet" type="button">Next →</button>
+        </nav>
       </section>
       <footer>
         <div>
@@ -127,6 +146,11 @@
           <p>
             Refresh loads the latest published results. The scanner runs
             automatically every day at 03:15 UTC.
+          </p>
+          <p>
+            Every matching round trip is saved, including fares above the
+            budget. Choose a scan to browse earlier finds. Prices belong to that
+            scan; departed flights remain in the history.
           </p>
         </div>
         <details>

@@ -412,3 +412,17 @@ def test_report_has_top_and_per_airport_results_ignoring_budget():
     assert [o.price for o in report.per_airport["FCO"]] == [45]
     assert [o.price for o in report.per_airport["MXP"]] == [170]
     assert report.per_airport["NAP"] == []
+    # Reusing a leg and exceeding the deal budget must not discard saved results.
+    assert [o.price for o in report.flights] == [45, 55, 170]
+
+
+def test_quote_variants_are_preserved_while_exact_duplicates_are_removed():
+    from dataclasses import replace
+    original = offers(item(80))[0]
+    rows = [original, replace(original), replace(original, price=90),
+            replace(original, source="google"), replace(original, airline="U2")]
+    result = filter_offers(rows, cfg(), TODAY, TODAY + dt.timedelta(days=30))
+    assert len(result) == 4
+    assert {row.price for row in result} == {80, 90}
+    assert {row.airline for row in result} == {"FR", "U2"}
+    assert {row.source for row in result} == {"travelpayouts", "google"}

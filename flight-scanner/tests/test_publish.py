@@ -35,6 +35,7 @@ def good_runner(cfg, *, today, report):
     assert today == NOW.date()
     report.sources = {"ryanair": SourceReport(succeeded=4)}
     report.per_airport = {"FCO": [flight()], "NAP": [flight(170)]}
+    report.flights = [flight(), flight(170)]
     return [flight()]
 
 
@@ -49,6 +50,7 @@ def test_public_snapshot_has_itineraries_metadata_and_no_credentials(tmp_path, m
     assert data["search"]["departure_from"] == "2026-11-11"
     assert data["top"][0]["open_jaw"] and data["top"][0]["return_origin"] == "NAP"
     assert data["per_airport"]["NAP"][0]["price"] == 170
+    assert [f["price"] for f in data["flights"]] == [70, 170]
     assert "private-provider-token" not in out.read_text()
     assert not out.with_suffix(".json.tmp").exists()
 
@@ -225,3 +227,30 @@ def test_per_destination_limit_is_read_and_validated(tmp_path):
     path.write_text(base + "search:\n  top_per_airport: 0\n")
     with pytest.raises(ValueError, match="top_per_airport"):
         load_config(path)
+
+
+def test_all_results_are_exported_before_budget_highlight_and_unique_leg_limits(tmp_path, monkeypatch):
+    cfg = config()
+    cfg.sources = SourcesConfig(travelpayouts=True, ryanair=False, google_flights=False)
+    cfg.search.top_n = cfg.search.top_per_airport = 1
+    cfg.search.unique_flights = True
+    monkeypatch.setenv("TRAVELPAYOUTS_TOKEN", "test-only")
+
+    class Provider:
+        def search_month(self, origin, destination, month):
+            if (origin, destination, month) != ("MMX", "FCO", "2026-11"):
+                return []
+            rows = []
+            for i in range(35):
+                row = flight(50 + i * 8)
+                row.departure_at += dt.timedelta(hours=i)
+                rows.append(row)
+            return rows
+
+    def runner(cfg, *, today, report):
+        return run_search(cfg, client=Provider(), today=today, report=report)
+
+    data = publish(cfg, tmp_path / "flights.json", runner=runner, now=NOW)
+    assert len(data["top"]) == len(data["per_airport"]["FCO"]) == 1
+    assert len(data["flights"]) == 35
+    assert [row["price"] for row in data["flights"]] == list(range(50, 50 + 35 * 8, 8))

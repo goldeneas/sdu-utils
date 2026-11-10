@@ -1,6 +1,6 @@
 # Flight Scanner
 
-An installable PWA with the cheapest round trips from **Billund (BLL), Copenhagen
+An installable PWA with all matching round trips from **Billund (BLL), Copenhagen
 (CPH) and Malmö (MMX)** to Italy. The scanner runs in GitHub Actions; the browser
 reads the published results without credentials or a backend.
 
@@ -8,14 +8,20 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
 
 ## App
 
-- **Top deals:** the cheapest unique round trips within the configured budget.
-- **By destination:** the best options per airport, including prices above budget.
-- Filter by departure or destination airport, or sort by departure date.
+- **All flights:** every matching round trip found by the scan, including prices
+  above budget and alternatives that share an outbound or return flight.
+- **Within budget:** an optional browser filter, with no result-count limit.
+- Filter the full set by departure or destination airport, or sort by price or
+  departure date. Results are paginated in groups of 40; pagination does not cap
+  or discard results.
+- **Scan:** choose the latest scan or an earlier saved scan. Daily and manual runs
+  are retained separately, including multiple runs on the same day.
 - See local flight times, stops, nights, fare sources and booking links. Different
   return airports and separate tickets are explicitly marked.
 - Install from the browser menu, or Safari → Share → Add to Home Screen on iPhone.
   The app and last downloaded results are available offline.
-- Refresh loads the latest published scan. Departed flights are hidden.
+- Refresh reloads the selected scan. Departed flights stay accessible and are
+  labelled for reference. Previously opened scans can be read offline.
 
 ## Daily scan and deployment
 
@@ -27,10 +33,27 @@ Scheduled runs use the default branch and may be delayed by GitHub.
 Pages must use **Source: GitHub Actions**, as the other modules do.
 
 The `flights` job installs dependencies, runs the scanner tests, reads
-`config.yaml`, and writes `data/flights.json`. The `deploy` job combines the result
+`config.yaml`, and writes the complete result set to `data/flights.json`. Only
+exact duplicate quotes are removed; alternative providers, prices and airlines
+are retained. The configured departure dates, stay length and stop limit still
+determine which round trips match the search.
+
+The `deploy` job combines the result
 with the other PWAs in one Pages artifact. Only static assets and flight results
 are included in the flight app's web directory. The repository root page is
-unchanged and no scan results are committed.
+unchanged.
+
+Complete snapshots are compressed and committed to the dedicated **`flight-data`**
+branch, with a history index. No date-based pruning is performed, and source code
+on `main` is unaffected by data updates. The flight job has repository contents
+write permission for this archive; the deployment job retains read-only contents
+access. Pages publishes the index and compressed scans so the app can load any
+saved scan without contacting a fare provider. Artifacts are kept for 90 days
+as an additional recovery copy, independently of the durable data branch.
+
+Full history begins with the first scan after this update. The last published
+snapshot is imported when available. Older snapshots contain only the highlights
+that were previously saved; the app labels those snapshots explicitly.
 
 The job has a time limit. If sources fail, the last available snapshot is preserved
 with its original timestamp and a visible warning. Partial results are identified;
@@ -60,12 +83,11 @@ Edit `config.yaml` and push to `main` to update the scheduled search.
 | --- | --- |
 | `airports.origins` / `destinations` | Departure and destination IATA codes |
 | `search.currency` / `max_price` | Currency and total round-trip deal budget |
-| `search.top_n` | Number of top deals |
-| `search.top_per_airport` | Number of results per destination, regardless of budget |
+| `search.top_n` / `top_per_airport` | Compatibility highlights for older installed app versions; never limit the full export |
 | `search.window_days` / `exclude_next_days` | Departure search window |
 | `search.min_nights` / `max_nights` | Stay length; returns may extend beyond the departure window |
 | `search.max_transfers` | Maximum stops per leg |
-| `search.unique_flights` | Avoid reusing individual flights in the top results |
+| `search.unique_flights` | Avoid repeated legs in compatibility highlights; full results keep these alternatives |
 | `search.request_delay_seconds` | Delay between monthly provider requests |
 | `sources.*` | Enable fare sources and combinations with different return airports |
 | `google_flights.*` | Airlines, concurrency, date spacing, query limit and request delay |
@@ -85,10 +107,14 @@ cd flight-scanner
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt pytest
 .venv/bin/python -m pytest tests
+npm ci
+npm test
 ```
 
 To preview existing results, serve the repository root with a local HTTP server
 and open `/flight-scanner/`. A snapshot must exist at
 `flight-scanner/data/flights.json`; the app shows an unavailable state otherwise.
-The internal Pages job reads `PREVIOUS_FLIGHTS_PATH` for failed-scan fallback and
-writes to `data/flights.json`.
+The app stays buildless; Node 24 and jsdom are used only for automated tests.
+The internal Pages job reads `PREVIOUS_FLIGHTS_PATH` for failed-scan fallback,
+writes to `data/flights.json`, and uses `scanner.history` to archive results and
+stage `data/history/index.json` and `data/history/scans/*.json.gz` for Pages.
