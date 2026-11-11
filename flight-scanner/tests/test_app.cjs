@@ -185,6 +185,90 @@ test("compressed history loads without a scan and retains departed flights", asy
   );
 });
 
+test("all four airport selectors combine with direct-only filtering on both legs", async (t) => {
+  const data = snapshot(8);
+  const combinations = [
+    ["CPH", "FCO", "NAP", "MMX", 0, 0],
+    ["CPH", "FCO", "NAP", "CPH", 0, 0],
+    ["CPH", "FCO", "FCO", "MMX", 0, 0],
+    ["CPH", "NAP", "NAP", "MMX", 0, 0],
+    ["MMX", "FCO", "NAP", "MMX", 0, 0],
+    ["CPH", "FCO", "NAP", "MMX", 1, 0],
+    ["CPH", "FCO", "NAP", "MMX", 0, 1],
+    ["CPH", "FCO", "NAP", "MMX", 0, null],
+  ];
+  data.flights.forEach((flight, i) => {
+    [
+      flight.origin,
+      flight.destination,
+      flight.return_origin,
+      flight.return_destination,
+      flight.out_stops,
+      flight.in_stops,
+    ] = combinations[i];
+    flight.open_jaw =
+      flight.return_origin !== flight.destination ||
+      flight.return_destination !== flight.origin;
+  });
+  const app = start(data);
+  t.after(app.close);
+  const { d, w, change, count } = app;
+  await until(() => count() === 8);
+  change("origin", "CPH");
+  assert.equal(count(), 7);
+  change("destination", "FCO");
+  assert.equal(count(), 6);
+  change("return-origin", "NAP");
+  assert.equal(count(), 5);
+  change("return-destination", "MMX");
+  assert.equal(count(), 4);
+  const direct = d.getElementById("direct-only");
+  direct.checked = true;
+  direct.dispatchEvent(new w.Event("change"));
+  assert.equal(count(), 1);
+  assert.match(d.querySelector(".ticket .price").textContent, /40/);
+  direct.checked = false;
+  direct.dispatchEvent(new w.Event("change"));
+  assert.equal(count(), 4);
+  assert.equal(data.flights.length, 8);
+});
+
+test("return airport choices come from archived results and filters reset pagination", async (t) => {
+  const app = start();
+  t.after(app.close);
+  const { d, w, state, change, count } = app;
+  state.history.flights.forEach((flight) => {
+    flight.return_origin = "QSR";
+    flight.return_destination = "BLL";
+  });
+  await until(
+    () => d.querySelectorAll("#scan option").length === 2 && count() === 40,
+  );
+  d.getElementById("next-page").click();
+  assert.match(d.getElementById("page-status").textContent, /Page 2 of 4/);
+  d.getElementById("direct-only").checked = true;
+  d.getElementById("direct-only").dispatchEvent(new w.Event("change"));
+  assert.match(d.getElementById("page-status").textContent, /Page 1 of 4/);
+  change("scan", HISTORY_FILE);
+  await until(() =>
+    d.getElementById("result-count").textContent.includes("53 matching"),
+  );
+  assert(
+    [...d.getElementById("return-origin").options].some(
+      (option) => option.value === "QSR",
+    ),
+  );
+  assert(
+    [...d.getElementById("return-destination").options].some(
+      (option) => option.value === "BLL",
+    ),
+  );
+  change("return-origin", "QSR");
+  change("return-destination", "BLL");
+  assert.match(d.getElementById("result-count").textContent, /53 matching/);
+  assert(d.getElementById("direct-only").checked);
+});
+
 test("invalid or failed refresh preserves the current set and escapes provider content", async (t) => {
   const initial = snapshot(5);
   initial.flights[0].airline = "<img src=x onerror=alert(1)>";

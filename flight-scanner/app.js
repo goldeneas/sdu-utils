@@ -116,8 +116,8 @@ function leg(f, back = false) {
   const dep = back ? f.return_at : f.departure_at;
   const arrival = back ? f.arrival_back : f.arrival_out;
   const stops = back ? f.in_stops : f.out_stops;
-  const from = back ? f.return_origin : f.origin;
-  const to = back ? f.return_destination : f.destination;
+  const from = back ? f.return_origin || f.destination : f.origin;
+  const to = back ? f.return_destination || f.origin : f.destination;
   const details = [
     clock(dep) +
       (arrival
@@ -205,6 +205,11 @@ function render() {
     (f) =>
       (!$("origin").value || f.origin === $("origin").value) &&
       (!$("destination").value || f.destination === $("destination").value) &&
+      (!$("return-origin").value ||
+        (f.return_origin || f.destination) === $("return-origin").value) &&
+      (!$("return-destination").value ||
+        (f.return_destination || f.origin) === $("return-destination").value) &&
+      (!$("direct-only").checked || (f.out_stops === 0 && f.in_stops === 0)) &&
       (view !== "budget" || f.price <= s.max_price),
   );
   flights.sort(
@@ -245,7 +250,7 @@ function render() {
   else if (raw.length)
     $("results").innerHTML = empty(
       "No matches for these filters",
-      "Try all airports or All flights to include every price.",
+      "Try more airports, include connecting flights, or choose All flights to include every price.",
     );
   else
     $("results").innerHTML = empty(
@@ -286,7 +291,27 @@ function showSnapshot(data) {
   updateFilters(
     "destination",
     [...new Set([...s.destinations, ...flights.map((f) => f.destination)])],
-    "All destinations",
+    "All airports",
+  );
+  updateFilters(
+    "return-origin",
+    [
+      ...new Set([
+        ...s.destinations,
+        ...flights.map((f) => f.return_origin || f.destination),
+      ]),
+    ],
+    "All airports",
+  );
+  updateFilters(
+    "return-destination",
+    [
+      ...new Set([
+        ...s.origins,
+        ...flights.map((f) => f.return_destination || f.origin),
+      ]),
+    ],
+    "All airports",
   );
   page = 1;
   render();
@@ -395,7 +420,14 @@ document.querySelectorAll("[data-view]").forEach((button) =>
     render();
   }),
 );
-["origin", "destination", "sort"].forEach((id) =>
+[
+  "origin",
+  "destination",
+  "return-origin",
+  "return-destination",
+  "direct-only",
+  "sort",
+].forEach((id) =>
   $(id).addEventListener("change", () => {
     page = 1;
     render();

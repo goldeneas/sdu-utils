@@ -93,24 +93,60 @@
               Within budget
             </button>
           </div>
-          <div class="filters">
-            <label
-              >From
-              <select id="origin">
-                <option value="">All airports</option>
-              </select></label
-            ><label
-              >To
-              <select id="destination">
-                <option value="">All destinations</option>
-              </select></label
-            ><label
+        </div>
+        <div class="filter-panel">
+          <fieldset class="trip-filters">
+            <legend>Outbound flight</legend>
+            <div class="airport-fields">
+              <label
+                >Departure airport
+                <select id="origin" aria-label="Outbound departure airport">
+                  <option value="">All airports</option>
+                </select>
+              </label>
+              <label
+                >Arrival airport
+                <select id="destination" aria-label="Outbound arrival airport">
+                  <option value="">All airports</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="trip-filters">
+            <legend>Return flight</legend>
+            <div class="airport-fields">
+              <label
+                >Departure airport
+                <select
+                  id="return-origin"
+                  aria-label="Return departure airport"
+                >
+                  <option value="">All airports</option>
+                </select>
+              </label>
+              <label
+                >Arrival airport
+                <select
+                  id="return-destination"
+                  aria-label="Return arrival airport"
+                >
+                  <option value="">All airports</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+          <div class="filter-options">
+            <label class="direct-filter"
+              ><input id="direct-only" type="checkbox" />Direct flights only
+              (both ways)</label
+            >
+            <label class="sort-filter"
               >Sort
               <select id="sort">
                 <option value="price">Lowest price</option>
                 <option value="date">Soonest departure</option>
-              </select></label
-            >
+              </select>
+            </label>
           </div>
         </div>
         <p id="result-count" class="result-count muted" aria-live="polite"></p>

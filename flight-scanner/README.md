@@ -11,9 +11,13 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
 - **All flights:** every matching round trip found by the scan, including prices
   above budget and alternatives that share an outbound or return flight.
 - **Within budget:** an optional browser filter, with no result-count limit.
-- Filter the full set by departure or destination airport, or sort by price or
-  departure date. Results are paginated in groups of 40; pagination does not cap
-  or discard results.
+- Filter the full set independently by **outbound departure**, **outbound arrival**,
+  **return departure** and **return arrival** airports, including itineraries with
+  different airports on the return trip.
+- **Direct flights only (both ways)** requires zero stops on both legs. These
+  browser filters work with existing saved scans and do not trigger a new search.
+- Sort by price or departure date. Results are paginated in groups of 40;
+  pagination does not cap or discard results.
 - **Scan:** choose the latest scan or an earlier saved scan. Daily and manual runs
   are retained separately, including multiple runs on the same day.
 - See local flight times, stops, nights, fare sources and booking links. Different

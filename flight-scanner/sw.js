@@ -1,5 +1,5 @@
 // Keep this cache scoped to flight-scanner; sibling PWAs share the Pages origin.
-const CACHE = "flight-scanner-v2";
+const CACHE = "flight-scanner-v3";
 // Keep data across app-shell updates, including an update during a failed daily scan.
 const DATA_CACHE = "flight-scanner-data";
 const SHELL = [
