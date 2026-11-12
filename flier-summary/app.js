@@ -12,7 +12,7 @@
     data: null,
     stars: load(STAR_KEY, []),
     cart: load(CART_KEY, []),
-    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'store', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
+    prefs: Object.assign({ tab: 'offers', when: 'today', stores: [], sort: 'recent', query: '', cat: 'all', en: false }, load(PREF_KEY, {})),
   };
 
   function load(key, fallback) {
@@ -266,6 +266,7 @@
     if (q.length) list = list.filter((o) => { const h = norm(o.heading + ' ' + (o.headingEn || enCache[o.heading] || '') + ' ' + o.description); return q.every((w) => h.includes(w)); });
     const order = (state.data.stores || []).map((s) => s.key);
     const cmp = {
+      recent: (a, b) => (Date.parse(b.from) || 0) - (Date.parse(a.from) || 0),
       store: (a, b) => order.indexOf(a.store) - order.indexOf(b.store) || (a.page ?? 0) - (b.page ?? 0),
       price: (a, b) => (a.price ?? 1e9) - (b.price ?? 1e9),
       discount: (a, b) => discount(b) - discount(a),
@@ -304,10 +305,10 @@
 
   // How many filters differ from the defaults (shown as a badge on the filter button).
   const activeFilters = () => [state.prefs.stores.length > 0, state.prefs.cat !== 'all',
-    state.prefs.when !== 'today', state.prefs.sort !== 'store'].filter(Boolean).length;
+    state.prefs.when !== 'today', state.prefs.sort !== 'recent'].filter(Boolean).length;
 
   function resetFilters() {
-    Object.assign(state.prefs, { when: 'today', stores: [], cat: 'all', sort: 'store' });
+    Object.assign(state.prefs, { when: 'today', stores: [], cat: 'all', sort: 'recent' });
     savePrefs(); renderLimit = 60; render();
   }
 
