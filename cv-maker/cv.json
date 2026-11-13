@@ -1,0 +1,162 @@
+{
+  "basics": {
+    "name": "Nicola Picarella",
+    "title": "Backend & Data Platform Engineer",
+    "location": "Odense, Denmark - Open to remote",
+    "email": "nicola.picarella6@gmail.com",
+    "linkedin": "https://www.linkedin.com/in/nicola-picarella/",
+    "github": "https://github.com/goldeneas",
+    "summary": "Software engineer focused on backend systems and data platforms. Designed an event-driven analytics pipeline for game servers at Vertmix and built ServerAnalytics, a SaaS platform that turns game-server telemetry into analytics, on Kafka, ksqlDB, PostgreSQL and Redis. Comfortable across the stack, from low-level C and Rust to observability and CI/CD. BSc in Computer Engineering (110/110 cum laude), currently pursuing an MSc in Software Engineering at the University of Southern Denmark."
+  },
+  "experience": [
+    {
+      "role": "Software Engineer",
+      "company": "Vertmix",
+      "location": "Canada (Remote, full-time)",
+      "start": "2024",
+      "end": "2025",
+      "bullets": [
+        "Designed and implemented the end-to-end architecture of a distributed data pipeline for game-server analytics, built on Apache Kafka and Kafka Connect with a microservice-based design.",
+        "Built a custom Java ingestion agent that collects real-time user metrics, with strict data validation enforced through a Next.js edge service.",
+        "Architected a hybrid storage layer: MongoDB for raw data retention, PostgreSQL for aggregated analytics and Redis as a caching layer.",
+        "Set up the backend observability and delivery stack: Prometheus metrics, Grafana dashboards, Loki log aggregation and Jenkins CI pipelines."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "ServerAnalytics",
+      "link": "https://serveranalytics.net",
+      "start": "2026",
+      "end": "Present",
+      "tagline": "SaaS analytics platform for game servers",
+      "bullets": [
+        "Designed and built the backend of a SaaS platform turning game-server telemetry into analytics: connectors send batched events to a public REST API with hashed-secret authentication, rate limiting and Avro schema validation (Schema Registry).",
+        "Structured the backend with CQRS, using Apache Kafka as the durable event log (source of truth) and ksqlDB materialized tables to compute 14 analytics, such as retention, player segmentation, combat, revenue and server performance, served through a Redis cache.",
+        "Integrated Keycloak (identity), PostgreSQL, Paddle (billing, webhooks) and Traefik (TLS gateway); everything runs in Docker containers, with CI/CD on GitHub Actions."
+      ]
+    },
+    {
+      "name": "NYC Mobility Analytics",
+      "start": "2026",
+      "end": "Present",
+      "tagline": "Big-data platform for New York taxi and flight data",
+      "bullets": [
+        "Building a streaming data platform that ingests New York taxi trip and flight data through Kafka and Kafka Connect, using Avro and Parquet as data formats and HBase on HDFS for storage.",
+        "Processing with Apache Spark, using both Spark Streaming for incoming data and Spark SQL to aggregate statistics.",
+        "Predicting taxi demand from incoming flights."
+      ]
+    },
+    {
+      "name": "wxpg",
+      "start": "2024",
+      "end": "2024",
+      "tagline": "Cross-platform graphics engine in Rust on wgpu",
+      "bullets": [
+        "Used to render voxel scenes; reduces draw calls in complex scenes through indirect drawing pipelines and batched instancing.",
+        "Built core subsystems: a threaded asset manager, an input processing server and an immediate-mode UI renderer."
+      ]
+    },
+    {
+      "name": "Lambda",
+      "start": "2025",
+      "end": "2025",
+      "tagline": "Visual programming tool for creating Minecraft plugins",
+      "bullets": [
+        "Lets users build Minecraft plugins without programming knowledge, through a React + Vite frontend and a Spring Boot backend (Java, TypeScript)."
+      ]
+    },
+    {
+      "name": "Trainy",
+      "tagline": "Full-stack calisthenics and fitness tracking app",
+      "bullets": [
+        "Expo / React Native mobile frontend with a Go backend on SQLite, including DAO layer, weekly statistics aggregation and a DAG-based skill progression system."
+      ]
+    },
+    {
+      "name": "nicolaOS",
+      "start": "2024",
+      "end": "2024",
+      "tagline": "Custom x86_64 kernel in C",
+      "bullets": [
+        "Booted with the Limine bootloader; implements GDT, IDT, PIC, ISR routines and a custom heap allocator."
+      ]
+    },
+    {
+      "name": "idcp",
+      "start": "2025",
+      "end": "2025",
+      "tagline": "IRC-inspired chat protocol in C",
+      "bullets": [
+        "Implemented with libuv and nanopb (Protocol Buffers); decentralized client/server setup that supports peer-to-peer message exchange."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "MSc in Software Engineering",
+      "institution": "University of Southern Denmark (SDU)",
+      "location": "Odense, Denmark",
+      "start": "Sep 2026",
+      "end": "Present",
+      "bullets": []
+    },
+    {
+      "degree": "BSc in Computer Engineering",
+      "institution": "Università degli Studi di Salerno",
+      "location": "Salerno, Italy",
+      "start": "Sep 2023",
+      "end": "Jul 2026",
+      "bullets": [
+        "Final grade: 110/110 cum laude (180 ECTS)",
+        "Thesis: AI Fingerspelling Classification App — recognition of Italian Sign Language (LIS) fingerspelling using MediaPipe hand landmarks with KNN and CNN classifiers, wrapped in a Flask web app."
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "group": "Languages",
+      "items": ["Go", "Rust", "Java", "C", "Python", "C#", "SQL", "Bash", "Lua", "TypeScript", "JavaScript", "HTML/CSS"]
+    },
+    {
+      "group": "Backend & Messaging",
+      "items": ["Spring Boot", "REST", "Protocol Buffers", "MQTT", "RabbitMQ", "WebSockets"]
+    },
+    {
+      "group": "Data & Streaming",
+      "items": ["Kafka", "Kafka Connect", "ksqlDB", "Schema Registry", "Redis", "ClickHouse", "PostgreSQL", "MongoDB", "MySQL", "SQLite", "Data modeling"]
+    },
+    {
+      "group": "Big Data & Governance",
+      "items": ["Spark (SQL, Streaming)", "MapReduce", "HDFS", "HBase", "Hive", "Flume", "Sqoop", "Avro", "Parquet", "Apache Atlas", "DataHub"]
+    },
+    {
+      "group": "Observability",
+      "items": ["Prometheus", "Grafana", "Loki", "OpenTelemetry"]
+    },
+    {
+      "group": "Infrastructure & DevOps",
+      "items": ["Docker", "Docker Compose", "Linux", "Git", "GitHub Actions", "Jenkins", "Nginx", "Traefik", "Keycloak", "Tailscale", "WireGuard", "Proxmox", "Helm"]
+    },
+    {
+      "group": "Frontend & Mobile",
+      "items": ["Next.js", "React", "Expo / React Native"]
+    },
+    {
+      "group": "Machine Learning",
+      "items": ["OpenCV", "KNN", "CNN", "LLMs (architecture and inner workings)"]
+    },
+    {
+      "group": "Build & Tools",
+      "items": ["Gradle", "Maven", "CMake", "Postman", "Agile/Scrum"]
+    },
+    {
+      "group": "Familiar with",
+      "items": ["Kubernetes", "AWS", "Oracle Cloud"]
+    }
+  ],
+  "languages": [
+    { "name": "Italian", "level": "Native" },
+    { "name": "English", "level": "C2 listening & reading, C1 writing & speaking" }
+  ]
+}
