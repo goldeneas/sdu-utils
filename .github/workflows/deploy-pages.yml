@@ -5,6 +5,7 @@ name: Deploy web apps to GitHub Pages
 #   https://<user>.github.io/sdu-utils/flier-summary/
 #   https://<user>.github.io/sdu-utils/central-canteen/
 #   https://<user>.github.io/sdu-utils/flight-scanner/
+#   https://<user>.github.io/sdu-utils/cv-maker/
 # GitHub Pages publishes a single artifact per repo, so all modules must be deployed by this one workflow
 # (a second Pages workflow would replace the other module's files).
 
@@ -109,6 +110,20 @@ jobs:
           python -m pip install -r central-canteen/scraper/requirements.txt
           python -m playwright install --with-deps chromium
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: cv-maker/package-lock.json
+
+      - name: Build and test the read-only CV and its PDF download
+        working-directory: cv-maker
+        run: |
+          export CHROME_PATH="$(python -c 'from playwright.sync_api import sync_playwright; p = sync_playwright().start(); print(p.chromium.executable_path); p.stop()')"
+          npm ci
+          npm run build
+          npm test
+
       # Fetch offers into the staged copy only, so nothing is committed back to the repo.
       # If the flier API is down, keep yesterday's file from the live site instead of publishing an empty app.
       - name: Stage site and fetch offers
@@ -120,6 +135,8 @@ jobs:
           cp -r wise-tram-copier _site/wise-tram-copier
           cp -r flier-summary _site/flier-summary
           cp -r central-canteen _site/central-canteen
+          # Only built assets and the regenerated PDF belong on Pages.
+          cp -r cv-maker/dist _site/cv-maker
           # Publish only static flight assets; keep the scanner and its config out of Pages.
           mkdir -p _site/flight-scanner/data
           cp flight-scanner/index.html flight-scanner/style.css flight-scanner/app.js flight-scanner/pwa.js flight-scanner/sw.js flight-scanner/manifest.webmanifest _site/flight-scanner/
