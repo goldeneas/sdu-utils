@@ -138,6 +138,14 @@
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       if (!Array.isArray(data.offers) || !Array.isArray(data.stores)) throw new Error('Invalid offers file');
+      // A cached file can predate the stricter Bilka collector. Such prices must
+      // not return through offline reloads, failed publishing or old snapshots.
+      const confirmedBilka = (o) => o.sourceKey !== 'bilkatogo-offers' ||
+        ['store-before-price', 'mix-total', 'buy-pay'].includes(o.promotionEvidence);
+      data.offers = data.offers.filter(confirmedBilka);
+      for (const feed of data.offerFeeds || []) {
+        if (feed.key === 'bilkatogo-offers') feed.offers = (feed.offers || []).filter(confirmedBilka);
+      }
       state.data = data;
       englishByHeading = new Map(state.data.offers.filter((o) => o.headingEn).map((o) => [o.heading, o.headingEn]));
       refreshStarsFromData();

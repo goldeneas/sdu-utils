@@ -1,8 +1,10 @@
-"""Public BilkaToGo promotions outside fliers, without assuming Plus eligibility.
+"""Confirmed BilkaToGo promotions outside fliers, without assuming Plus eligibility.
 
 Browse uses the website's public read-only browse key and cursor protocol. The
 ordinary search has a 1,000-result window and cannot enumerate this selection.
 Undated prices are observations, never offers with an invented expiry.
+The broad isInOffer selection and a lower catalog reference are not evidence
+of a promotion: require an explicit store before-price or a saving mix deal.
 """
 from __future__ import annotations
 
@@ -22,8 +24,15 @@ BROWSE_URL = f"https://{ALGOLIA_APP}-dsn.algolia.net/1/indexes/{ALGOLIA_INDEX}/b
 BROWSE_KEY = "b03ff911ddd193e130b5a65631a3d604"
 PAGE_SIZE = 500
 MAX_PAGES = 128
-FIELDS = ["objectID", "name", "brand", "subBrand", "description", "netcontent", "price",
+PROMOTION_EVIDENCE = frozenset({"store-before-price", "mix-total", "buy-pay"})
+FIELDS = ["objectID", "name", "brand", "subBrand", "description", "netcontent",
           f"storeData.{BILKA_STORE}", "images", "isInOffer", "nonsearchable"]
+
+
+def is_confirmed_store_offer(offer: dict) -> bool:
+    """Legacy snapshots used catalog-reference reductions; never reuse those."""
+    return (offer.get("sourceKey") == "bilkatogo-offers" and offer.get("store") == "bilka"
+            and offer.get("promotionEvidence") in PROMOTION_EVIDENCE)
 
 
 def positive_integer(value, field):
@@ -86,7 +95,6 @@ def parse_store_product(product: dict, fetched_at: datetime) -> list[dict]:
     if not isinstance(store, dict):
         raise RuntimeError("BilkaToGo missing Odense price")
     current = positive_integer(store.get("price"), "ordinary store price")
-    reference = positive_integer(product.get("price"), "catalog reference price")
     before = store.get("beforePrice", 0)
     if type(before) is not int or before < 0:
         raise RuntimeError("BilkaToGo invalid comparison price")
@@ -114,10 +122,10 @@ def parse_store_product(product: dict, fetched_at: datetime) -> list[dict]:
     if not isinstance(conditions, str):
         raise RuntimeError("BilkaToGo invalid purchase conditions")
     variants = []
-    # The catalog reference selects reduced prices but is not established as a
-    # historical before-price. Never invent a saving or a Plus badge from it.
-    if current < max(reference, before):
-        variants.append((current, pack, conditions))
+    # Root product.price is a catalog reference, not a historical before-price.
+    # Neither "Skarp pris", "Se Her", dates nor isInOffer alone prove a saving.
+    if before > current:
+        variants.append((current, pack, conditions, "store-before-price", before / 100))
     group = store.get("multipromo")
     if group not in (None, "", 0, "0"):
         count = positive_integer(store.get("offerCount"), "mix quantity")
@@ -126,7 +134,7 @@ def parse_store_product(product: dict, fetched_at: datetime) -> list[dict]:
         if value in (None, "") and buy_pay and int(buy_pay[1]) == count and 0 < int(buy_pay[2]) < count:
             # Mixed-price "3 for 2" groups do not expose a fixed bundle total.
             variants.append((None, f"{count} stk." + (f" á {pack}" if pack else ""),
-                             f"{buy_pay[0]}. " + conditions))
+                             f"{buy_pay[0]}. " + conditions, "buy-pay", None))
             value = None
         elif isinstance(value, str) and re.fullmatch(r"\d+", value):
             value = int(value)
@@ -138,23 +146,24 @@ def parse_store_product(product: dict, fetched_at: datetime) -> list[dict]:
             total = positive_integer(value, "mix total")
             if total < current * count:
                 variants.append((total, f"{count} stk." + (f" á {pack}" if pack else ""),
-                                 f"Mix {count} for {total / 100:g} kr. " + conditions))
+                                 f"Mix {count} for {total / 100:g} kr. " + conditions, "mix-total", None))
     unit = store.get("unitsOfMeasurePriceUnit", "")
     per_unit = store.get("unitsOfMeasureShowPrice")
     unit_price = f"{per_unit / 100:g} kr/{unit.rstrip('.').lower()}" if type(per_unit) is int and per_unit > 0 and isinstance(unit, str) and unit else ""
     result = []
-    for minor, quantity, condition in variants:
+    for minor, quantity, condition, evidence, pre_price in variants:
         description = " ".join([condition, "BilkaToGo · Bilka Odense, Niels Bohrs Alle 150."]).strip()
         identity = json.dumps([source_id, minor, quantity, description, start.isoformat() if start else None, end.isoformat() if end else None])
         result.append({
             "id": "bilkatogo-offers:" + hashlib.sha256(identity.encode()).hexdigest()[:20],
             "store": "bilka", "heading": title, "description": description,
-            "price": minor / 100 if minor is not None else None, "prePrice": None, "quantity": quantity,
-            "unitPrice": unit_price if minor == current else "",
+            "price": minor / 100 if minor is not None else None, "prePrice": pre_price, "quantity": quantity,
+            "unitPrice": unit_price if evidence == "store-before-price" else "",
             "from": start.isoformat() if start else None, "till": end.isoformat() if end else None,
             "priceObservedAt": fetched_at.isoformat(timespec="seconds"),
             "image": image, "imageLarge": image, "sourceKey": "bilkatogo-offers",
             "sourceUrl": BILKA_STORE_URL, "sourceProductId": source_id,
+            "promotionEvidence": evidence,
         })
     return result
 

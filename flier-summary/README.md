@@ -49,18 +49,25 @@ excerpts, source URLs, capture hashes and dated metadata are in `scraper/fixture
 These are public selections, not complete coverage of the apps or a guarantee of
 stock or identical pricing in every physical branch. Personal coupons are excluded.
 
-`--bilka-store-offers` additionally collects ordinary public BilkaToGo promotions
-for Odense, including products outside fliers and without Plus membership. This
-fixes cases such as **Protein Lab Chokolademousse, 200 g, 10 kr**, which was absent
-from the published file despite being available in the store's public prices.
-Its source is a separate `offerFeeds` snapshot, not a member feed. The collector
+`--bilka-store-offers` additionally collects **confirmed** public BilkaToGo
+promotions for Odense, including products outside fliers and without Plus
+membership. Its source is a separate `offerFeeds` snapshot, not a member feed. The collector
 uses the website's public read-only browse cursor to exhaust the selection;
 ordinary search exceeds its 1,000-result window and does not give exact counts.
 Public store prices and mix conditions are used; coupon or personal cart prices
-are not queried. Catalog reference prices help select reductions but are not
-published as historical prices or invented savings. Mix totals are preserved,
+are not queried. Single-pack discounts require an explicit store `beforePrice`
+above the current price; this comparison is shown on the detail page. The broad
+`isInOffer` flag, campaign dates, labels such as `Skarp pris`/`Se Her`, and a
+reduction from the root catalog reference are insufficient by themselves.
+**Protein Lab Chokolademousse, 200 g, 10 kr** is therefore excluded: the observed
+record has only a catalog-reference reduction, not a confirmed promotion.
+Mix totals are preserved,
 while variable-total promotions such as "3 for 2" retain their conditions without
-an invented kr amount. Mixes costing more than buying the pieces are excluded.
+an invented kr amount. Mixes costing the same as or more than buying the pieces
+are excluded. Each exported deal carries `promotionEvidence`; the collector's
+fallback and the app reject older BilkaToGo records without this evidence, so
+cached files cannot restore the previous broad price selection. Published fliers and
+the separately verified Bilka Plus selection continue to be included.
 
 Some ordinary promotions publish no expiry. These carry `priceObservedAt` with
 `from`/`till` left unknown. The app displays **Price checked …**, not a fictional
@@ -248,7 +255,7 @@ then the app filters. Without these details, the exact cause cannot be establish
 
 ### Browser checks before publishing
 
-`tests/browser_smoke.py` runs thirteen end-to-end checks against a collected feed
+`tests/browser_smoke.py` runs fifteen end-to-end checks against a collected feed
 using Chromium. It starts an isolated localhost site and browser profile, without
 changing your saved preferences or publishing anything. It checks search, filters,
 member prices and images, featured offers, cart and stars persistence, backup and
@@ -270,10 +277,10 @@ The current smoke scenarios require a fresh feed with all five member selections
 a Netto dairy offer, a Bilka Plus price above its ordinary comparison price and
 a percentage-only Coop promotion. The new-chain scenario is skipped for legacy
 feeds containing neither Coop nor Lidl Plus.
-The ordinary-price regression searches the reported chocolate mousse at 10 kr,
-checks the absence of a Plus requirement, and advances the browser to the next
-day to verify that an old undated price stops appearing as current while the
-saved cart and last-seen price keep their original observation date.
+The Bilka regressions verify explicit discount details and inject the old
+chocolate-mousse record into a cached feed to confirm it is absent from search
+and direct details. An undated confirmed mix deal stops appearing as current on
+the next day, while its saved cart and last-seen price retain their observation.
 Keep the dated feed with the test report to reproduce a run; a future selection
 can require updating those scenarios. Screenshots and `report.json` are written
 to the artifacts directory. These checks cover Chromium at phone and desktop

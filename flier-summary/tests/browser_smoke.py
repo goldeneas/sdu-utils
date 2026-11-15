@@ -189,16 +189,50 @@ class BrowserSmoke(unittest.TestCase):
         expect(self.page.locator("#cart")).to_contain_text("Requires Lidl Plus")
         expect(self.page.locator("#cart")).to_contain_text("Requires Coop")
 
-    def test_ordinary_mousse_search_and_expiry_unknown_observation(self):
-        offer = next((o for o in self.feed["offers"] if o.get("sourceKey") == "bilkatogo-offers"
-                      and o.get("sourceProductId") == "125829"), None)
-        if offer is None:
-            self.skipTest("Feed has no ordinary BilkaToGo promotion selection")
+    def test_confirmed_store_discount_details(self):
+        offer = next(o for o in self.feed["offers"] if o.get("promotionEvidence") == "store-before-price" and self.current(o))
         self.open()
-        self.search("Chokolademousse Protein Lab")
-        card = self.page.locator("#list article.offer").filter(has=self.page.locator("h3", has_text=offer["heading"]))
-        expect(card).to_have_count(1)
-        expect(card.locator(".price")).to_have_text("10 kr")
+        self.detail(offer)
+        expect(self.page.locator("#view-detail .detail-price .pre")).to_be_visible()
+        expect(self.page.locator("#view-detail .detail-price .save")).to_be_visible()
+        expect(self.page.locator("#view-detail .membership")).to_have_count(0)
+        expect(self.page.locator("#view-detail .detail-desc")).to_contain_text("BilkaToGo")
+        expect(self.page.locator("#view-detail .facts a")).to_have_attribute("href", offer["sourceUrl"])
+
+    def test_cached_legacy_bilka_prices_are_excluded_from_search_and_detail(self):
+        # Reproduce the old exported mousse, using its captured public price.
+        raw = json.loads((Path(__file__).resolve().parents[1] / "scraper/fixtures/bilka-public-promotions-2026-11-15.json").read_text())[0]
+        legacy = {"id": "bilkatogo-offers:legacy-price", "store": "bilka",
+                  "heading": raw["brand"] + " " + raw["name"], "description": "BilkaToGo",
+                  "price": raw["storeData"]["1654"]["price"] / 100, "quantity": raw["netcontent"],
+                  "from": None, "till": None, "priceObservedAt": self.feed["generatedAt"],
+                  "sourceKey": "bilkatogo-offers", "sourceProductId": raw["objectID"]}
+        self.server.payload["offers"].append(legacy)
+        self.server.payload["offerFeeds"][0]["offers"].append(legacy)
+        self.server.payload["offerFeeds"][0]["status"] = "cached"
+        self.open()
+        self.page.locator("#q").fill("Chokolademousse Protein Lab")
+        expect(self.page.locator("#count")).to_have_text("0 offers")
+        expect(self.page.locator("#list article.offer")).to_have_count(0)
+        self.page.goto(self.url + "#offer/" + legacy["id"], wait_until="domcontentloaded")
+        expect(self.page.locator("#view-detail")).to_contain_text("no longer")
+        expect(self.page.locator("#view-detail .cartbtn")).to_have_count(0)
+
+    def test_confirmed_undated_mix_and_expiry_unknown_observation(self):
+        offer = next((o for o in self.feed["offers"] if o.get("sourceKey") == "bilkatogo-offers"
+                      and o.get("promotionEvidence") == "mix-total" and not o.get("till")
+                      and o.get("price") is not None and self.current(o)), None)
+        if offer is None:
+            self.skipTest("Feed has no undated confirmed mix deal")
+        # Isolate this real deal so another store's cheaper bananas cannot
+        # replace its last-seen price when the star is refreshed.
+        self.server.payload["offers"] = [offer]
+        self.open()
+        self.search(offer["heading"])
+        card = self.page.locator("#list article.offer").filter(has=self.page.locator("h3", has_text=offer["heading"])).filter(
+            has=self.page.locator(".desc", has_text=offer["description"])).first
+        expect(card).to_be_visible()
+        expect(card.locator(".price")).not_to_be_empty()
         expect(card.locator(".membership")).to_have_count(0)
         expect(card.locator(".valid")).to_contain_text("Price checked")
         self.detail(offer)
@@ -213,10 +247,11 @@ class BrowserSmoke(unittest.TestCase):
         self.server.payload["offerFeeds"][0]["status"] = "cached"
         self.page.reload(wait_until="domcontentloaded")
         expect(self.page.locator("#status")).not_to_be_empty()
-        expect(self.page.locator("#cart .price")).to_have_text("10 kr")
+        expect(self.page.locator("#cart .price")).not_to_be_empty()
         expect(self.page.locator("#cart .membership")).to_have_count(0)
         self.page.locator('[data-tab="offers"]').click()
-        expect(self.page.locator("#list article.offer")).to_have_count(0)
+        expect(self.page.locator("#list article.offer").filter(
+            has=self.page.locator(".desc", has_text=offer["description"]))).to_have_count(0)
         self.page.locator('[data-tab="starred"]').click()
         expect(self.page.locator("#starred .offer.idle")).to_have_count(1)
         expect(self.page.locator("#starred")).to_contain_text("checked")

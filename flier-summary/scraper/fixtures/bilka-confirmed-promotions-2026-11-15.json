@@ -1,0 +1,158 @@
+{
+  "advertised-price": {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Se Her",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 9500,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 1388,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 1199,
+        "unitsOfMeasureShowPrice": 1199
+      }
+    },
+    "price": 10995,
+    "name": "Pepsi Max",
+    "description": "Pepsi Max",
+    "brand": "Pepsi",
+    "subBrand": "MAX",
+    "netcontent": "24 x 0.33 liter",
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/ea7d68f41df352e93734d9ae9c24abd2"
+    ],
+    "nonsearchable": false,
+    "objectID": "29575"
+  },
+  "discount": {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Spar 10,95",
+        "offerFrom": "2026-11-13",
+        "offerUntil": "2026-11-26",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 2200,
+        "beforePrice": 3295,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 3661,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 2444,
+        "unitsOfMeasureShowPrice": 2444
+      }
+    },
+    "price": 3295,
+    "name": "Appelsinjuice",
+    "description": "Appelsinjuice",
+    "brand": "Innocent",
+    "subBrand": "",
+    "netcontent": "900 ml",
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/6e62f034ecfdd49f3ddbb91563913e01"
+    ],
+    "nonsearchable": false,
+    "objectID": "81459"
+  },
+  "buy-pay": {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "11402721",
+        "offerDescription": "3 for 2",
+        "offerFrom": "2026-11-12",
+        "offerUntil": "2026-11-19",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 3,
+        "price": 10900,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 14533,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 14533,
+        "unitsOfMeasureShowPrice": 14533
+      }
+    },
+    "price": 10900,
+    "name": "Valpolicella Ripasso",
+    "description": "Valpolicella Ripasso",
+    "brand": "Rocca Alata",
+    "subBrand": "",
+    "netcontent": "75 cl",
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/74c03a6b70bbeedbb2485d200fa3e5ad"
+    ],
+    "nonsearchable": false,
+    "objectID": "113898"
+  }
+}

@@ -26,7 +26,7 @@ from member_offers import NETTO_PLUS_URL, fetch_netto_plus
 from bilka_offers import BILKA_PLUS_URL, fetch_bilka_plus
 from coop_offers import COOP_MEMBERS_URL, fetch_coop_members
 from lidl_offers import LIDL_PLUS_URL, fetch_lidl_plus
-from bilka_store_offers import BILKA_STORE_URL, fetch_bilka_store_offers
+from bilka_store_offers import BILKA_STORE_URL, fetch_bilka_store_offers, is_confirmed_store_offer
 
 API = "https://squid-api.tjek.com/v2"
 
@@ -444,9 +444,14 @@ def lidl_member_feed(previous: dict, generated_at: str) -> dict:
 
 
 def bilka_store_feed(previous: dict, generated_at: str) -> dict:
+    # Do not let a failed refresh restore the old, broader price selection.
+    previous = {**previous, "offerFeeds": [
+        {**feed, "offers": [o for o in feed.get("offers", []) if is_confirmed_store_offer(o)]}
+        for feed in previous.get("offerFeeds", []) if feed.get("key") == "bilkatogo-offers"
+    ]}
     return source_feed(previous, generated_at, key="bilkatogo-offers", name="BilkaToGo (Odense)", store="bilka",
                        url=BILKA_STORE_URL, fetch=fetch_bilka_store_offers, section="offerFeeds",
-                       coverage="public-store-promotions")
+                       coverage="confirmed-store-promotions-v1")
 
 
 def source_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch,
@@ -478,7 +483,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bilka-plus", action="store_true", help="include public BilkaToGo Plus prices for Bilka Odense")
     ap.add_argument("--coop-members", action="store_true", help="include public Coop member selections for 365discount and SuperBrugsen")
     ap.add_argument("--lidl-plus", action="store_true", help="include the public weekly Lidl Plus prices, excluding coupons")
-    ap.add_argument("--bilka-store-offers", action="store_true", help="include public ordinary BilkaToGo promotions for Odense, including outside fliers")
+    ap.add_argument("--bilka-store-offers", action="store_true", help="include confirmed BilkaToGo discounts and mix deals for Odense")
     args = ap.parse_args(argv)
 
     previous = {}

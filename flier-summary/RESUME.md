@@ -1,5 +1,42 @@
 # Ripresa flier-summary
 
+## Bilka: solo promozioni confermate — 15 novembre 2026
+
+Richiesta attuale: lavorare su Bilka mostrando soltanto offerte, senza estendere
+il catalogo ai prezzi ordinari. L'utente ha approvato il criterio conservativo:
+un riferimento di catalogo più alto non dimostra una promozione. Il flusso di
+consegna commit/push su main resta quello già concordato; verificare Git remoto
+e non confondere il push con una pubblicazione Pages.
+
+- `bilka_store_offers.py` non usa né scarica più il prezzo di riferimento root.
+  Per il singolo articolo richiede `storeData.1654.beforePrice > price`; espone
+  quel confronto nel dettaglio. `isInOffer`, `Skarp pris`, `Se Her` e le sole
+  date non bastano. Conserva mix con totale inferiore ai singoli e condizioni
+  esplicite come "3 for 2", senza inventare un totale per gruppi a prezzi misti.
+- Ogni offerta ordinaria confermata porta `promotionEvidence`:
+  `store-before-price`, `mix-total` oppure `buy-pay`. Gli snapshot precedenti
+  senza prova vengono esclusi dal fallback. L'app applica lo stesso controllo
+  ai file vecchi/cached, prima di ricerca, dettagli e corrispondenze preferiti.
+  Restano le selezioni dei volantini e Bilka Plus. Service worker v19.
+- La mousse Protein Lab a 10 kr (`125829`) è ora intenzionalmente esclusa:
+  la cattura ha `beforePrice=0`, nessuna data e solo `Skarp pris` con riferimento
+  root maggiore. Il vecchio comportamento documentato sotto è superato.
+- Nuove fixture reali con hash: `bilka-confirmed-promotions-2026-11-15*.json`:
+  sconto Innocent, prezzo Pepsi "Se Her" non confermato, vino "3 for 2".
+- Verifiche: 101 test Python e 15 scenari Chromium passati; sintassi JS e
+  `git diff --check` passati. Browser: dettaglio con risparmio esplicito,
+  vecchia mousse in cache assente da ricerca/link diretto, mix non datato
+  escluso il giorno seguente mantenendo la data nei prezzi salvati.
+- Accesso pubblico live verificato e raccolta completa riuscita:
+  `/tmp/flier-bilka-confirmed-20261115.json`, ore 21:00:11 UTC, 12.067 ID unici;
+  2.946 volantini, 196 soci e 8.925 promozioni ordinarie confermate
+  (874 sconti singoli, 3.474 mix a totale fisso, 4.577 condizioni "3 for 2").
+  Tutte le fonti sono `ok`; nessun record ordinario mousse pubblicato.
+- Report browser: `/tmp/flier-bilka-confirmed-browser-final-20261115/report.json`.
+  I test di guasto, cache/offline e traduzioni sono simulati; prezzi e feed reali.
+  Il workflow Pages resta programmato alle 03:15 UTC o manuale: non dichiarare
+  il sito aggiornato senza un run e una verifica del file pubblicato.
+
 ## Correzione del prodotto Protein Lab mancante — stato attuale
 
 Branch di lavoro: `codex/flier-summary-bilka-public-promotions`, basato su
