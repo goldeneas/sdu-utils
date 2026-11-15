@@ -660,12 +660,11 @@
           ? ` from ${new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Copenhagen' }).format(date)}` : '';
         return `${label} could not refresh. Showing saved offers${saved}.`;
       }
-      return `${label}: selected member offers. More may be available in the app.`;
-    });
+      return null;
+    }).filter(Boolean);
     for (const feed of state.data.offerFeeds || []) {
       if (feed.status === 'unavailable') memberMessages.push(`${feed.name} public promotions are temporarily unavailable.`);
       else if (feed.status === 'cached') memberMessages.push(`${feed.name} could not refresh. Saved undated prices are shown only on their collection day.`);
-      else memberMessages.push(`${feed.name}: selected public promotions. Undated prices show when they were checked.`);
     }
     $('#member-status').textContent = memberMessages.join(' ');
     $('#member-status').hidden = !memberMessages.length;

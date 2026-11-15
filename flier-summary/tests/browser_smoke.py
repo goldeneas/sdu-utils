@@ -116,8 +116,8 @@ class BrowserSmoke(unittest.TestCase):
         self.assertEqual(self.page.locator("#list h3").all_text_contents(), [o["heading"] for o in expected[:60]])
         self.page.locator("#list .more").click()
         expect(self.page.locator("#list article.offer")).to_have_count(min(180, len(current)))
-        expect(self.page.locator("#member-status")).to_contain_text("Netto+")
-        expect(self.page.locator("#member-status")).to_contain_text("Bilka Plus (BilkaToGo Odense)")
+        expect(self.page.locator("#member-status")).to_be_empty()
+        expect(self.page.locator("#member-status")).to_be_hidden()
 
     def test_search_store_category_price_and_upcoming_filters(self):
         self.open()

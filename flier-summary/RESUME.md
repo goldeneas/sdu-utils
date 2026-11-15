@@ -1,5 +1,13 @@
 # Ripresa flier-summary
 
+## Testo informativo fonti rimosso
+
+Su richiesta dell'utente, il testo ripetitivo "selected member offers / selected
+public promotions" non viene più mostrato. `#member-status` rimane nascosto
+quando le fonti sono aggiornate; conserva solo avvisi `cached`/`unavailable`.
+Service worker v20. Le verifiche browser esistenti controllano il messaggio
+vuoto/nascosto nel caricamento normale e la presenza degli avvisi in caso di errore.
+
 ## Bilka: solo promozioni confermate — 15 novembre 2026
 
 Richiesta attuale: lavorare su Bilka mostrando soltanto offerte, senza estendere
