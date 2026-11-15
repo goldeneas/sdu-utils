@@ -17,6 +17,7 @@ from pathlib import Path
 from member_offers import (
     NETTO_PLUS_URL, fetch_public_html, parse_netto_plus, validate_netto_capture,
 )
+from bilka_offers import BILKA_SEARCH_URL, BILKA_STORE, fetch_bilka_page, fetch_bilka_plus
 
 SOURCES = (
     ("netto-plus", NETTO_PLUS_URL),
@@ -61,9 +62,35 @@ def probe_source(key: str, url: str, directory: Path) -> dict:
     return result
 
 
+def probe_bilka_products(directory: Path) -> dict:
+    """Capture public search responses before validation; never write an offer feed."""
+    checked_at = datetime.now(timezone.utc)
+    result = {"key": "bilka-products", "url": BILKA_SEARCH_URL,
+              "checkedAt": checked_at.isoformat(timespec="seconds"),
+              "storeId": BILKA_STORE, "pages": []}
+
+    def capture(page):
+        data = fetch_bilka_page(page)
+        filename = f"bilka-products-page-{page}.json"
+        body = (json.dumps(data, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        (directory / filename).write_bytes(body)
+        result["pages"].append({"page": page, "json": filename,
+                                "sha256": hashlib.sha256(body).hexdigest()})
+        return data
+
+    try:
+        offers = fetch_bilka_plus(checked_at, page_fetcher=capture)
+    except (RuntimeError, OSError, ValueError) as exc:
+        result.update(status="error", error=str(exc))
+    else:
+        result.update(status="ok", offerCount=len(offers))
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out-dir", required=True, help="new directory for report.json and UTF-8 HTML captures")
+    ap.add_argument("--bilka-products", action="store_true", help="also capture and validate every public Bilka Plus search page for Odense")
     args = ap.parse_args(argv)
     directory = Path(args.out_dir)
     try:
@@ -76,6 +103,10 @@ def main(argv: list[str] | None = None) -> int:
         result = probe_source(key, url, directory)
         report["sources"].append(result)
         print(f"{key}: {result['status']}", file=sys.stderr)
+    if args.bilka_products:
+        result = probe_bilka_products(directory)
+        report["sources"].append(result)
+        print(f"bilka-products: {result['status']}", file=sys.stderr)
     (directory / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return int(any(source["status"] != "ok" or source.get("nettoValidation", {}).get("status") == "error"
                    for source in report["sources"]))

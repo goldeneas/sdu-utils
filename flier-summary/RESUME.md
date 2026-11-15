@@ -1,61 +1,133 @@
 # Ripresa flier-summary
 
 Repository: https://github.com/goldeneas/sdu-utils
-Base delle modifiche: 8ccb3ff9d99199a8870ae3fc56b1410170ba6616
 Branch: `codex/flier-summary-member-offers`
-Ultima ripresa: 15 novembre 2026, dal commit `356e8574b83c2adc141e6d985e7c23d5d923aa8f`.
+Destinazione autorizzata dall'utente dopo i test: `main`.
+Base su main: `8ccb3ff9d99199a8870ae3fc56b1410170ba6616`
+Ultimo commit del branch all'inizio della ripresa: `02098b3`.
+Ultima ripresa: 15 novembre 2026.
 
-## Obiettivo
-Aggiungere al modulo flier-summary le offerte pubbliche per tutti gli iscritti Netto+ e Bilka Plus, incluse quelle fuori volantino. Escludere i coupon personali. Il progetto è una PWA statica pubblicata su GitHub Pages.
+## Obiettivo e stato
+Integrare le offerte pubbliche per tutti gli iscritti Netto+ e Bilka Plus, incluse
+quelle fuori volantino, escludendo i coupon personali. La PWA resta statica su
+GitHub Pages; la raccolta avviene nel workflow Python.
 
-## Stato
-- L'ordinamento Most recent first è già su main (8ccb3ff).
-- Questo branch contiene tutte le successive modifiche sperimentali; non sono attive sul sito.
-- Importatore Netto+ sperimentale nella standard library, attivabile con --netto-plus.
-- Non attivo nel workflow: parser verificato su HTML rappresentativo, manca una cattura HTML reale.
-- Etichette soci visibili su schede, offerte in evidenza, dettaglio, carrello salvato e prezzi ricordati dei preferiti.
-- Prezzo non soci separato dal prezzo precedente: non inventare percentuali di risparmio.
-- Fonte membri con snapshot e timestamp separati; fallback non proroga le scadenze.
-- Identità delle offerte include condizioni; varianti e prezzi diversi non vanno persi.
-- Avvisi distinguono selezione pubblica, dati salvati e fonte non disponibile.
-- Passano 58 test Python (42 precedenti + 16 regressioni/diagnostica). Verifiche Playwright della sessione precedente: etichette, dettaglio, carrello persistente e avvisi. In questa ripresa non sono stati modificati UI o service worker. Controlli sintassi JS e git diff --check passati.
-- Corrette tre lacune riprodotte: schede coupon personali accettate come prezzi pubblici, Date HTTP assente/futura accettata per il conto alla rovescia, e uso dell'orario iniziale del job invece dell'orario della raccolta membri dopo download volantini a cavallo di mezzanotte.
-- Errori socket e Age fuori intervallo diventano fallimenti della fonte, consentendo il fallback; schede con prezzi ambigui vengono rifiutate.
-- Aggiunta diagnostica `scraper/probe_member_sources.py`: cinque URL pubblici fissi, client HTTP condiviso col collector, distinzione proxy/origine, cattura HTML UTF-8 con hash e header selezionati, validazione Netto+ separata dalla raggiungibilità. Non produce un feed e non abilita il workflow.
+L'integrazione di entrambe le fonti è implementata e verificata su dati reali.
+Il 15 novembre, dopo i test, l'utente ha richiesto commit e push su `main`.
+Verificare il commit effettivamente presente su origin e lo stato Actions prima
+di dichiarare la raccolta automatica o il deploy completati.
+UI e service worker non sono cambiati in questa ripresa: le etichette soci su
+schede, dettaglio, evidenza, carrello e prezzi ricordati sono quelle del branch.
 
-## Accesso verificato in questa ripresa
-- Configurazione osservata applicata, revisione 1: HTTP `restricted`, `allowed_hosts` vuoto. Restano soltanto i domini dei preset per pacchetti/Git.
-- `curl` sui tre URL richiesti fallisce con `CONNECT tunnel failed, response 403` prima di raggiungere i siti.
-- La diagnostica Python conferma `proxy-denied` per tutti e cinque gli URL (Netto+, Bilka Plus, home BilkaToGo, pagina concetto Plus e selezione `/s?query=plus`). Nessuna cattura HTML reale è stata ottenuta. Report locale: `work/member-sources/live-access/report.json` (non versionato, può non sopravvivere alla prossima chat).
-- Lo strumento di ricerca legge il testo pubblico di https://netto.dk/netto-plus/, https://www.bilka.dk/plus/ e https://www.bilkatogo.dk/inspiration/om-bilka-togo/bilka-plus-koncept/. Conferma la distinzione fra prezzi soci e coupon personali, ma non fornisce l'HTML originale come fixture. La selezione BilkaToGo non è accessibile tramite questo strumento; la pagina informativa non restituisce prodotti utilizzabili.
-- Il tentativo nel browser Cloud fallisce prima della navigazione con `the gaas-browser node_repl sandbox cannot be disabled`; non costituisce un test dell'accesso al sito nel browser.
-- Nessun tool di modifica della policy HTTP è disponibile in questa sessione. Per proseguire sui dati reali, consentire `netto.dk`, `www.bilka.dk` e `www.bilkatogo.dk` nelle impostazioni dell'ambiente. Aggiungere altri host solo se osservati nelle risposte/richieste pubbliche; `api.bilkatogo.dk` resta un dominio candidato, non un endpoint offerte verificato. Non cambiare proxy o TLS per aggirare il blocco.
+## Accesso HTTP: blocco precedente superato
+- Nel sandbox ordinario la diagnostica fallisce per risoluzione DNS.
+- Con esecuzione autorizzata fuori sandbox i cinque URL pubblici rispondono HTTP
+  200: https://netto.dk/netto-plus/, https://www.bilka.dk/plus/,
+  https://www.bilkatogo.dk/, la pagina concetto Plus e `/s?query=plus`.
+- Nessun proxy o controllo TLS è stato modificato. La riuscita delle richieste
+  autorizzate non prova che la policy del sandbox ordinario sia cambiata.
+- Report finale: `/tmp/flier-member-sources-variants-20261115/report.json`.
+  Tutte le verifiche HTML e prodotti risultano `ok`; Netto ha sei offerte e
+  Bilka 148. Le catture complete in /tmp sono locali e possono non sopravvivere.
+- Fixture minime reali e metadati datati con URL e hash sono invece in
+  `flier-summary/scraper/fixtures/` e vanno conservati con il codice.
 
-## Ripresa in una nuova chat
-1. Selezionare l'ambiente aggiornato e il repository goldeneas/sdu-utils.
-2. Fare fetch e checkout del branch `codex/flier-summary-member-offers`, preservando eventuali modifiche già presenti.
-3. Le modifiche sono già incluse nel branch: non occorre applicare patch o allegare file.
-4. Leggere le istruzioni AGENTS.md se presenti e lo stato git prima di modificare i file.
-5. Eseguire `python -m unittest discover -s flier-summary/scraper -q` e `node --check flier-summary/app.js`.
-6. Eseguire `python flier-summary/scraper/probe_member_sources.py --out-dir work/member-sources/check-02` (directory nuova) e leggere `report.json` prima di procedere con dati live.
+## Netto+
+Il parser precedente legge correttamente tutte le sei schede reali, inclusi
+commenti React e prezzi spezzati fra elementi HTML. La fixture conserva le sei
+schede `li` originali, avvolte in `ul`, senza script o altri contenuti.
+Prezzi soci: 10, 9, 30, 8, 20, 10 kr.; confronti non soci: 12, 10, 35, 10, 24,
+12 kr. Scadenza alla cattura del 15 novembre: 20 novembre 2026, 23:59:59 a
+Copenaghen. Il prezzo non soci non è un prezzo precedente.
+Restano i controlli di completezza, coupon personali, prezzi ambigui, timezone,
+HTTP Date e Age. Il conto alla rovescia usa l'orario proprio della raccolta.
 
-## Prossimo lavoro
-- Verificare accesso HTTP a https://netto.dk/netto-plus/, https://www.bilka.dk/plus/ e https://www.bilkatogo.dk/.
-- Il blocco è stato riconfermato in questa ripresa. I permessi filesystem/comandi sono distinti dalla policy HTTP; finché non cambia, non ripetere indagini che richiedono richieste reali né inventare uno schema Bilka.
-- Ispezionare HTML reale Netto+, correggere parser se necessario e aggiungere fixture reale; verificare date, prezzi, copertura e doppioni col volantino prima di attivare la raccolta automatica.
-- Per Bilka è stato trovato il link ufficiale https://www.bilkatogo.dk/s?query=plus dalla pagina https://www.bilkatogo.dk/inspiration/om-bilka-togo/bilka-plus-koncept/. Il motore di ricerca mostra solo la struttura del sito, senza prodotti: ispezionare richieste pubbliche del sito. Nessun feed importabile è stato verificato o implementato.
-- Possibile dominio API: api.bilkatogo.dk, osservato nei link ufficiali; nessun endpoint offerte individuato.
-- La API Salling Anti Food Waste riguarda ribassi locali per scadenza, non tutte le offerte Plus: è fuori dall'attuale integrazione.
-- Proseguire autonomamente sul lavoro autorizzato. Non dichiarare la raccolta o il deploy attivi finché non verificati.
+## Bilka Plus
+- Nuovo `scraper/bilka_offers.py`, standard library, opzione `--bilka-plus`.
+- Il client pubblico `https://www.bilkatogo.dk/_nuxt/86221b3.js`, osservato nella
+  pagina reale, usa Algolia: app `F9VBJLR1BK`, indice
+  `prod_BILKATOGO_PRODUCTS`, chiave pubblica di sola ricerca. Nessun login,
+  cookie, coupon attivato o accesso al carrello.
+- Endpoint verificato:
+  `https://F9VBJLR1BK-dsn.algolia.net/1/indexes/prod_BILKATOGO_PRODUCTS`.
+  Filtro: `cpOffer:true AND nonsearchable:false AND isInAssortmentIn:1654`.
+- Store `1654` verificato tramite il client e la risposta pubblica
+  `https://api.bilkatogo.dk/api/shop/v6/AvailableDeliveryAddresses?u=w&orderByZipcode=Odense`:
+  Bilka Odense, Niels Bohrs Alle 150, 5230 Odense M. Il feed e le descrizioni
+  esplicitano il contesto BilkaToGo/Odense, senza promettere prezzi identici in
+  ogni negozio fisico o disponibilità a scaffale.
+- Due pagine complete, 100 + 48 prodotti, conteggi esatti ed esaustivi.
+  Date esplicite: 6–20 e 13–27 novembre 2026. Importi in øre convertiti in kr.
+- `cpOfferAmount` indica il numero di confezioni del prezzo totale Mix secondo
+  il componente pubblico del sito. La cattura attuale contiene solo quantità 1;
+  il caso Mix è verificato con una regressione basata sul contratto del client.
+- Alcuni Plus costano più della promozione ordinaria: mantenere entrambi i prezzi
+  separati, senza inventare sconti. Per Mix non inventare confronti per confezione.
+- Varianti Faxe Kondi possono avere nome, prezzo, formato e condizioni identici ma
+  codici e immagini diversi. `sourceProductId` partecipa alla fusione: tutte le
+  148 varianti restano nel feed finale. Marca e sotto-marca restano nel titolo.
+- Un prodotto invalido, pagina mancante, conteggio non esaustivo, limite di 1000
+  risultati, ID duplicato o totale cambiato fa fallire l'intera fonte membri.
+  Il fallback separato conserva offerte, date e timestamp originali.
+- API e chiave pubblica sono non documentate e possono cambiare. Usare fixture
+  reali e diagnostica per correggere cambiamenti, senza schemi inventati.
 
-## File modificati
-- flier-summary/README.md
-- flier-summary/app.js
-- flier-summary/index.html
-- flier-summary/scraper/fetch_offers.py
-- flier-summary/sw.js
-- flier-summary/scraper/member_offers.py
-- flier-summary/scraper/test_member_offers.py
-- flier-summary/scraper/probe_member_sources.py
-- flier-summary/scraper/test_probe_member_sources.py
-- flier-summary/RESUME.md
+## Verifiche completate
+- `python3 -m unittest discover -s flier-summary/scraper -q`: 72 test passati
+  (58 precedenti + 14 nuovi), con fixture reali, paginazione incompleta,
+  varianti, prezzi, coupon personali, client anonimo e fallback.
+- `python3 -m compileall -q flier-summary/scraper` e `git diff --check`: passati.
+- Raccolta reale finale con entrambe le opzioni e `--no-translate`:
+  `/tmp/flier-member-integration-final-20261115.json`.
+  3.100 offerte e 3.100 ID unici: 2.946 da volantini, sei Netto+, 148 Bilka Plus.
+  Tutte e cinque le fonti volantini e le due fonti membri sono `ok`.
+  Conteggi finali: Netto 302, 365discount 164, Bilka 1.948,
+  SuperBrugsen 150, Lidl 536.
+- Il primo giro completo aveva 3.098 offerte; l'audit ha riprodotto e corretto
+  la perdita di due varianti Bilka durante la fusione. La verifica finale è
+  successiva alla correzione e conserva tutti i 148 prodotti.
+- Nel successivo test richiesto dall'utente è stato installato Playwright solo
+  in `/tmp/flier-browser-python`, con Chromium in `/tmp/flier-test-browsers`.
+  Il Node incluso nel driver ha verificato `app.js`, `pwa.js` e `sw.js`.
+  Nessun JS o HTML dell'app è stato modificato.
+- Nuova suite ripetibile `flier-summary/tests/browser_smoke.py`: 11 test passati
+  con Chromium, dati reali e profilo locale isolato. Verificati ricerca, filtri,
+  ordinamento, dettaglio, immagini caricate e zoom, etichette soci, preferiti ed
+  evidenza, carrello persistente, prezzi ricordati dopo scomparsa delle offerte,
+  watch word, backup/ripristino, avvisi cached/unavailable, refresh HTTP 503 e
+  riavvio offline con risposta del service worker. Schermate a 390 e 1440 px,
+  senza overflow orizzontale; nessun errore JavaScript non gestito.
+- Per il cambio lingua sono state usate traduzioni salvate in cache; il servizio
+  Google non è stato testato. Guasti e offline sono scenari simulati, mentre i
+  prodotti vengono dalla raccolta reale. Non sono stati testati dispositivi fisici
+  o browser diversi da Chromium.
+- Raccolta reale ripetuta per i test: `/tmp/flier-browser-live-20261115.json`,
+  generata alle 17:24:50 UTC, con 3.100 ID unici e tutte e sette le fonti `ok`.
+  Diagnostica attuale: `/tmp/flier-test-sources-20261115/report.json`.
+  Report browser e schermate: `/tmp/flier-browser-results-20261115/`.
+- Anche la suite Python (72 test) e `git diff --check` sono passati nuovamente.
+- Il workflow esclude ora anche `flier-summary/tests` dai file pubblicati.
+- Il workflow del branch passa ora `--netto-plus --bilka-plus`. Questo configura
+  la futura raccolta automatica, ma non prova un deploy o un job Actions riuscito.
+
+## Comandi di ripresa
+Prima leggere stato Git e eventuali AGENTS.md, preservando i file locali.
+In questa sessione esiste `python3`, non `python`.
+
+```sh
+python3 -m unittest discover -s flier-summary/scraper -q
+python3 flier-summary/scraper/probe_member_sources.py --bilka-products --out-dir /tmp/member-check-NUOVO
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --no-translate --out /tmp/member-offers-NUOVO.json
+```
+
+Per il probe usare una directory nuova. Se richieste indispensabili falliscono
+nel sandbox per rete/DNS, richiedere l'esecuzione autorizzata come da permessi
+dell'ambiente. Non ripetere la precedente diagnosi di proxy 403 come fatto attuale.
+
+## Commit, push e pubblicazione
+Commit e push su `main` sono stati autorizzati dopo i test; conservare codice,
+fixture e suite browser insieme, integrando eventuali aggiornamenti remoti senza
+force push. Il workflow Pages è programmato o avviato manualmente: un push non
+prova che il sito sia aggiornato. Verificare il job Actions con entrambe le fonti,
+`memberFeeds` e le etichette sul sito reale prima di dichiarare il deploy riuscito.
+Non dichiarare copertura completa delle app: si raccolgono selezioni pubbliche.

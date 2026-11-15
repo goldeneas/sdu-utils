@@ -1,0 +1,40 @@
+{
+  "key": "netto-plus",
+  "url": "https://netto.dk/netto-plus/",
+  "checkedAt": "2026-11-15T15:41:44+00:00",
+  "status": "ok",
+  "httpStatus": 200,
+  "finalUrl": "https://netto.dk/netto-plus/",
+  "headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Date": "Sun, 15 Nov 2026 15:34:07 GMT",
+    "Age": "457",
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "ETag": "\"25p24zwquh5y8e\""
+  },
+  "html": "netto-plus.html",
+  "encoding": "utf-8",
+  "nettoValidation": {
+    "status": "ok",
+    "offerCount": 6
+  },
+  "captureSha256": "1bc847b1d18cb86e93d909f70702e0fdad9e33c32e73d9067152f5d2d6621a19",
+  "fixtureSha256": "57a0ba9b4461d74e1df04f84dafcd816bed6ba3c4db7e316db25c1e08c7ee07b",
+  "extraction": "Six complete li offer cards, unchanged, wrapped in ul; page scripts and other content omitted.",
+  "expectedPrices": [
+    10,
+    9,
+    30,
+    8,
+    20,
+    10
+  ],
+  "expectedNonMemberPrices": [
+    12,
+    10,
+    35,
+    10,
+    24,
+    12
+  ]
+}

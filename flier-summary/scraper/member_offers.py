@@ -1,6 +1,6 @@
-"""Experimental public Netto+ page importer (standard library only).
+"""Public Netto+ page importer (standard library only).
 
-Opt-in until the HTML parser has been checked against a live page capture.
+Verified against a live page capture on 2026-11-15; see scraper/fixtures.
 The public page is a selection, not a promise of complete app coverage.
 """
 from __future__ import annotations

@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from member_offers import NETTO_PLUS_URL, fetch_netto_plus
+from bilka_offers import BILKA_PLUS_URL, fetch_bilka_plus
 
 API = "https://squid-api.tjek.com/v2"
 
@@ -407,7 +408,7 @@ def merge_member_offers(fliers: list[dict], members: list[dict]) -> list[dict]:
     def identity(offer):
         return tuple(offer.get(k) for k in (
             "store", "heading", "description", "price", "quantity", "unitPrice",
-            "from", "till", "membership", "nonMemberPrice",
+            "from", "till", "membership", "nonMemberPrice", "sourceProductId",
         ))
     seen, result = {identity(o) for o in fliers}, list(fliers)
     for offer in members:
@@ -419,11 +420,21 @@ def merge_member_offers(fliers: list[dict], members: list[dict]) -> list[dict]:
 
 
 def netto_member_feed(previous: dict, generated_at: str) -> dict:
+    return member_feed(previous, generated_at, key="netto-plus", name="Netto+", store="netto",
+                       url=NETTO_PLUS_URL, fetch=fetch_netto_plus)
+
+
+def bilka_member_feed(previous: dict, generated_at: str) -> dict:
+    return member_feed(previous, generated_at, key="bilka-plus", name="Bilka Plus (BilkaToGo Odense)",
+                       store="bilka", url=BILKA_PLUS_URL, fetch=fetch_bilka_plus)
+
+
+def member_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch) -> dict:
     """Keep a separate source snapshot so deduplication cannot lose fallback data."""
-    feed = {"key": "netto-plus", "name": "Netto+", "store": "netto", "url": NETTO_PLUS_URL,
+    feed = {"key": key, "name": name, "store": store, "url": url,
             "coverage": "public-member-selection", "status": "ok", "fetchedAt": generated_at}
     try:
-        feed["offers"] = fetch_netto_plus(datetime.fromisoformat(generated_at))
+        feed["offers"] = fetch(datetime.fromisoformat(generated_at))
         for offer in feed["offers"]:
             offer["cats"] = categorize(offer["heading"])
     except RuntimeError as exc:
@@ -432,8 +443,8 @@ def netto_member_feed(previous: dict, generated_at: str) -> dict:
         feed["status"] = "cached" if feed["offers"] else "unavailable"
         feed["fetchedAt"] = old.get("fetchedAt") if feed["offers"] else None
         feed["error"] = str(exc)
-        print(f"warning: Netto+: {exc}", file=sys.stderr)
-    print(f"Netto+: {len(feed['offers'])} offers ({feed['status']})", file=sys.stderr)
+        print(f"warning: {name}: {exc}", file=sys.stderr)
+    print(f"{name}: {len(feed['offers'])} offers ({feed['status']})", file=sys.stderr)
     return feed
 
 
@@ -442,7 +453,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "data" / "offers.json"))
     ap.add_argument("--previous", help="earlier offers.json for translations and per-store fallback on fetch failure")
     ap.add_argument("--no-translate", action="store_true", help="skip the English names")
-    ap.add_argument("--netto-plus", action="store_true", help="experimental: include the public Netto+ selection (live HTML validation pending)")
+    ap.add_argument("--netto-plus", action="store_true", help="include the public Netto+ selection")
+    ap.add_argument("--bilka-plus", action="store_true", help="include public BilkaToGo Plus prices for Bilka Odense")
     args = ap.parse_args(argv)
 
     previous = {}
@@ -500,6 +512,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.netto_plus:
         collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         member_feeds.append(netto_member_feed(previous, collected_at))
+    if args.bilka_plus:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        member_feeds.append(bilka_member_feed(previous, collected_at))
     for feed in member_feeds:
         offers_out = merge_member_offers(offers_out, feed["offers"])
     for entry in stores_out:
@@ -528,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     if member_feeds:
         payload["memberFeeds"] = member_feeds
-        payload["source"]["name"] = "eTilbudsavis + Netto+"
+        payload["source"]["name"] = "eTilbudsavis + " + " + ".join(f["name"] for f in member_feeds)
         payload["source"]["coverage"] = "published-fliers-and-public-member-selection"
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"wrote {len(offers_out)} offers to {out}", file=sys.stderr)
