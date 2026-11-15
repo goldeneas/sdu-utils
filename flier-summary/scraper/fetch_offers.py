@@ -494,7 +494,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{store['name']}: {entry['count']} offers ({entry['status']})", file=sys.stderr)
         stores_out.append(entry)
 
-    member_feeds = [netto_member_feed(previous, generated_at)] if args.netto_plus else []
+    # Flier calls can span Copenhagen midnight. Interpret the member page's
+    # countdown at its own collection time, not the start of the whole job.
+    member_feeds = []
+    if args.netto_plus:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        member_feeds.append(netto_member_feed(previous, collected_at))
     for feed in member_feeds:
         offers_out = merge_member_offers(offers_out, feed["offers"])
     for entry in stores_out:

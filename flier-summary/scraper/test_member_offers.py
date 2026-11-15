@@ -2,7 +2,7 @@
 import json
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.message import Message
 from pathlib import Path
 from unittest import mock
@@ -81,6 +81,25 @@ class NettoParserTest(unittest.TestCase):
             with self.subTest(html=html), self.assertRaises(RuntimeError):
                 mo.parse_netto_plus(html, NOW)
 
+    def test_personal_coupon_rejects_the_feed_instead_of_becoming_a_public_price(self):
+        for label in ('Personlig kupon', 'PERSONLIGE +PRISER', 'Aktivér kuponer', 'Personalised coupon'):
+            html = CARD + CARD.replace('</h5>', f'</h5><p>{label}</p>')
+            with self.subTest(label=label), self.assertRaisesRegex(RuntimeError, 'personal coupon'):
+                mo.parse_netto_plus(html, NOW)
+
+    def test_personal_program_information_outside_cards_is_not_a_coupon(self):
+        html = CARD + '<section><h3>Personlige +Priser</h3><p>Priser kun til dig</p></section>'
+        self.assertEqual(len(mo.parse_netto_plus(html, NOW)), 1)
+
+    def test_ambiguous_comparison_prices_reject_the_feed(self):
+        html = CARD.replace('</article>', '<p>Ikke-medlemspris op til 20 15 .-</p></article>')
+        with self.assertRaisesRegex(RuntimeError, 'price or expiry'):
+            mo.parse_netto_plus(html, NOW)
+
+    def test_countdown_requires_an_aware_collection_time(self):
+        with self.assertRaisesRegex(RuntimeError, 'timezone'):
+            mo.parse_netto_plus(CARD, NOW.replace(tzinfo=None))
+
 
 class MemberFeedTest(unittest.TestCase):
     def test_failed_refresh_preserves_snapshot_and_timestamp_repeatedly(self):
@@ -100,6 +119,18 @@ class MemberFeedTest(unittest.TestCase):
         self.assertEqual(feed['status'], 'unavailable')
         self.assertIsNone(feed['fetchedAt'])
         self.assertEqual(feed['offers'], [])
+
+    def test_member_countdown_uses_collection_time_when_flier_job_spans_midnight(self):
+        before_midnight = datetime.fromisoformat('2026-11-15T22:59:50+00:00')
+        after_midnight = before_midnight + timedelta(seconds=20)
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(fo, 'datetime') as clock, \
+                mock.patch.object(fo, 'resolve_dealers', return_value={}), \
+                mock.patch.object(fo, 'fetch_netto_plus', return_value=[]) as fetch:
+            clock.now.side_effect = [before_midnight, after_midnight]
+            clock.fromisoformat.side_effect = datetime.fromisoformat
+            fo.main(['--out', str(Path(directory) / 'offers.json'), '--no-translate', '--netto-plus'])
+        fetch.assert_called_once_with(after_midnight)
 
     def test_dedup_preserves_different_prices_memberships_and_conditions(self):
         member, = mo.parse_netto_plus(CARD, NOW)
@@ -164,6 +195,8 @@ class FetchTest(unittest.TestCase):
         headers['Age'] = age
         headers['Date'] = date
         response.headers = headers
+        response.status = 200
+        response.geturl.return_value = mo.NETTO_PLUS_URL
         response.read.return_value = CARD.encode()
         response.__enter__.return_value = response
         return response
@@ -192,6 +225,33 @@ class FetchTest(unittest.TestCase):
                     mock.patch.object(mo.urllib.request, 'urlopen', return_value=response), \
                     self.assertRaises(RuntimeError):
                 mo.fetch_netto_plus(NOW)
+
+    def test_missing_or_future_date_cannot_anchor_a_relative_expiry(self):
+        missing = self.response()
+        del missing.headers['Date']
+        for response in (missing, self.response(date='Mon, 16 Nov 2026 12:00:00 GMT')):
+            with self.subTest(headers=response.headers), \
+                    mock.patch.object(mo.urllib.request, 'urlopen', return_value=response), \
+                    self.assertRaises(RuntimeError):
+                mo.fetch_netto_plus(NOW)
+
+    def test_a_response_from_the_next_day_is_rejected_even_with_small_clock_skew(self):
+        collection_time = datetime.fromisoformat('2026-11-15T22:59:59+00:00')
+        response = self.response(date='Sun, 15 Nov 2026 23:00:01 GMT')
+        with mock.patch.object(mo.urllib.request, 'urlopen', return_value=response), \
+                self.assertRaisesRegex(RuntimeError, 'too old'):
+            mo.fetch_netto_plus(collection_time)
+
+    def test_absurd_cache_age_is_a_source_failure_not_an_uncaught_overflow(self):
+        response = self.response(age='9' * 100)
+        with mock.patch.object(mo.urllib.request, 'urlopen', return_value=response), \
+                self.assertRaisesRegex(RuntimeError, 'freshness headers'):
+            mo.fetch_netto_plus(NOW)
+
+    def test_socket_failure_becomes_a_source_failure(self):
+        with mock.patch.object(mo.urllib.request, 'urlopen', side_effect=ConnectionResetError('reset')), \
+                self.assertRaisesRegex(RuntimeError, 'Netto\\+ fetch failed'):
+            mo.fetch_netto_plus(NOW)
 
 
 if __name__ == '__main__':

@@ -45,8 +45,11 @@ python3 flier-summary/scraper/fetch_offers.py --netto-plus --previous previous-o
 
 The importer requires a member-offer label, heading, explicit price and readable
 expiry on every card; a missing or malformed card fails the entire member source.
-Relative expiry dates use the collection date in Europe/Copenhagen; responses
-whose HTTP date or cache age crosses local midnight are rejected. Start dates
+Cards mentioning personal prices or coupons reject the source rather than
+being published as prices for every member. Relative expiry dates use the member
+page's own collection time in Europe/Copenhagen, even if flier downloads span
+midnight. Missing HTTP dates, dates more than five minutes in the future and
+responses whose HTTP date or cache age crosses local midnight are rejected. Start dates
 are left unknown rather than invented. The non-member comparison price is stored
 as `nonMemberPrice`, not as a historical price or a claimed discount.
 
@@ -73,6 +76,31 @@ product list through the research tool. Product requests in the live browser
 still need inspection; no importable feed has been verified. Bilka collection is
 not implemented yet.
 Personal coupons and local food-waste clearance are outside this importer.
+
+#### Check access and capture the actual pages
+
+Run the diagnostic before attempting live validation (choose a **new** directory
+each time, so an old capture cannot appear to be a successful fresh download):
+
+```sh
+python3 flier-summary/scraper/probe_member_sources.py --out-dir work/member-sources/check-01
+```
+
+It uses the same anonymous standard-library HTTP client, proxy, TLS verification
+and headers as the Netto+ collector. It checks Netto+, Bilka Plus, BilkaToGo,
+the BilkaToGo Plus information page and its linked `/s?query=plus` selection.
+The report distinguishes proxy CONNECT denial from an origin HTTP error and
+continues to check other sources after a failure. Accessible HTML is saved as
+UTF-8 with a SHA-256 checksum, collection time and selected response headers;
+cookies are not retained. Netto captures also undergo the freshness and parser
+checks. Invalid Netto markup is retained for inspection, without exporting offers.
+
+Exit status is 1 if any access check or Netto validation fails. Exit status 0
+establishes HTML access and successful Netto parsing only: it does **not** verify
+Bilka's dynamic product requests, member eligibility, full coverage or enable
+scheduled collection. Captures belong in `work/`, not the published `data/`
+directory. Promote a reviewed, minimal real HTML excerpt and its dated metadata
+to a test fixture only after live access succeeds.
 
 ```sh
 python3 flier-summary/scraper/fetch_offers.py           # writes flier-summary/data/offers.json
