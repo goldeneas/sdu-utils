@@ -30,6 +30,50 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 which publishes the fliers of all five chains. It asks for offers valid around Odense (15 km radius) and writes a
 small `data/offers.json` that the app loads. Only the Python standard library is used.
 
+### Public member offers (experimental, opt-in)
+
+`--netto-plus` adds an importer for the public selection on
+[Netto+](https://netto.dk/netto-plus/). **It is not enabled in the deploy workflow:**
+direct access to Netto/Bilka is blocked by the development environment's HTTP policy.
+The parser has offline tests using representative HTML, but still needs validation
+against a live HTML capture before enabling scheduled collection. The public page
+does not establish complete coverage of offers in the Netto app.
+
+```sh
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --previous previous-offers.json
+```
+
+The importer requires a member-offer label, heading, explicit price and readable
+expiry on every card; a missing or malformed card fails the entire member source.
+Relative expiry dates use the collection date in Europe/Copenhagen; responses
+whose HTTP date or cache age crosses local midnight are rejected. Start dates
+are left unknown rather than invented. The non-member comparison price is stored
+as `nonMemberPrice`, not as a historical price or a claimed discount.
+
+Each member feed has a separate snapshot in `memberFeeds` with `status`,
+`fetchedAt` and its original offers. On failure, only that feed reuses its old
+snapshot and original expiry dates, without advancing its freshness timestamp.
+Flier collection and member collection can succeed or fail independently.
+Store `count` includes both sources; existing store `status` and `fetchedAt` still
+describe its flier feed. Exact duplicates are collapsed; different prices, pack
+sizes, conditions or membership requirements are preserved. A flier with unknown
+membership conditions is not assumed to be the same offer as a Plus price.
+
+Member prices show **Requires Netto+ / Bilka Plus** in cards, featured offers,
+product details, saved cart entries and remembered starred prices. Details link
+to the source and distinguish the non-member comparison price. A source notice
+identifies the limited public selection and distinguishes saved offers from
+temporarily unavailable member offers. Variant IDs include purchase conditions,
+so equal names and prices with different pack sizes or limits are kept distinct.
+
+Bilka's public Plus page currently provides program information. The BilkaToGo
+[Plus page](https://www.bilkatogo.dk/inspiration/om-bilka-togo/bilka-plus-koncept/)
+links selected prices to `/s?query=plus`, but its public HTML does not expose a
+product list through the research tool. Product requests in the live browser
+still need inspection; no importable feed has been verified. Bilka collection is
+not implemented yet.
+Personal coupons and local food-waste clearance are outside this importer.
+
 ```sh
 python3 flier-summary/scraper/fetch_offers.py           # writes flier-summary/data/offers.json
 python3 -m unittest discover -s flier-summary/scraper  # offline tests

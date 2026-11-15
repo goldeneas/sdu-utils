@@ -148,7 +148,7 @@
       const hits = state.data.offers.filter((o) => isCurrent(o) && matches(star, o));
       if (!hits.length) continue;
       const best = hits.reduce((a, b) => ((b.price ?? 1e9) < (a.price ?? 1e9) ? b : a));
-      const seen = { store: best.store, price: best.price, till: best.till, image: best.image, heading: best.heading };
+      const seen = { store: best.store, price: best.price, till: best.till, image: best.image, heading: best.heading, membership: best.membership };
       if (JSON.stringify(star.lastSeen) !== JSON.stringify(seen)) { star.lastSeen = seen; changed = true; }
     }
     if (changed) saveStars();
@@ -164,7 +164,7 @@
     } else {
       state.stars.unshift({
         key: offer.heading, addedAt: new Date().toISOString(),
-        lastSeen: { store: offer.store, price: offer.price, till: offer.till, image: offer.image, heading: offer.heading },
+        lastSeen: { store: offer.store, price: offer.price, till: offer.till, image: offer.image, heading: offer.heading, membership: offer.membership },
       });
     }
     saveStars();
@@ -225,6 +225,10 @@
     return el('span', { class: 'badge', style: `--c:${s.color || '#666'}` }, s.name);
   }
 
+  const membershipLabel = (o) => o.membership ? `Requires ${o.membership}` : '';
+  const membershipBadge = (o) => o.membership
+    ? el('span', { class: 'membership' }, membershipLabel(o)) : null;
+
   function thumb(src, alt) {
     const box = el('div', { class: 'thumb' });
     if (src) {
@@ -241,7 +245,7 @@
     const card = el('article', { class: 'offer' + (isStarredMatch(o) ? ' hl' : ''), tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, name(o)),
       el('div', { class: 'body' },
-        el('div', { class: 'top' }, storeBadge(o.store)),
+        el('div', { class: 'top' }, storeBadge(o.store), membershipBadge(o)),
         el('h3', {}, name(o)),
         meta ? el('p', { class: 'meta' }, meta) : null,
         o.description ? el('p', { class: 'desc' }, o.description) : null,
@@ -413,7 +417,7 @@
   function featuredCard(o) {
     return el('article', { class: 'fcard', tabindex: '0', onclick: () => openDetail(o), onkeydown: (e) => { if (e.key === 'Enter') openDetail(o); } },
       thumb(o.image, name(o)),
-      el('div', { class: 'top' }, storeBadge(o.store)),
+      el('div', { class: 'top' }, storeBadge(o.store), membershipBadge(o)),
       el('h3', {}, name(o)),
       o.quantity ? el('p', { class: 'meta' }, o.quantity) : null,
       el('div', { class: 'fprice' },
@@ -489,7 +493,7 @@
           el('div', { class: 'body' },
             el('h3', {}, starName(star)),
             el('p', { class: 'meta' }, seen
-              ? [`Last seen at ${storeInfo(seen.store).name}`, seen.price != null ? ` for ${kr(seen.price)}` : '', seen.till ? `, until ${fmtDay(seen.till)}` : '']
+              ? [`Last seen at ${storeInfo(seen.store).name}`, seen.price != null ? ` for ${kr(seen.price)}` : '', seen.membership ? ` · ${membershipLabel(seen)}` : '', seen.till ? `, until ${fmtDay(seen.till)}` : '']
               : star.watch ? 'Watching for this word in every flier' : 'Not seen yet')),
           el('div', { class: 'side' }, unstarButton(star))));
       }
@@ -517,7 +521,7 @@
     else {
       state.cart.unshift({
         id: 'o:' + o.id, addedAt: new Date().toISOString(), done: false,
-        offer: { id: o.id, heading: o.heading, headingEn: o.headingEn, store: o.store, price: o.price, image: o.image, till: o.till, quantity: o.quantity },
+        offer: { id: o.id, heading: o.heading, headingEn: o.headingEn, store: o.store, price: o.price, image: o.image, till: o.till, quantity: o.quantity, membership: o.membership },
       });
     }
     saveCart(); render();
@@ -560,11 +564,12 @@
     if (o) {
       const ended = o.till && new Date(o.till) < now();
       meta = [storeBadge(o.store), o.price != null ? el('span', { class: 'price' }, kr(o.price)) : null,
+        membershipBadge(live || o),
         o.till ? el('span', {}, ended ? 'offer ended' : `until ${fmtDay(o.till)}`) : null];
     } else {
       const deal = item.done ? null : bestDealFor(item.text);
       meta = deal ? [el('span', { class: 'deal', onclick: () => openDetail(deal.best) },
-        `On sale at ${storeInfo(deal.best.store).name}, ${kr(deal.best.price)}${deal.n > 1 ? ` (+${deal.n - 1} more)` : ''}`)] : null;
+        `On sale at ${storeInfo(deal.best.store).name}, ${kr(deal.best.price)}${deal.best.membership ? ` · ${membershipLabel(deal.best)}` : ''}${deal.n > 1 ? ` (+${deal.n - 1} more)` : ''}`)] : null;
     }
     const open = live ? () => openDetail(live) : null;
     return el('div', { class: 'citem' + (o ? ' has-pic' : '') + (live ? ' link' : '') + (item.done ? ' done' : '') },
@@ -630,6 +635,19 @@
     $('#status').textContent = current ? 'Oggi' : Number.isFinite(updated.getTime())
       ? new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Copenhagen', day: '2-digit', month: '2-digit', year: 'numeric' }).format(updated)
       : '';
+    const memberMessages = (state.data.memberFeeds || []).map((feed) => {
+      const label = feed.name || (feed.store === 'netto' ? 'Netto+' : 'Member');
+      if (feed.status === 'unavailable') return `${label} offers are temporarily unavailable.`;
+      if (feed.status === 'cached') {
+        const date = new Date(feed.fetchedAt);
+        const saved = feed.fetchedAt && Number.isFinite(date.getTime())
+          ? ` from ${new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Copenhagen' }).format(date)}` : '';
+        return `${label} could not refresh. Showing saved offers${saved}.`;
+      }
+      return `${label}: selected member offers. More may be available in the app.`;
+    });
+    $('#member-status').textContent = memberMessages.join(' ');
+    $('#member-status').hidden = !memberMessages.length;
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
     renderDetail();
   }
@@ -683,7 +701,10 @@
     const rows = [
       o.quantity ? ['Amount', o.quantity] : null,
       o.unitPrice ? ['Unit price', o.unitPrice] : null,
+      o.nonMemberPrice != null ? ['Non-member price', `Up to ${kr(o.nonMemberPrice)}`] : null,
       ['Valid', when],
+      o.membership ? ['Membership', membershipLabel(o)] : null,
+      o.sourceUrl ? ['Source', el('a', { href: o.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, o.membership || 'Offer website')] : null,
       o.page ? ['In the flier', `${s.name}, page ${o.page}`] : null,
     ].filter(Boolean);
     box.replaceChildren(
