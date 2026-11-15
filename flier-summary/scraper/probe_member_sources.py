@@ -18,6 +18,8 @@ from member_offers import (
     NETTO_PLUS_URL, fetch_public_html, parse_netto_plus, validate_netto_capture,
 )
 from bilka_offers import BILKA_SEARCH_URL, BILKA_STORE, fetch_bilka_page, fetch_bilka_plus
+from coop_offers import COOP_MEMBERS_URL, parse_coop_members
+from lidl_offers import LIDL_HOME, discover_lidl_campaign, parse_lidl_plus
 
 SOURCES = (
     ("netto-plus", NETTO_PLUS_URL),
@@ -87,10 +89,43 @@ def probe_bilka_products(directory: Path) -> dict:
     return result
 
 
+def probe_other_members(directory: Path) -> list[dict]:
+    coop = probe_source("coop-members", COOP_MEMBERS_URL, directory)
+    if coop["status"] == "ok":
+        coop["coopValidation"] = {}
+        for store in ("365discount", "superbrugsen"):
+            try:
+                at = datetime.fromisoformat(coop["checkedAt"])
+                validate_netto_capture(coop["headers"], at)
+                offers = parse_coop_members((directory / coop["html"]).read_text(encoding="utf-8"), at, store)
+                coop["coopValidation"][store] = {"status": "ok", "offerCount": len(offers)}
+            except RuntimeError as exc:
+                coop["coopValidation"][store] = {"status": "error", "error": str(exc).replace("Netto+", "Coop")}
+                coop["validationFailed"] = True
+    home = probe_source("lidl-home", LIDL_HOME, directory)
+    results = [coop, home]
+    if home["status"] == "ok":
+        try:
+            url = discover_lidl_campaign((directory / home["html"]).read_text(encoding="utf-8"))
+        except RuntimeError as exc:
+            home.update(validationFailed=True, error=str(exc))
+        else:
+            selection = probe_source("lidl-selection", url, directory)
+            results.append(selection)
+            if selection["status"] == "ok":
+                try:
+                    offers = parse_lidl_plus((directory / selection["html"]).read_text(encoding="utf-8"))
+                    selection["lidlValidation"] = {"status": "ok", "offerCount": len(offers)}
+                except RuntimeError as exc:
+                    selection.update(validationFailed=True, lidlValidation={"status": "error", "error": str(exc)})
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out-dir", required=True, help="new directory for report.json and UTF-8 HTML captures")
     ap.add_argument("--bilka-products", action="store_true", help="also capture and validate every public Bilka Plus search page for Odense")
+    ap.add_argument("--other-members", action="store_true", help="also capture and validate public Coop and current Lidl Plus selections")
     args = ap.parse_args(argv)
     directory = Path(args.out_dir)
     try:
@@ -107,8 +142,12 @@ def main(argv: list[str] | None = None) -> int:
         result = probe_bilka_products(directory)
         report["sources"].append(result)
         print(f"bilka-products: {result['status']}", file=sys.stderr)
+    if args.other_members:
+        for result in probe_other_members(directory):
+            report["sources"].append(result)
+            print(f"{result['key']}: {result['status']}" + (" (validation failed)" if result.get("validationFailed") else ""), file=sys.stderr)
     (directory / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return int(any(source["status"] != "ok" or source.get("nettoValidation", {}).get("status") == "error"
+    return int(any(source["status"] != "ok" or source.get("validationFailed") or source.get("nettoValidation", {}).get("status") == "error"
                    for source in report["sources"]))
 
 

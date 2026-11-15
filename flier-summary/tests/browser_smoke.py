@@ -158,6 +158,34 @@ class BrowserSmoke(unittest.TestCase):
                 expect(picture).to_have_class("detail-pic zoomed")
                 self.page.locator("#view-detail .back").click()
 
+    def test_other_member_chains_exact_comparisons_and_percentage_promotion(self):
+        keys = {"coop-365discount", "coop-superbrugsen", "lidl-plus"}
+        present = {o.get("sourceKey") for o in self.feed["offers"]}
+        if not keys.intersection(present):
+            self.skipTest("Feed predates the Coop and Lidl Plus integrations")
+        self.assertTrue(keys.issubset(present), "Collect every new member source before this check")
+        self.open()
+        for key in sorted(keys):
+            offer = next(o for o in self.feed["offers"] if o.get("sourceKey") == key
+                         and o.get("nonMemberPrice") is not None and o.get("nonMemberPriceIsUpperBound") is False)
+            self.detail(offer)
+            expect(self.page.locator("#view-detail .facts")).to_contain_text("Requires " + offer["membership"])
+            comparison = self.page.locator("#view-detail dt").filter(has_text="Non-member price").evaluate("node => node.nextElementSibling.textContent")
+            self.assertNotIn("Up to", comparison)
+            self.page.locator("#view-detail .cartbtn").click()
+            self.page.locator("#view-detail .back").click()
+        promotion = next(o for o in self.feed["offers"] if o.get("sourceKey") == "coop-superbrugsen" and o["price"] is None)
+        self.detail(promotion)
+        expect(self.page.locator("#view-detail h2")).to_contain_text("30 %")
+        expect(self.page.locator("#view-detail .detail-price .price")).to_have_text("")
+        self.page.locator("#view-detail .cartbtn").click()
+        self.page.locator("#view-detail .back").click()
+        self.page.locator('[data-tab="cart"]').click()
+        self.page.reload(wait_until="domcontentloaded")
+        expect(self.page.locator("#cart .membership")).to_have_count(4)
+        expect(self.page.locator("#cart")).to_contain_text("Requires Lidl Plus")
+        expect(self.page.locator("#cart")).to_contain_text("Requires Coop")
+
     def test_saved_member_cart_and_stars_survive_missing_offers(self):
         self.open()
         for offer in (self.netto, self.bilka):
@@ -206,7 +234,8 @@ class BrowserSmoke(unittest.TestCase):
         self.open()
         expect(self.page.locator("#member-status")).to_contain_text("Netto+ could not refresh. Showing saved offers")
         expect(self.page.locator("#member-status")).to_contain_text("Bilka Plus (BilkaToGo Odense) offers are temporarily unavailable.")
-        expect(self.page.locator("#member-status")).not_to_contain_text("selected member offers")
+        expect(self.page.locator("#member-status")).not_to_contain_text("Netto+: selected member offers")
+        expect(self.page.locator("#member-status")).not_to_contain_text("Bilka Plus (BilkaToGo Odense): selected member offers")
 
     def test_offline_reload_keeps_offers_and_saved_cart(self):
         self.open()

@@ -36,18 +36,21 @@ small `data/offers.json` that the app loads. Only the Python standard library is
 [Netto+](https://netto.dk/netto-plus/). `--bilka-plus` imports public Plus prices
 from the search used by [BilkaToGo](https://www.bilkatogo.dk/s?query=plus), scoped
 to **Bilka Odense, Niels Bohrs Alle 150** (store `1654`, verified against the site's
-public pickup-address listing). Both flags are configured in this branch's deploy
-workflow. They take effect when this workflow is published and run; changing the
-branch does not update the live site.
+public pickup-address listing). `--coop-members` adds the public Coop selections
+for 365discount and SuperBrugsen, and `--lidl-plus` adds the current weekly Lidl
+Plus prices. All four flags are configured in this branch's deploy workflow.
+They take effect when the workflow is published and run; changing a branch does
+not update the live site.
 
 Live access and a full collection were verified on **15 November 2026**: six Netto+
-cards and 148 Bilka Plus products across two complete search pages. Reviewed real
+cards, 148 Bilka Plus products across two complete search pages, two 365discount
+and five SuperBrugsen member promotions, and 35 automatic Lidl Plus prices. Reviewed real
 excerpts, source URLs, capture hashes and dated metadata are in `scraper/fixtures/`.
-These are public selections, not complete coverage of either app or a guarantee of
+These are public selections, not complete coverage of the apps or a guarantee of
 stock or identical pricing in every physical branch. Personal coupons are excluded.
 
 ```sh
-python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --previous previous-offers.json
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --previous previous-offers.json
 ```
 
 The Netto importer requires a member-offer label, heading, explicit price and readable
@@ -69,7 +72,7 @@ describe its flier feed. Exact duplicates are collapsed; different prices, pack
 sizes, conditions or membership requirements are preserved. A flier with unknown
 membership conditions is not assumed to be the same offer as a Plus price.
 
-Member prices show **Requires Netto+ / Bilka Plus** in cards, featured offers,
+Member prices show **Requires Netto+ / Bilka Plus / Coop / Lidl Plus** in cards, featured offers,
 product details, saved cart entries and remembered starred prices. Details link
 to the source and distinguish the non-member comparison price. A source notice
 identifies the limited public selection and distinguishes saved offers from
@@ -97,13 +100,41 @@ invented ordinary comparison price. The BilkaToGo/Odense scope is shown in offer
 descriptions and the source notice.
 Personal coupons and local food-waste clearance are outside this importer.
 
+Coop's [public member page](https://medlem.coop.dk/medlemsfordele/medlemstilbud/medlemstilbud/)
+contains separate chain sections. The importer maps the actual chain logos and
+public offer type (`2`) to 365discount or SuperBrugsen; it never assigns Kvickly or
+Brugsen offers to another chain. Coop uses the CSS name `personal-offer-wrapper`
+for these anonymous public cards too: the class name alone does not establish
+personal eligibility. Every card requires an ID, title, validity period and either
+an explicit fixed price or a clearly stated percentage promotion. Percentage-only
+promotions keep `price: null`; a 30% promotion never becomes an invented kr price.
+Month/day ranges without a year are anchored to a fresh, dated HTTP response in
+Europe/Copenhagen, with an unambiguous nearby year. A failed refresh retains the
+original resolved dates. Each Coop chain has its own snapshot and fallback.
+
+Lidl's importer discovers the current weekly Plus campaign link on the official
+homepage, then reads its embedded `data-grid-data` JSON. It requires explicit
+`Med Lidl Plus` prices in the single observed Danish price region and rejects
+ambiguous variants, missing cards and duplicate product IDs. Store availability
+dates determine the start; price-authoring timestamps do not backdate an offer.
+The explicit member-price expiry bounds the end even where the card omits a store
+end date. Mix/bundle conditions and total prices are preserved, including packs
+already described as e.g. `18 x 20 cl`, without multiplying them again.
+
+Lidl coupon prices are excluded because a public advertisement does not establish
+eligibility for every member. [Lidl's coupon information](https://www.lidl.dk/c/lidl-plus-kuponer/s10014639)
+distinguishes personal, opening-day and reward coupons and requires activation.
+Coop's fruit-and-vegetable bonus is likewise not treated as an immediate price
+reduction. Comparison prices explicitly described as an upper bound retain
+**Up to**; exact Coop/Lidl comparisons are displayed without that qualifier.
+
 #### Check access and capture the actual pages
 
 Run the diagnostic before attempting live validation (choose a **new** directory
 each time, so an old capture cannot appear to be a successful fresh download):
 
 ```sh
-python3 flier-summary/scraper/probe_member_sources.py --bilka-products --out-dir work/member-sources/check-01
+python3 flier-summary/scraper/probe_member_sources.py --bilka-products --other-members --out-dir work/member-sources/check-01
 ```
 
 It uses the same anonymous standard-library HTTP client, proxy, TLS verification
@@ -117,6 +148,9 @@ checks. Invalid Netto markup is retained for inspection, without exporting offer
 With `--bilka-products`, it also saves each actual public search JSON response,
 its hash and the validation result, including invalid responses for investigation.
 It does not save an importable offers feed or any session credentials.
+`--other-members` also retains the actual Coop member page, validates each target
+chain independently, discovers and captures the current Lidl campaign and checks
+its automatic member prices. Invalid markup is retained with validation failures.
 
 Exit status is 1 if any access or validation check fails. Exit status 0
 establishes HTML access and successful Netto parsing; `--bilka-products` additionally
@@ -192,7 +226,7 @@ then the app filters. Without these details, the exact cause cannot be establish
 
 ### Browser checks before publishing
 
-`tests/browser_smoke.py` runs eleven end-to-end checks against a collected feed
+`tests/browser_smoke.py` runs twelve end-to-end checks against a collected feed
 using Chromium. It starts an isolated localhost site and browser profile, without
 changing your saved preferences or publishing anything. It checks search, filters,
 member prices and images, featured offers, cart and stars persistence, backup and
@@ -206,12 +240,14 @@ Install Playwright in your development Python environment, then run:
 ```sh
 python3 -m pip install playwright
 python3 -m playwright install chromium
-python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --no-translate --out /tmp/flier-offers.json
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --no-translate --out /tmp/flier-offers.json
 python3 flier-summary/tests/browser_smoke.py --data /tmp/flier-offers.json --artifacts /tmp/flier-browser-results
 ```
 
-The current smoke scenarios require a fresh feed with both member sources, a
-Netto dairy offer, and a Bilka Plus price above its ordinary comparison price.
+The current smoke scenarios require a fresh feed with all five member selections,
+a Netto dairy offer, a Bilka Plus price above its ordinary comparison price and
+a percentage-only Coop promotion. The new-chain scenario is skipped for legacy
+feeds containing neither Coop nor Lidl Plus.
 Keep the dated feed with the test report to reproduce a run; a future selection
 can require updating those scenarios. Screenshots and `report.json` are written
 to the artifacts directory. These checks cover Chromium at phone and desktop
@@ -223,7 +259,7 @@ Yes, it is hosted on GitHub Pages, next to `wise-tram-copier`, by `.github/workf
 
 - A static page cannot fetch the flier API directly from the phone (no CORS), so the workflow fetches the offers
   on GitHub's servers and publishes them together with the app. Nothing is committed back to the repo.
-- It runs on every push to `main` that touches the app, and **every morning at 03:15 UTC**, so the list is fresh each day.
+- It runs **every morning at 03:15 UTC**, so the list is fresh each day.
   You can also run it by hand: Actions, *Deploy web apps to GitHub Pages*, *Run workflow*.
 - The app is at `https://<user>.github.io/sdu-utils/flier-summary/`.
 

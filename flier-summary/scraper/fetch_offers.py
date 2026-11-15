@@ -24,6 +24,8 @@ from pathlib import Path
 
 from member_offers import NETTO_PLUS_URL, fetch_netto_plus
 from bilka_offers import BILKA_PLUS_URL, fetch_bilka_plus
+from coop_offers import COOP_MEMBERS_URL, fetch_coop_members
+from lidl_offers import LIDL_PLUS_URL, fetch_lidl_plus
 
 API = "https://squid-api.tjek.com/v2"
 
@@ -408,7 +410,7 @@ def merge_member_offers(fliers: list[dict], members: list[dict]) -> list[dict]:
     def identity(offer):
         return tuple(offer.get(k) for k in (
             "store", "heading", "description", "price", "quantity", "unitPrice",
-            "from", "till", "membership", "nonMemberPrice", "sourceProductId",
+            "from", "till", "membership", "nonMemberPrice", "sourceProductId", "nonMemberPriceIsUpperBound",
         ))
     seen, result = {identity(o) for o in fliers}, list(fliers)
     for offer in members:
@@ -427,6 +429,17 @@ def netto_member_feed(previous: dict, generated_at: str) -> dict:
 def bilka_member_feed(previous: dict, generated_at: str) -> dict:
     return member_feed(previous, generated_at, key="bilka-plus", name="Bilka Plus (BilkaToGo Odense)",
                        store="bilka", url=BILKA_PLUS_URL, fetch=fetch_bilka_plus)
+
+
+def coop_member_feed(previous: dict, generated_at: str, store: str) -> dict:
+    name = next(s["name"] for s in STORES if s["key"] == store)
+    return member_feed(previous, generated_at, key=f"coop-{store}", name=f"Coop ({name})", store=store,
+                       url=COOP_MEMBERS_URL, fetch=lambda at: fetch_coop_members(store, at))
+
+
+def lidl_member_feed(previous: dict, generated_at: str) -> dict:
+    return member_feed(previous, generated_at, key="lidl-plus", name="Lidl Plus", store="lidl",
+                       url=LIDL_PLUS_URL, fetch=fetch_lidl_plus)
 
 
 def member_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch) -> dict:
@@ -455,6 +468,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-translate", action="store_true", help="skip the English names")
     ap.add_argument("--netto-plus", action="store_true", help="include the public Netto+ selection")
     ap.add_argument("--bilka-plus", action="store_true", help="include public BilkaToGo Plus prices for Bilka Odense")
+    ap.add_argument("--coop-members", action="store_true", help="include public Coop member selections for 365discount and SuperBrugsen")
+    ap.add_argument("--lidl-plus", action="store_true", help="include the public weekly Lidl Plus prices, excluding coupons")
     args = ap.parse_args(argv)
 
     previous = {}
@@ -515,6 +530,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.bilka_plus:
         collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         member_feeds.append(bilka_member_feed(previous, collected_at))
+    if args.coop_members:
+        for store in ("365discount", "superbrugsen"):
+            collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            member_feeds.append(coop_member_feed(previous, collected_at, store))
+    if args.lidl_plus:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        member_feeds.append(lidl_member_feed(previous, collected_at))
     for feed in member_feeds:
         offers_out = merge_member_offers(offers_out, feed["offers"])
     for entry in stores_out:

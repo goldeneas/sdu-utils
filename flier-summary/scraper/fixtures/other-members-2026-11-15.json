@@ -1,0 +1,71 @@
+{
+  "capturedAt": "2026-11-15T19:29:36+00:00",
+  "sources": [
+    {
+      "key": "lidl",
+      "url": "https://www.lidl.dk/",
+      "checkedAt": "2026-11-15T19:29:36+00:00",
+      "status": "ok",
+      "httpStatus": 200,
+      "finalUrl": "https://www.lidl.dk/",
+      "headers": {
+        "Content-Type": "text/html;charset=utf-8",
+        "Date": "Sun, 15 Nov 2026 19:29:36 GMT",
+        "Cache-Control": "max-age=300",
+        "ETag": "\"myra-f5f824ed\""
+      },
+      "html": "lidl.html",
+      "encoding": "utf-8",
+      "sha256": "c2f94cab7182e955e0cd27850af211d118ee8c05d441807f4795c3389c727716"
+    },
+    {
+      "key": "lidl-selection",
+      "url": "https://www.lidl.dk/c/store/ugens-lidl-plus/a10107260",
+      "checkedAt": "2026-11-15T19:29:36+00:00",
+      "status": "ok",
+      "httpStatus": 200,
+      "finalUrl": "https://www.lidl.dk/c/store/ugens-lidl-plus/a10107260",
+      "headers": {
+        "Content-Type": "text/html;charset=utf-8",
+        "Date": "Sun, 15 Nov 2026 19:29:36 GMT",
+        "Cache-Control": "max-age=300",
+        "ETag": "\"myra-edeed4e1\""
+      },
+      "html": "lidl-selection.html",
+      "encoding": "utf-8",
+      "sha256": "eb812c9d76ab8728139e3a376f7b79cbf71ee4676b083829c4355967f1af114e"
+    },
+    {
+      "key": "member-selection",
+      "url": "https://medlem.coop.dk/medlemsfordele/medlemstilbud/medlemstilbud/",
+      "checkedAt": "2026-11-15T19:30:05+00:00",
+      "status": "ok",
+      "httpStatus": 200,
+      "finalUrl": "https://medlem.coop.dk/medlemsfordele/medlemstilbud/medlemstilbud/",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Date": "Sun, 15 Nov 2026 19:30:05 GMT"
+      },
+      "html": "member-selection.html",
+      "encoding": "utf-8",
+      "sha256": "3dc90ad19bb5b7a01d87d6374f171487a9b9d8147f07ad32c0b0cc584dc31ac7"
+    }
+  ],
+  "extraction": "Coop: all four original complete chain wrappers. Lidl: seven original opening tags with data-grid-data, closed with div; remaining cards and page scripts omitted.",
+  "expectedCounts": {
+    "coop-365discount": 2,
+    "coop-superbrugsen": 5,
+    "lidlFixture": 6,
+    "lidlFullPage": 35,
+    "lidlExcludedCoupon": 1
+  },
+  "fixtureSha256": {
+    "coop-members-2026-11-15.html": "d384ca33efe1516f15fdab4ea5f13bb5ab2642e7172219184fc3d55c1d6bc4b5",
+    "lidl-plus-2026-11-15.html": "53598993b89c1b35f337b0766abda30909abffc0819affa5705ed1a291efe4d2"
+  },
+  "programEvidence": [
+    "https://medlem.coop.dk/medlemsfordele/medlemstilbud/",
+    "https://www.lidl.dk/c/lidl-plus-tilbud/s10029008",
+    "https://www.lidl.dk/c/lidl-plus-kuponer/s10014639"
+  ]
+}

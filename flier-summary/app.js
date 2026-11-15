@@ -701,7 +701,7 @@
     const rows = [
       o.quantity ? ['Amount', o.quantity] : null,
       o.unitPrice ? ['Unit price', o.unitPrice] : null,
-      o.nonMemberPrice != null ? ['Non-member price', `Up to ${kr(o.nonMemberPrice)}`] : null,
+      o.nonMemberPrice != null ? ['Non-member price', `${o.nonMemberPriceIsUpperBound === false ? '' : 'Up to '}${kr(o.nonMemberPrice)}`] : null,
       ['Valid', when],
       o.membership ? ['Membership', membershipLabel(o)] : null,
       o.sourceUrl ? ['Source', el('a', { href: o.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, o.membership || 'Offer website')] : null,
