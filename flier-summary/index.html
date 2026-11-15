@@ -62,6 +62,7 @@
 			header.top h1 { font-size: 28px; letter-spacing: -.02em; }
 			#status { margin-top: 2px; font-size: 13px; color: var(--muted); }
 			#status:empty { display: none; }
+			#member-status { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 			header.top .lang { align-self: center; flex: none; }
 			header.top .lang button { padding: 4px 9px; font-size: 13px; }
 			.detail-body .orig { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
@@ -166,7 +167,8 @@
 			@media (prefers-color-scheme: dark) { .thumb { background: #2b2b27; } }
 			.thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
 			.body { min-width: 0; }
-			.top { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
+			.top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 3px; }
+			.membership { font-size: 11px; font-weight: 650; color: var(--ink); background: var(--chip); padding: 2px 6px; border-radius: 5px; }
 			.badge {
 				font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
 				color: color-mix(in srgb, var(--c) 62%, black); background: color-mix(in srgb, var(--c) 16%, transparent); padding: 2px 6px; border-radius: 5px;
@@ -339,6 +341,7 @@
 					<button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
 				</div>
 			</header>
+			<p id="member-status" role="status" hidden></p>
 
 			<main id="view-offers">
 				<div class="sbar">

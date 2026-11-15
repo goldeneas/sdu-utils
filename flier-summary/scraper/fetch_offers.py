@@ -22,6 +22,9 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from member_offers import NETTO_PLUS_URL, fetch_netto_plus
+from bilka_offers import BILKA_PLUS_URL, fetch_bilka_plus
+
 API = "https://squid-api.tjek.com/v2"
 
 # Odense centre. The radius limits the offers to fliers valid for stores around the city.
@@ -396,11 +399,62 @@ def load_known_translations(path: str | None) -> dict[str, str]:
     return {o["heading"]: o["headingEn"] for o in offers if isinstance(o, dict) and o.get("headingEn") and o.get("heading")}
 
 
+def merge_member_offers(fliers: list[dict], members: list[dict]) -> list[dict]:
+    """Collapse exact duplicates only; never erase a different price or condition.
+
+    A flier without explicit membership metadata is not assumed to be a member
+    price, even when its product name and amount happen to match.
+    """
+    def identity(offer):
+        return tuple(offer.get(k) for k in (
+            "store", "heading", "description", "price", "quantity", "unitPrice",
+            "from", "till", "membership", "nonMemberPrice", "sourceProductId",
+        ))
+    seen, result = {identity(o) for o in fliers}, list(fliers)
+    for offer in members:
+        key = identity(offer)
+        if key not in seen:
+            seen.add(key)
+            result.append(offer)
+    return result
+
+
+def netto_member_feed(previous: dict, generated_at: str) -> dict:
+    return member_feed(previous, generated_at, key="netto-plus", name="Netto+", store="netto",
+                       url=NETTO_PLUS_URL, fetch=fetch_netto_plus)
+
+
+def bilka_member_feed(previous: dict, generated_at: str) -> dict:
+    return member_feed(previous, generated_at, key="bilka-plus", name="Bilka Plus (BilkaToGo Odense)",
+                       store="bilka", url=BILKA_PLUS_URL, fetch=fetch_bilka_plus)
+
+
+def member_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch) -> dict:
+    """Keep a separate source snapshot so deduplication cannot lose fallback data."""
+    feed = {"key": key, "name": name, "store": store, "url": url,
+            "coverage": "public-member-selection", "status": "ok", "fetchedAt": generated_at}
+    try:
+        feed["offers"] = fetch(datetime.fromisoformat(generated_at))
+        for offer in feed["offers"]:
+            offer["cats"] = categorize(offer["heading"])
+    except RuntimeError as exc:
+        old = next((f for f in previous.get("memberFeeds", []) if f.get("key") == feed["key"]), {})
+        feed["offers"] = old.get("offers", [])
+        feed["status"] = "cached" if feed["offers"] else "unavailable"
+        feed["fetchedAt"] = old.get("fetchedAt") if feed["offers"] else None
+        feed["error"] = str(exc)
+        print(f"warning: {name}: {exc}", file=sys.stderr)
+    print(f"{name}: {len(feed['offers'])} offers ({feed['status']})", file=sys.stderr)
+    return feed
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "data" / "offers.json"))
     ap.add_argument("--previous", help="earlier offers.json for translations and per-store fallback on fetch failure")
     ap.add_argument("--no-translate", action="store_true", help="skip the English names")
+    ap.add_argument("--netto-plus", action="store_true", help="include the public Netto+ selection")
+    ap.add_argument("--bilka-plus", action="store_true", help="include public BilkaToGo Plus prices for Bilka Odense")
     args = ap.parse_args(argv)
 
     previous = {}
@@ -440,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
         entry["fetchedAt"] = generated_at
         if error:
             old_entry = next((s for s in previous.get("stores", []) if s.get("key") == store["key"]), {})
-            old_offers = [o for o in previous.get("offers", []) if o.get("store") == store["key"]]
+            old_offers = [o for o in previous.get("offers", []) if o.get("store") == store["key"] and not o.get("sourceKey")]
             entry["status"] = "cached" if old_offers else "unavailable"
             entry["fetchedAt"] = old_entry.get("fetchedAt", previous.get("generatedAt")) if old_offers else None
             entry["error"] = error
@@ -451,6 +505,20 @@ def main(argv: list[str] | None = None) -> int:
                     entry[field] = old_entry[field]
         print(f"{store['name']}: {entry['count']} offers ({entry['status']})", file=sys.stderr)
         stores_out.append(entry)
+
+    # Flier calls can span Copenhagen midnight. Interpret the member page's
+    # countdown at its own collection time, not the start of the whole job.
+    member_feeds = []
+    if args.netto_plus:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        member_feeds.append(netto_member_feed(previous, collected_at))
+    if args.bilka_plus:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        member_feeds.append(bilka_member_feed(previous, collected_at))
+    for feed in member_feeds:
+        offers_out = merge_member_offers(offers_out, feed["offers"])
+    for entry in stores_out:
+        entry["count"] = sum(o["store"] == entry["key"] for o in offers_out)
 
     if not offers_out:
         print("error: no offers fetched from any store; not writing output", file=sys.stderr)
@@ -473,6 +541,10 @@ def main(argv: list[str] | None = None) -> int:
         "categories": [{"key": k, "name": n} for k, n in CATEGORY_NAMES.items()],
         "offers": offers_out,
     }
+    if member_feeds:
+        payload["memberFeeds"] = member_feeds
+        payload["source"]["name"] = "eTilbudsavis + " + " + ".join(f["name"] for f in member_feeds)
+        payload["source"]["coverage"] = "published-fliers-and-public-member-selection"
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"wrote {len(offers_out)} offers to {out}", file=sys.stderr)
     return 0

@@ -30,6 +30,101 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 which publishes the fliers of all five chains. It asks for offers valid around Odense (15 km radius) and writes a
 small `data/offers.json` that the app loads. Only the Python standard library is used.
 
+### Public member offers
+
+`--netto-plus` imports the public selection on
+[Netto+](https://netto.dk/netto-plus/). `--bilka-plus` imports public Plus prices
+from the search used by [BilkaToGo](https://www.bilkatogo.dk/s?query=plus), scoped
+to **Bilka Odense, Niels Bohrs Alle 150** (store `1654`, verified against the site's
+public pickup-address listing). Both flags are configured in this branch's deploy
+workflow. They take effect when this workflow is published and run; changing the
+branch does not update the live site.
+
+Live access and a full collection were verified on **15 November 2026**: six Netto+
+cards and 148 Bilka Plus products across two complete search pages. Reviewed real
+excerpts, source URLs, capture hashes and dated metadata are in `scraper/fixtures/`.
+These are public selections, not complete coverage of either app or a guarantee of
+stock or identical pricing in every physical branch. Personal coupons are excluded.
+
+```sh
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --previous previous-offers.json
+```
+
+The Netto importer requires a member-offer label, heading, explicit price and readable
+expiry on every card; a missing or malformed card fails the entire member source.
+Cards mentioning personal prices or coupons reject the source rather than
+being published as prices for every member. Relative expiry dates use the member
+page's own collection time in Europe/Copenhagen, even if flier downloads span
+midnight. Missing HTTP dates, dates more than five minutes in the future and
+responses whose HTTP date or cache age crosses local midnight are rejected. Start dates
+are left unknown rather than invented. The non-member comparison price is stored
+as `nonMemberPrice`, not as a historical price or a claimed discount.
+
+Each member feed has a separate snapshot in `memberFeeds` with `status`,
+`fetchedAt` and its original offers. On failure, only that feed reuses its old
+snapshot and original expiry dates, without advancing its freshness timestamp.
+Flier collection and member collection can succeed or fail independently.
+Store `count` includes both sources; existing store `status` and `fetchedAt` still
+describe its flier feed. Exact duplicates are collapsed; different prices, pack
+sizes, conditions or membership requirements are preserved. A flier with unknown
+membership conditions is not assumed to be the same offer as a Plus price.
+
+Member prices show **Requires Netto+ / Bilka Plus** in cards, featured offers,
+product details, saved cart entries and remembered starred prices. Details link
+to the source and distinguish the non-member comparison price. A source notice
+identifies the limited public selection and distinguishes saved offers from
+temporarily unavailable member offers. Variant IDs include purchase conditions,
+so equal names and prices with different pack sizes or limits are kept distinct.
+Bilka's source product IDs also participate in deduplication: distinct variants
+can share a name, price and pack size while having different product pictures.
+
+Bilka's HTML contains program information; products come from its public Algolia
+search index. The site's own public search-only key is used, without a login,
+cookie, personal coupon activation or cart access. The importer requires
+`cpOffer:true`, `nonsearchable:false` and assortment in store `1654`. It validates
+every product and requires exact, exhaustive page counts, unique product IDs and
+stable totals. Any failed or incomplete page rejects the entire Bilka member source.
+The website API and its public search key are undocumented and can change; a
+schema or access failure triggers the independent saved-snapshot fallback.
+
+Bilka's monetary fields use øre and are converted to kroner. Explicit calendar
+dates are interpreted in Europe/Copenhagen; they never extend on a failed refresh.
+Mix offers preserve the total bundle price and required number of packs rather
+than presenting a per-pack price. For single-pack offers, the ordinary price at
+Odense is shown separately as `nonMemberPrice`; a Plus price can exceed an ordinary
+promotion, so no saving or historical price is inferred. Mix bundles have no
+invented ordinary comparison price. The BilkaToGo/Odense scope is shown in offer
+descriptions and the source notice.
+Personal coupons and local food-waste clearance are outside this importer.
+
+#### Check access and capture the actual pages
+
+Run the diagnostic before attempting live validation (choose a **new** directory
+each time, so an old capture cannot appear to be a successful fresh download):
+
+```sh
+python3 flier-summary/scraper/probe_member_sources.py --bilka-products --out-dir work/member-sources/check-01
+```
+
+It uses the same anonymous standard-library HTTP client, proxy, TLS verification
+and headers as the Netto+ collector. It checks Netto+, Bilka Plus, BilkaToGo,
+the BilkaToGo Plus information page and its linked `/s?query=plus` selection.
+The report distinguishes proxy CONNECT denial from an origin HTTP error and
+continues to check other sources after a failure. Accessible HTML is saved as
+UTF-8 with a SHA-256 checksum, collection time and selected response headers;
+cookies are not retained. Netto captures also undergo the freshness and parser
+checks. Invalid Netto markup is retained for inspection, without exporting offers.
+With `--bilka-products`, it also saves each actual public search JSON response,
+its hash and the validation result, including invalid responses for investigation.
+It does not save an importable offers feed or any session credentials.
+
+Exit status is 1 if any access or validation check fails. Exit status 0
+establishes HTML access and successful Netto parsing; `--bilka-products` additionally
+checks Bilka product parsing and complete pagination. Neither mode proves full app
+coverage or enables scheduled collection. Captures belong in `work/`, not the published `data/`
+directory. Promote a reviewed, minimal real HTML excerpt and its dated metadata
+to a test fixture only after live access succeeds.
+
 ```sh
 python3 flier-summary/scraper/fetch_offers.py           # writes flier-summary/data/offers.json
 python3 -m unittest discover -s flier-summary/scraper  # offline tests
@@ -77,7 +172,8 @@ This label describes the file generation date; individual stores may still use s
 ### Why an offer seen at Netto may be missing
 
 The source covers published fliers, not a live inventory of every branch's shelf prices. In-store-only
-promotions, local clearance/short-dated products and Netto+ or personalized promotions may not appear
+promotions, local clearance/short-dated products, member prices outside the public
+Netto+/BilkaToGo selections and personalized promotions may not appear
 in this feed. Geographic coverage does not guarantee an offer applies to every branch in that area.
 These are coverage limits; a successful API download does not prove every in-store promotion was included.
 
@@ -93,6 +189,35 @@ it appears in a flier or only on a shelf label/Netto+. Compare the source flier,
 then the app filters. Without these details, the exact cause cannot be established.
 
 ## Hosting on GitHub Pages
+
+### Browser checks before publishing
+
+`tests/browser_smoke.py` runs eleven end-to-end checks against a collected feed
+using Chromium. It starts an isolated localhost site and browser profile, without
+changing your saved preferences or publishing anything. It checks search, filters,
+member prices and images, featured offers, cart and stars persistence, backup and
+restore, source notices, failed refreshes, offline reload and mobile/desktop layout.
+The English-name check uses a saved translation; it does not test Google's service.
+Source failures and offline conditions are simulated, while the feed is collected
+from the real sources.
+
+Install Playwright in your development Python environment, then run:
+
+```sh
+python3 -m pip install playwright
+python3 -m playwright install chromium
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --no-translate --out /tmp/flier-offers.json
+python3 flier-summary/tests/browser_smoke.py --data /tmp/flier-offers.json --artifacts /tmp/flier-browser-results
+```
+
+The current smoke scenarios require a fresh feed with both member sources, a
+Netto dairy offer, and a Bilka Plus price above its ordinary comparison price.
+Keep the dated feed with the test report to reproduce a run; a future selection
+can require updating those scenarios. Screenshots and `report.json` are written
+to the artifacts directory. These checks cover Chromium at phone and desktop
+sizes; installation on a physical phone and other browsers require separate tests.
+
+### Publishing
 
 Yes, it is hosted on GitHub Pages, next to `wise-tram-copier`, by `.github/workflows/deploy-pages.yml`:
 

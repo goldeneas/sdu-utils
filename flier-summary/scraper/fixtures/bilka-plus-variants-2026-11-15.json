@@ -1,0 +1,158 @@
+[
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1700,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 4250,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 3400,
+        "unitsOfMeasureShowPrice": 3400
+      }
+    },
+    "name": "Energidrik sukkerfri",
+    "description": "Energidrik sukkerfri",
+    "brand": "Faxe Kondi",
+    "subBrand": "Booster",
+    "units": 0.5,
+    "unitsOfMeasure": "l",
+    "netcontent": "0.5 l",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/457a0b1d6b6571ed806ac00f0e1a3d56"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1000,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100850786,
+    "nonsearchable": false,
+    "objectID": "30242"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1700,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 4250,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 3400,
+        "unitsOfMeasureShowPrice": 3400
+      }
+    },
+    "name": "Energidrik",
+    "description": "Energidrik",
+    "brand": "Faxe Kondi",
+    "subBrand": "Booster",
+    "units": 0.5,
+    "unitsOfMeasure": "l",
+    "netcontent": "0.5 l",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/84b6f8943671e9aca8bd142522cb82bf"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1000,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100850786,
+    "nonsearchable": false,
+    "objectID": "33407"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Se Her",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1700,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 4050,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 3400,
+        "unitsOfMeasureShowPrice": 3400
+      }
+    },
+    "name": "Energidrik sukkerfri",
+    "description": "Energidrik sukkerfri",
+    "brand": "Faxe Kondi",
+    "subBrand": "Booster",
+    "units": 0.5,
+    "unitsOfMeasure": "l",
+    "netcontent": "0.5 l",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/10b8c650ccd1d90946e252b799f059d6"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1000,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100850786,
+    "nonsearchable": false,
+    "objectID": "92938"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1700,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 4250,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 3400,
+        "unitsOfMeasureShowPrice": 3400
+      }
+    },
+    "name": "Energidrik",
+    "description": "Energidrik",
+    "brand": "Faxe Kondi",
+    "subBrand": "Booster",
+    "units": 0.5,
+    "unitsOfMeasure": "l",
+    "netcontent": "0.5 l",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/7e023e4be4e7dd2c8869eb0caf8285ed"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1000,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100850786,
+    "nonsearchable": false,
+    "objectID": "76505"
+  }
+]

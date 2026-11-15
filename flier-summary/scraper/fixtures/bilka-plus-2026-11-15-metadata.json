@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-11-15T15:54:37+00:00",
+  "sourceUrl": "https://www.bilkatogo.dk/s?query=plus",
+  "scriptUrl": "https://www.bilkatogo.dk/_nuxt/86221b3.js",
+  "scriptSha256": "50ae8baffd28f067beb6bd3e9bed82dcf5cc57451563674fb38f7f60d30cc87a",
+  "endpoint": "https://F9VBJLR1BK-dsn.algolia.net/1/indexes/prod_BILKATOGO_PRODUCTS",
+  "filter": "cpOffer:true AND nonsearchable:false AND isInAssortmentIn:1654",
+  "captures": [
+    {
+      "page": 0,
+      "json": "bilka-products-page-0.json",
+      "sha256": "96e0ac7d47c9b419aabe6f1e19a63827012fb3e4c491c8b9e1ef8d6e7e988790",
+      "nbHits": 148,
+      "nbPages": 2,
+      "hitsPerPage": 100,
+      "exhaustiveNbHits": true
+    },
+    {
+      "page": 1,
+      "json": "bilka-products-page-1.json",
+      "sha256": "ff90ea83f6670b0944865571b74d46d08e4c288475e059207181c57363cb5f4c",
+      "nbHits": 148,
+      "nbPages": 2,
+      "hitsPerPage": 100,
+      "exhaustiveNbHits": true
+    }
+  ],
+  "extraction": "Three actual price records and four actual same-name/price variant records, all requested fields unchanged; storeData restricted to 1654. Includes a Plus price higher than the ordinary price.",
+  "store": {
+    "name": "Bilka Odense",
+    "sid": "1654",
+    "address": "Niels Bohrs Alle 150, 5230 Odense M",
+    "verifiedAtUrl": "https://api.bilkatogo.dk/api/shop/v6/AvailableDeliveryAddresses?u=w&orderByZipcode=Odense"
+  },
+  "semantics": "Public website ProductCardPlusOffer divides cpOfferPrice by 100 and uses cpOfferAmount as bundle size. cpOfferFromDate/cpOfferToDate are calendar dates. Personal coupons require login and activation and are not part of this query.",
+  "fixtures": {
+    "bilka-plus-2026-11-15.json": "f3dbd729ef01964a12a8717a04d90cb1267d10528df55c876c99f872e5f70cc5",
+    "bilka-plus-variants-2026-11-15.json": "59bdab83555307d3b4e16a1efb5af53754bdcde22c2f68eb369b8bad3a936ddc"
+  }
+}

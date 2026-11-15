@@ -1,0 +1,119 @@
+[
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Se Her",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1200,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 2990,
+        "unitsOfMeasurePriceUnit": "L.",
+        "unitsOfMeasureOfferPrice": 2400,
+        "unitsOfMeasureShowPrice": 2400
+      }
+    },
+    "name": "Flydende til madlavning",
+    "description": "Flydende til madlavning",
+    "brand": "AMA",
+    "subBrand": "",
+    "units": 500,
+    "unitsOfMeasure": "ml",
+    "netcontent": "500 ml",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/6d5443f15e21375afc13ef05231b4f95"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-13",
+    "cpOfferToDate": "2026-11-27",
+    "cpOfferPrice": 1000,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100858511,
+    "nonsearchable": false,
+    "objectID": "19628"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1600,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 12450,
+        "unitsOfMeasurePriceUnit": "Kg.",
+        "unitsOfMeasureOfferPrice": 8000,
+        "unitsOfMeasureShowPrice": 8000
+      }
+    },
+    "name": "Snøfler",
+    "description": "Snøfler",
+    "brand": "Karen Volf",
+    "subBrand": "",
+    "units": 200,
+    "unitsOfMeasure": "g",
+    "netcontent": "200 g",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/cbc83854-0dff-4fc4-8023-e49d9a0005d8"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1300,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100852134,
+    "nonsearchable": false,
+    "objectID": "41458"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1200,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 21850,
+        "unitsOfMeasurePriceUnit": "Kg.",
+        "unitsOfMeasureOfferPrice": 15000,
+        "unitsOfMeasureShowPrice": 15000
+      }
+    },
+    "name": "Kiks m. mørk chokolade",
+    "description": "Kiks m. mørk chokolade",
+    "brand": "Karen volf",
+    "subBrand": "",
+    "units": 80,
+    "unitsOfMeasure": "g",
+    "netcontent": "80 g",
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/eb235a54b8b02988ce8c406b5a41414a"
+    ],
+    "cpOffer": true,
+    "cpOfferFromDate": "2026-11-06",
+    "cpOfferToDate": "2026-11-20",
+    "cpOfferPrice": 1300,
+    "cpOfferAmount": 1,
+    "cpOfferId": 100852134,
+    "nonsearchable": false,
+    "objectID": "155634"
+  }
+]
