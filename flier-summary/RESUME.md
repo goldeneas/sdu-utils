@@ -1,5 +1,74 @@
 # Ripresa flier-summary
 
+## Correzione del prodotto Protein Lab mancante — stato attuale
+
+Branch di lavoro: `codex/flier-summary-bilka-public-promotions`, basato su
+`8bfad3a`. L'utente ha segnalato nel sito pubblicato l'assenza di Chokolademousse
+Protein Lab a 10 kr, precisando che non è un prezzo Bilka Plus.
+
+### Diagnosi verificata il 15 novembre 2026
+- Il JSON pubblicato letto all'inizio dell'indagine era generato alle 19:30:40 UTC,
+  con 3.100 offerte e solo i due snapshot membri Netto+/Bilka Plus. L'ultimo job
+  Pages riuscito osservato usava `793666d`, non ancora l'estensione `8bfad3a`.
+- Il prodotto era assente dai titoli e dalle descrizioni del feed pubblicato.
+  Non era un filtro o un problema di traduzione: era un limite delle fonti.
+- L'indice pubblico BilkaToGo identifica il prodotto `125829`, EAN
+  `5710326021737`, marca Protein Lab, nome Chokolademousse, confezione 200 g.
+  Per Odense (`1654`) `storeData.price=1000` øre, `cpOffer=false` e
+  `isInCurrentLeaflet=false`. Il riferimento di catalogo è 1475 øre; non è stato
+  trasformato in un prezzo storico né in una percentuale di risparmio.
+- `offerFrom` e `offerUntil` sono vuoti: non inventare una scadenza.
+
+### Correzione implementata
+- Nuovo `scraper/bilka_store_offers.py`, opzione `--bilka-store-offers`, aggiunta
+  al workflow. Legge promozioni ordinarie pubbliche e mix di BilkaToGo/Odense,
+  senza interrogare coupon, account o carrelli personali e senza etichetta Plus.
+- La ricerca ordinaria supera 1.000 risultati e ha conteggi non esaustivi.
+  Il client pubblico espone anche una chiave di sola lettura per browse. Si usa
+  il cursore pubblico fino alla terminazione, rifiutando cursori ripetuti,
+  prodotti duplicati, pagine invalide e raccolte parziali. La proiezione scarica
+  solo i campi necessari e `storeData.1654`, non i prezzi degli altri negozi.
+- Cattura completa: 30 pagine, 14.642 prodotti, 14.622 promozioni/varianti valide.
+  Inclusi mix a prezzo totale e promozioni a totale variabile come "3 for 2"
+  (senza prezzo inventato). Mix più cari dell'acquisto dei singoli sono esclusi.
+- Snapshot ordinari in `offerFeeds`, distinto da `memberFeeds` e dai volantini.
+  Fallback conserva timestamp, date e `priceObservedAt` originali.
+- Prezzi senza scadenza: `from/till` restano null, `priceObservedAt` registra la
+  verifica. L'app mostra "Price checked …" e li considera attuali solo nel
+  medesimo giorno di Copenaghen. Carrello e prezzi ricordati conservano la data.
+  Se c'è una scadenza esplicita, vale il periodo reale. Service worker v18.
+- Fixture reale della mousse e dei mix, con metadati/hash, in
+  `scraper/fixtures/bilka-public-promotions-2026-11-15*.json`.
+- Diagnostica estesa con `--bilka-store-prices`: conserva ogni pagina browse e
+  il risultato della validazione senza esportare un feed pubblicabile.
+
+### Verifiche completate
+- 97 test Python passati (88 precedenti + 9 regressioni), controlli sintassi JS
+  e `git diff --check` passati.
+- 13 test Chromium passati sul file completo, incluse ricerca nell'ordine
+  "Chokolademousse Protein Lab", prezzo 10 kr, nessun Plus, carrello/preferiti
+  e cambio al giorno seguente senza prolungare il prezzo non datato.
+- Feed reale: `/tmp/flier-with-ordinary-bilka-20261115.json`, 17.764 ID unici.
+  Include le 3.142 offerte precedenti e le 14.622 varianti ordinarie aggiunte.
+  Tutte le fonti sono `ok`. La mousse è presente a 10 kr, 200 g, senza scadenza
+  o appartenenza Plus inventate.
+- Report browser: `/tmp/flier-mousse-browser-20261115/report.json`.
+  Catture complete: `/tmp/bilka-store-complete-20261115/`.
+- Il JSON delle nuove promozioni è circa 11,4 MB non compresso / 1,05 MB gzip;
+  l'app conserva il rendering iniziale limitato e i controlli browser sono passati
+  anche col feed ampliato. Non eseguire una raccolta parziale a 1.000 risultati.
+- Commit/push seguono il flusso main già autorizzato nella conversazione.
+  Non dichiarare il sito aggiornato dal solo push: serve un workflow Pages su
+  main, programmato o manuale, e verifica del JSON effettivamente pubblicato.
+
+```sh
+python3 -m unittest discover -s flier-summary/scraper -q
+python3 flier-summary/scraper/probe_member_sources.py --bilka-products --other-members --bilka-store-prices --out-dir /tmp/member-check-NUOVO
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --bilka-store-offers --no-translate --out /tmp/offers-NUOVO.json
+```
+
+## Storico dell'estensione agli altri supermercati
+
 ## Estensione a 365discount, SuperBrugsen e Lidl — stato attuale
 
 Branch di lavoro: `codex/flier-summary-more-member-offers`, basato su `793666d`

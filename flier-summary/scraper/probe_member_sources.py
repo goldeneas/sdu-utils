@@ -20,6 +20,7 @@ from member_offers import (
 from bilka_offers import BILKA_SEARCH_URL, BILKA_STORE, fetch_bilka_page, fetch_bilka_plus
 from coop_offers import COOP_MEMBERS_URL, parse_coop_members
 from lidl_offers import LIDL_HOME, discover_lidl_campaign, parse_lidl_plus
+from bilka_store_offers import BROWSE_URL, fetch_store_page, fetch_bilka_store_offers
 
 SOURCES = (
     ("netto-plus", NETTO_PLUS_URL),
@@ -121,11 +122,35 @@ def probe_other_members(directory: Path) -> list[dict]:
     return results
 
 
+def probe_bilka_store_prices(directory: Path) -> dict:
+    checked_at = datetime.now(timezone.utc)
+    result = {"key": "bilkatogo-offers", "url": BROWSE_URL, "storeId": BILKA_STORE,
+              "checkedAt": checked_at.isoformat(timespec="seconds"), "pages": []}
+
+    def capture(cursor):
+        data = fetch_store_page(cursor)
+        filename = f"bilka-store-page-{len(result['pages']):03d}.json"
+        body = (json.dumps(data, ensure_ascii=False) + "\n").encode("utf-8")
+        (directory / filename).write_bytes(body)
+        result["pages"].append({"json": filename, "sha256": hashlib.sha256(body).hexdigest(),
+                                "productCount": len(data.get("hits", []))})
+        return data
+
+    try:
+        offers = fetch_bilka_store_offers(checked_at, page_fetcher=capture)
+    except (RuntimeError, OSError, ValueError) as exc:
+        result.update(status="error", error=str(exc))
+    else:
+        result.update(status="ok", offerCount=len(offers))
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out-dir", required=True, help="new directory for report.json and UTF-8 HTML captures")
     ap.add_argument("--bilka-products", action="store_true", help="also capture and validate every public Bilka Plus search page for Odense")
     ap.add_argument("--other-members", action="store_true", help="also capture and validate public Coop and current Lidl Plus selections")
+    ap.add_argument("--bilka-store-prices", action="store_true", help="also capture the cursor-paginated public ordinary BilkaToGo promotion selection")
     args = ap.parse_args(argv)
     directory = Path(args.out_dir)
     try:
@@ -146,6 +171,10 @@ def main(argv: list[str] | None = None) -> int:
         for result in probe_other_members(directory):
             report["sources"].append(result)
             print(f"{result['key']}: {result['status']}" + (" (validation failed)" if result.get("validationFailed") else ""), file=sys.stderr)
+    if args.bilka_store_prices:
+        result = probe_bilka_store_prices(directory)
+        report["sources"].append(result)
+        print(f"bilkatogo-offers: {result['status']}", file=sys.stderr)
     (directory / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return int(any(source["status"] != "ok" or source.get("validationFailed") or source.get("nettoValidation", {}).get("status") == "error"
                    for source in report["sources"]))

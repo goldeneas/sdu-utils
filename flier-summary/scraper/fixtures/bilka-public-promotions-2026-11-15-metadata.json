@@ -1,0 +1,172 @@
+{
+  "source": "https://F9VBJLR1BK-dsn.algolia.net/1/indexes/prod_BILKATOGO_PRODUCTS/browse",
+  "store": "1654",
+  "productEvidence": "https://www.bilkatogo.dk/produkt/protein-lab-chokolademousse/125829/",
+  "extraction": "Actual mousse record, selected public fields, storeData restricted to Odense; actual banana bundle and dominated mix from browse captures.",
+  "fixtureSha256": "79bd9d72e78a7782cc7c5dade3c92bdf70b5d878fa43881266e5d9e702c48dc2",
+  "mousse": {
+    "productId": "125829",
+    "price": 10,
+    "membership": null,
+    "isInCurrentLeaflet": false,
+    "offerFrom": "",
+    "offerUntil": "",
+    "catalogReferencePrice": 14.75
+  },
+  "captureSha256": "f5ffc9b910b84a375d6a159a22d96d2549d131bc9d5178b311d6435966e9cacb",
+  "capturedAt": "2026-11-15T20:04:15+00:00",
+  "browseProductCount": 14642,
+  "browsePageCount": 30,
+  "browsePages": [
+    {
+      "file": "page-000.json",
+      "sha256": "931a853e65a2cbe2baef0f0989e14475a9ecf0a7514f3ccd6624603ec4678a22",
+      "count": 500
+    },
+    {
+      "file": "page-001.json",
+      "sha256": "2db0bbdfbc1c2b452d3975184fe935a316de48eb6ce6ee602a3478175f08b7a2",
+      "count": 500
+    },
+    {
+      "file": "page-002.json",
+      "sha256": "988b04bba7e01835bafabcf25fe277f4ebdc4e81e8f8031480004828bda23e66",
+      "count": 500
+    },
+    {
+      "file": "page-003.json",
+      "sha256": "14f35b25a0a6c99388a9d59b0aebd090c24569f274b7036c15ece6bf281af028",
+      "count": 500
+    },
+    {
+      "file": "page-004.json",
+      "sha256": "fa2f91992c36d5c644d022ed744aed44cf8fbe84e1e5d5ee80b70aaaa22ab0dc",
+      "count": 500
+    },
+    {
+      "file": "page-005.json",
+      "sha256": "d1feb668495a51d9ba3844f7e0559a9df311fc4e8ee961c1e08d64d78fb1d31f",
+      "count": 500
+    },
+    {
+      "file": "page-006.json",
+      "sha256": "aaeeeb36f4bf5cc35c9ab6a1ea0c324a7d43b62588940eb0a5925a55b898afb9",
+      "count": 500
+    },
+    {
+      "file": "page-007.json",
+      "sha256": "f3198261152b3bb375158725bad3cf4450cc8db786e367d2b6e4a1d203733aca",
+      "count": 500
+    },
+    {
+      "file": "page-008.json",
+      "sha256": "427d3070de5421098e8a3a53cc995b0c5285f104bf8d6dcb673c619d1579b96c",
+      "count": 500
+    },
+    {
+      "file": "page-009.json",
+      "sha256": "26e114c8b11115b2ce9b0561a396a3d45a1a0ceab11ba1926bb15a320db5320c",
+      "count": 500
+    },
+    {
+      "file": "page-010.json",
+      "sha256": "007895c016802f78f197e500398294761cc7ad867512dc1a503655eb1149e10d",
+      "count": 500
+    },
+    {
+      "file": "page-011.json",
+      "sha256": "78760945fe466999415f9c9d53e917fe763015dce0e180d7cb866f5388a8f581",
+      "count": 500
+    },
+    {
+      "file": "page-012.json",
+      "sha256": "9f6ac02416cfe5573c554df715b62e7502fe0378383eafa397fe7543dcca3fa0",
+      "count": 500
+    },
+    {
+      "file": "page-013.json",
+      "sha256": "37b223c219055091138b2d547c906bdf978a7e6891ffc32aec298a9ce5fdb93f",
+      "count": 500
+    },
+    {
+      "file": "page-014.json",
+      "sha256": "a7c12031d9b3ec999599f04d89c174f8fa9259c5fc398eacb32f823d3cf99e1b",
+      "count": 500
+    },
+    {
+      "file": "page-015.json",
+      "sha256": "a402c2610eb26fa1f13db84578f7b43a6730764158dec637f76a3bec8aac0ae4",
+      "count": 500
+    },
+    {
+      "file": "page-016.json",
+      "sha256": "1b262fb31dc73b35c9e58c94a0a64d9493213b9f4dc6ee9a7ccf5f7c2701c8aa",
+      "count": 500
+    },
+    {
+      "file": "page-017.json",
+      "sha256": "b539c7bbdad49e1d454e03d509525be5b374d186391e0fe084427aee47e208e3",
+      "count": 500
+    },
+    {
+      "file": "page-018.json",
+      "sha256": "55ebf3e3c905a31247643a589ce60a6dd0b505a55674528a48ad6c18479a78eb",
+      "count": 500
+    },
+    {
+      "file": "page-019.json",
+      "sha256": "8d6cb361406e3e3289b125920de9eb9f105c630595a79260c3ce81bcc228e60f",
+      "count": 500
+    },
+    {
+      "file": "page-020.json",
+      "sha256": "1b61aa0112e72c637a5783ca56784394321ecd0d475044557340a1fbaa079592",
+      "count": 500
+    },
+    {
+      "file": "page-021.json",
+      "sha256": "8f55320b8adcf390d50f860ac16f52fa85176ebba4531946f23867ec109e0b1e",
+      "count": 500
+    },
+    {
+      "file": "page-022.json",
+      "sha256": "eea7e0e9b6fff15ad1e9c6fd61f1ca93e6796e55e979928c261d1a6d230b8603",
+      "count": 500
+    },
+    {
+      "file": "page-023.json",
+      "sha256": "54599759a9f72b1a42a93a365c783482a934c1b2994569fb332a1154e9811a98",
+      "count": 500
+    },
+    {
+      "file": "page-024.json",
+      "sha256": "404301d6f0df10c46a3270c700402350fd60e5996d812f59f9a8b59f0ea44e10",
+      "count": 500
+    },
+    {
+      "file": "page-025.json",
+      "sha256": "b19a836c931b76124cd20c7194f4e8d6929224bfe385d0f66d8510af4507a589",
+      "count": 500
+    },
+    {
+      "file": "page-026.json",
+      "sha256": "c6d05c53ce79459ce25177837ff7724d8b4d9e2c539f81362a0db40f95e01832",
+      "count": 500
+    },
+    {
+      "file": "page-027.json",
+      "sha256": "3e122389a1c5db1f75c2fd88d48faff0b96bd28c745f779b007a499f30062b14",
+      "count": 500
+    },
+    {
+      "file": "page-028.json",
+      "sha256": "026464bc8fd2a74738512b834c53f1a0818e1e4ef334b6f18d274d227d015524",
+      "count": 500
+    },
+    {
+      "file": "page-029.json",
+      "sha256": "16d4fc50870795c7caf74571c83d01127255a6871b89c19c380eb2e543e9ae56",
+      "count": 142
+    }
+  ]
+}

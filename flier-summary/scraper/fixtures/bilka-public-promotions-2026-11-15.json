@@ -1,0 +1,158 @@
+[
+  {
+    "objectID": "125829",
+    "name": "Chokolademousse",
+    "brand": "Protein Lab",
+    "subBrand": "",
+    "description": "Chokolademousse",
+    "netcontent": "200 g",
+    "price": 1475,
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "",
+        "offerDescription": "Skarp pris",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 0,
+        "price": 1000,
+        "beforePrice": 0,
+        "multiPromoPrice": "",
+        "unitsOfMeasurePrice": 7375,
+        "unitsOfMeasurePriceUnit": "Kg.",
+        "unitsOfMeasureOfferPrice": 5000,
+        "unitsOfMeasureShowPrice": 5000
+      }
+    },
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/bf4a7d34447c63c2fc10ad577efbf905"
+    ],
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "nonsearchable": false
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "2680",
+        "offerDescription": "Mix 10 for 25,00",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 10,
+        "price": 275,
+        "beforePrice": 0,
+        "multiPromoPrice": "2500",
+        "unitsOfMeasurePrice": 275,
+        "unitsOfMeasurePriceUnit": "Stk.",
+        "unitsOfMeasureOfferPrice": 250,
+        "unitsOfMeasureShowPrice": 275
+      }
+    },
+    "price": 275,
+    "name": "Bananer",
+    "description": "Bananer",
+    "brand": "",
+    "subBrand": "",
+    "netcontent": "1 stk",
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/6250dd9f-e862-446f-b17c-4517f66f5d9c"
+    ],
+    "nonsearchable": false,
+    "objectID": "18381"
+  },
+  {
+    "storeData": {
+      "1654": {
+        "inStock": true,
+        "multipromo": "1143",
+        "offerDescription": "Mix 2 for 45,00",
+        "offerFrom": "",
+        "offerUntil": "",
+        "offerMax": 0,
+        "offerMaxDescription": "",
+        "offerCount": 2,
+        "price": 2195,
+        "beforePrice": 0,
+        "multiPromoPrice": "4500",
+        "unitsOfMeasurePrice": 31357,
+        "unitsOfMeasurePriceUnit": "Kg.",
+        "unitsOfMeasureOfferPrice": 32143,
+        "unitsOfMeasureShowPrice": 31357
+      }
+    },
+    "price": 2195,
+    "name": "Rullepølse i skiver",
+    "description": "Rullepølse i skiver",
+    "brand": "Hammel",
+    "subBrand": "",
+    "netcontent": "70 g",
+    "isInOffer": [
+      1651,
+      1661,
+      1653,
+      1658,
+      1659,
+      1662,
+      1663,
+      1664,
+      1665,
+      1652,
+      1654,
+      1655,
+      1656,
+      1657,
+      1666,
+      1667,
+      1668,
+      1669
+    ],
+    "images": [
+      "https://digitalassets.sallinggroup.com/image/upload/e_trim:2/b_white,c_pad,e_sharpen:80,f_auto,q_auto,w_690,h_690/cdcdaafc7571c9103edb11bdac8130f8"
+    ],
+    "nonsearchable": false,
+    "objectID": "144580"
+  }
+]

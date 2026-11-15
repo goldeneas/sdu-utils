@@ -117,8 +117,14 @@
 
   // ---------------------------------------------------------------- dates & money
   const now = () => new Date();
-  const isCurrent = (o, t = now()) => (!o.from || new Date(o.from) <= t) && (!o.till || new Date(o.till) >= t);
-  const isUpcoming = (o, t = now()) => o.from && new Date(o.from) > t;
+  const priceDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const freshObservation = (o, t) => {
+    if (!o.priceObservedAt || o.till) return true;
+    const observed = new Date(o.priceObservedAt);
+    return Number.isFinite(observed.getTime()) && priceDay.format(observed) === priceDay.format(t);
+  };
+  const isCurrent = (o, t = now()) => freshObservation(o, t) && (!o.from || new Date(o.from) <= t) && (!o.till || new Date(o.till) >= t);
+  const isUpcoming = (o, t = now()) => freshObservation(o, t) && o.from && new Date(o.from) > t;
   const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   const fmtDay = (iso) => (iso ? dayFmt.format(new Date(iso)) : '');
   const kr = (n) => (n == null ? '' : (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')) + ' kr');
@@ -148,7 +154,7 @@
       const hits = state.data.offers.filter((o) => isCurrent(o) && matches(star, o));
       if (!hits.length) continue;
       const best = hits.reduce((a, b) => ((b.price ?? 1e9) < (a.price ?? 1e9) ? b : a));
-      const seen = { store: best.store, price: best.price, till: best.till, image: best.image, heading: best.heading, membership: best.membership };
+      const seen = { store: best.store, price: best.price, till: best.till, image: best.image, heading: best.heading, membership: best.membership, priceObservedAt: best.priceObservedAt };
       if (JSON.stringify(star.lastSeen) !== JSON.stringify(seen)) { star.lastSeen = seen; changed = true; }
     }
     if (changed) saveStars();
@@ -164,7 +170,7 @@
     } else {
       state.stars.unshift({
         key: offer.heading, addedAt: new Date().toISOString(),
-        lastSeen: { store: offer.store, price: offer.price, till: offer.till, image: offer.image, heading: offer.heading, membership: offer.membership },
+        lastSeen: { store: offer.store, price: offer.price, till: offer.till, image: offer.image, heading: offer.heading, membership: offer.membership, priceObservedAt: offer.priceObservedAt },
       });
     }
     saveStars();
@@ -249,7 +255,8 @@
         el('h3', {}, name(o)),
         meta ? el('p', { class: 'meta' }, meta) : null,
         o.description ? el('p', { class: 'desc' }, o.description) : null,
-        el('p', { class: 'valid' }, isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
+        el('p', { class: 'valid' }, !o.till && o.priceObservedAt ? `Price checked ${fmtDay(o.priceObservedAt)}`
+          : isUpcoming(o) ? `From ${fmtDay(o.from)} to ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`),
       ),
       el('div', { class: 'side' },
         el('div', { class: 'acts' }, basketButton(o), starButton(o)),
@@ -493,7 +500,7 @@
           el('div', { class: 'body' },
             el('h3', {}, starName(star)),
             el('p', { class: 'meta' }, seen
-              ? [`Last seen at ${storeInfo(seen.store).name}`, seen.price != null ? ` for ${kr(seen.price)}` : '', seen.membership ? ` · ${membershipLabel(seen)}` : '', seen.till ? `, until ${fmtDay(seen.till)}` : '']
+              ? [`Last seen at ${storeInfo(seen.store).name}`, seen.price != null ? ` for ${kr(seen.price)}` : '', seen.membership ? ` · ${membershipLabel(seen)}` : '', seen.till ? `, until ${fmtDay(seen.till)}` : seen.priceObservedAt ? `, checked ${fmtDay(seen.priceObservedAt)}` : '']
               : star.watch ? 'Watching for this word in every flier' : 'Not seen yet')),
           el('div', { class: 'side' }, unstarButton(star))));
       }
@@ -521,7 +528,7 @@
     else {
       state.cart.unshift({
         id: 'o:' + o.id, addedAt: new Date().toISOString(), done: false,
-        offer: { id: o.id, heading: o.heading, headingEn: o.headingEn, store: o.store, price: o.price, image: o.image, till: o.till, quantity: o.quantity, membership: o.membership },
+        offer: { id: o.id, heading: o.heading, headingEn: o.headingEn, store: o.store, price: o.price, image: o.image, till: o.till, quantity: o.quantity, membership: o.membership, priceObservedAt: o.priceObservedAt },
       });
     }
     saveCart(); render();
@@ -565,7 +572,8 @@
       const ended = o.till && new Date(o.till) < now();
       meta = [storeBadge(o.store), o.price != null ? el('span', { class: 'price' }, kr(o.price)) : null,
         membershipBadge(live || o),
-        o.till ? el('span', {}, ended ? 'offer ended' : `until ${fmtDay(o.till)}`) : null];
+        o.till ? el('span', {}, ended ? 'offer ended' : `until ${fmtDay(o.till)}`)
+          : o.priceObservedAt ? el('span', {}, `Price checked ${fmtDay(o.priceObservedAt)}`) : null];
     } else {
       const deal = item.done ? null : bestDealFor(item.text);
       meta = deal ? [el('span', { class: 'deal', onclick: () => openDetail(deal.best) },
@@ -646,6 +654,11 @@
       }
       return `${label}: selected member offers. More may be available in the app.`;
     });
+    for (const feed of state.data.offerFeeds || []) {
+      if (feed.status === 'unavailable') memberMessages.push(`${feed.name} public promotions are temporarily unavailable.`);
+      else if (feed.status === 'cached') memberMessages.push(`${feed.name} could not refresh. Saved undated prices are shown only on their collection day.`);
+      else memberMessages.push(`${feed.name}: selected public promotions. Undated prices show when they were checked.`);
+    }
     $('#member-status').textContent = memberMessages.join(' ');
     $('#member-status').hidden = !memberMessages.length;
     if (tab === 'offers') { renderFilters(); renderFeatured(); renderOffers(); } else renderStars();
@@ -692,7 +705,8 @@
     const t = now();
     const upcoming = isUpcoming(o, t);
     const left = o.till ? daysLeft(o.till) : null;
-    const when = upcoming ? `Starts ${fmtDay(o.from)}, until ${fmtDay(o.till)}`
+    const when = !o.till && o.priceObservedAt ? `Price checked ${fmtDay(o.priceObservedAt)} · expiry not published`
+      : upcoming ? `Starts ${fmtDay(o.from)}, until ${fmtDay(o.till)}`
       : [o.from ? `${fmtDay(o.from)} – ${fmtDay(o.till)}` : `Until ${fmtDay(o.till)}`,
         left != null ? (left <= 1 ? 'last day today' : `${left} days left`) : ''].filter(Boolean).join(' · ');
     const others = state.data.offers

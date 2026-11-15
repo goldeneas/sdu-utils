@@ -49,8 +49,28 @@ excerpts, source URLs, capture hashes and dated metadata are in `scraper/fixture
 These are public selections, not complete coverage of the apps or a guarantee of
 stock or identical pricing in every physical branch. Personal coupons are excluded.
 
+`--bilka-store-offers` additionally collects ordinary public BilkaToGo promotions
+for Odense, including products outside fliers and without Plus membership. This
+fixes cases such as **Protein Lab Chokolademousse, 200 g, 10 kr**, which was absent
+from the published file despite being available in the store's public prices.
+Its source is a separate `offerFeeds` snapshot, not a member feed. The collector
+uses the website's public read-only browse cursor to exhaust the selection;
+ordinary search exceeds its 1,000-result window and does not give exact counts.
+Public store prices and mix conditions are used; coupon or personal cart prices
+are not queried. Catalog reference prices help select reductions but are not
+published as historical prices or invented savings. Mix totals are preserved,
+while variable-total promotions such as "3 for 2" retain their conditions without
+an invented kr amount. Mixes costing more than buying the pieces are excluded.
+
+Some ordinary promotions publish no expiry. These carry `priceObservedAt` with
+`from`/`till` left unknown. The app displays **Price checked …**, not a fictional
+end date. An undated price is current only on its observation day in Copenhagen;
+failed refreshes retain the original observation, and cannot keep an undated price
+current indefinitely. Saved cart items and remembered starred prices retain the
+observation date. Explicitly dated promotions keep their actual validity period.
+
 ```sh
-python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --previous previous-offers.json
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --bilka-store-offers --previous previous-offers.json
 ```
 
 The Netto importer requires a member-offer label, heading, explicit price and readable
@@ -134,7 +154,7 @@ Run the diagnostic before attempting live validation (choose a **new** directory
 each time, so an old capture cannot appear to be a successful fresh download):
 
 ```sh
-python3 flier-summary/scraper/probe_member_sources.py --bilka-products --other-members --out-dir work/member-sources/check-01
+python3 flier-summary/scraper/probe_member_sources.py --bilka-products --other-members --bilka-store-prices --out-dir work/member-sources/check-01
 ```
 
 It uses the same anonymous standard-library HTTP client, proxy, TLS verification
@@ -151,6 +171,8 @@ It does not save an importable offers feed or any session credentials.
 `--other-members` also retains the actual Coop member page, validates each target
 chain independently, discovers and captures the current Lidl campaign and checks
 its automatic member prices. Invalid markup is retained with validation failures.
+`--bilka-store-prices` captures every public ordinary-price browse page and checks
+cursor termination and unique products. It does not produce a publishable feed.
 
 Exit status is 1 if any access or validation check fails. Exit status 0
 establishes HTML access and successful Netto parsing; `--bilka-products` additionally
@@ -226,7 +248,7 @@ then the app filters. Without these details, the exact cause cannot be establish
 
 ### Browser checks before publishing
 
-`tests/browser_smoke.py` runs twelve end-to-end checks against a collected feed
+`tests/browser_smoke.py` runs thirteen end-to-end checks against a collected feed
 using Chromium. It starts an isolated localhost site and browser profile, without
 changing your saved preferences or publishing anything. It checks search, filters,
 member prices and images, featured offers, cart and stars persistence, backup and
@@ -240,7 +262,7 @@ Install Playwright in your development Python environment, then run:
 ```sh
 python3 -m pip install playwright
 python3 -m playwright install chromium
-python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --no-translate --out /tmp/flier-offers.json
+python3 flier-summary/scraper/fetch_offers.py --netto-plus --bilka-plus --coop-members --lidl-plus --bilka-store-offers --no-translate --out /tmp/flier-offers.json
 python3 flier-summary/tests/browser_smoke.py --data /tmp/flier-offers.json --artifacts /tmp/flier-browser-results
 ```
 
@@ -248,6 +270,10 @@ The current smoke scenarios require a fresh feed with all five member selections
 a Netto dairy offer, a Bilka Plus price above its ordinary comparison price and
 a percentage-only Coop promotion. The new-chain scenario is skipped for legacy
 feeds containing neither Coop nor Lidl Plus.
+The ordinary-price regression searches the reported chocolate mousse at 10 kr,
+checks the absence of a Plus requirement, and advances the browser to the next
+day to verify that an old undated price stops appearing as current while the
+saved cart and last-seen price keep their original observation date.
 Keep the dated feed with the test report to reproduce a run; a future selection
 can require updating those scenarios. Screenshots and `report.json` are written
 to the artifacts directory. These checks cover Chromium at phone and desktop

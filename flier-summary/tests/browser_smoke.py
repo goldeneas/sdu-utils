@@ -14,7 +14,7 @@ import shutil
 import tempfile
 import threading
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -33,7 +33,10 @@ class SiteHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # A test may close its browser while the worker refreshes.
             return
         super().do_GET()
 
@@ -185,6 +188,38 @@ class BrowserSmoke(unittest.TestCase):
         expect(self.page.locator("#cart .membership")).to_have_count(4)
         expect(self.page.locator("#cart")).to_contain_text("Requires Lidl Plus")
         expect(self.page.locator("#cart")).to_contain_text("Requires Coop")
+
+    def test_ordinary_mousse_search_and_expiry_unknown_observation(self):
+        offer = next((o for o in self.feed["offers"] if o.get("sourceKey") == "bilkatogo-offers"
+                      and o.get("sourceProductId") == "125829"), None)
+        if offer is None:
+            self.skipTest("Feed has no ordinary BilkaToGo promotion selection")
+        self.open()
+        self.search("Chokolademousse Protein Lab")
+        card = self.page.locator("#list article.offer").filter(has=self.page.locator("h3", has_text=offer["heading"]))
+        expect(card).to_have_count(1)
+        expect(card.locator(".price")).to_have_text("10 kr")
+        expect(card.locator(".membership")).to_have_count(0)
+        expect(card.locator(".valid")).to_contain_text("Price checked")
+        self.detail(offer)
+        expect(self.page.locator("#view-detail .facts")).to_contain_text("expiry not published")
+        expect(self.page.locator("#view-detail .facts")).not_to_contain_text("Requires Bilka Plus")
+        self.page.locator("#view-detail .detail-bar .star").click()
+        self.page.locator("#view-detail .cartbtn").click()
+        self.page.locator("#view-detail .back").click()
+        self.page.locator('[data-tab="cart"]').click()
+        expect(self.page.locator("#cart")).to_contain_text("Price checked")
+        self.page.clock.set_fixed_time(datetime.fromisoformat(self.feed["generatedAt"]) + timedelta(days=1))
+        self.server.payload["offerFeeds"][0]["status"] = "cached"
+        self.page.reload(wait_until="domcontentloaded")
+        expect(self.page.locator("#status")).not_to_be_empty()
+        expect(self.page.locator("#cart .price")).to_have_text("10 kr")
+        expect(self.page.locator("#cart .membership")).to_have_count(0)
+        self.page.locator('[data-tab="offers"]').click()
+        expect(self.page.locator("#list article.offer")).to_have_count(0)
+        self.page.locator('[data-tab="starred"]').click()
+        expect(self.page.locator("#starred .offer.idle")).to_have_count(1)
+        expect(self.page.locator("#starred")).to_contain_text("checked")
 
     def test_saved_member_cart_and_stars_survive_missing_offers(self):
         self.open()

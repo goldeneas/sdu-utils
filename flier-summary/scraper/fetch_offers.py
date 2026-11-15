@@ -26,6 +26,7 @@ from member_offers import NETTO_PLUS_URL, fetch_netto_plus
 from bilka_offers import BILKA_PLUS_URL, fetch_bilka_plus
 from coop_offers import COOP_MEMBERS_URL, fetch_coop_members
 from lidl_offers import LIDL_PLUS_URL, fetch_lidl_plus
+from bilka_store_offers import BILKA_STORE_URL, fetch_bilka_store_offers
 
 API = "https://squid-api.tjek.com/v2"
 
@@ -422,36 +423,43 @@ def merge_member_offers(fliers: list[dict], members: list[dict]) -> list[dict]:
 
 
 def netto_member_feed(previous: dict, generated_at: str) -> dict:
-    return member_feed(previous, generated_at, key="netto-plus", name="Netto+", store="netto",
+    return source_feed(previous, generated_at, key="netto-plus", name="Netto+", store="netto",
                        url=NETTO_PLUS_URL, fetch=fetch_netto_plus)
 
 
 def bilka_member_feed(previous: dict, generated_at: str) -> dict:
-    return member_feed(previous, generated_at, key="bilka-plus", name="Bilka Plus (BilkaToGo Odense)",
+    return source_feed(previous, generated_at, key="bilka-plus", name="Bilka Plus (BilkaToGo Odense)",
                        store="bilka", url=BILKA_PLUS_URL, fetch=fetch_bilka_plus)
 
 
 def coop_member_feed(previous: dict, generated_at: str, store: str) -> dict:
     name = next(s["name"] for s in STORES if s["key"] == store)
-    return member_feed(previous, generated_at, key=f"coop-{store}", name=f"Coop ({name})", store=store,
+    return source_feed(previous, generated_at, key=f"coop-{store}", name=f"Coop ({name})", store=store,
                        url=COOP_MEMBERS_URL, fetch=lambda at: fetch_coop_members(store, at))
 
 
 def lidl_member_feed(previous: dict, generated_at: str) -> dict:
-    return member_feed(previous, generated_at, key="lidl-plus", name="Lidl Plus", store="lidl",
+    return source_feed(previous, generated_at, key="lidl-plus", name="Lidl Plus", store="lidl",
                        url=LIDL_PLUS_URL, fetch=fetch_lidl_plus)
 
 
-def member_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch) -> dict:
+def bilka_store_feed(previous: dict, generated_at: str) -> dict:
+    return source_feed(previous, generated_at, key="bilkatogo-offers", name="BilkaToGo (Odense)", store="bilka",
+                       url=BILKA_STORE_URL, fetch=fetch_bilka_store_offers, section="offerFeeds",
+                       coverage="public-store-promotions")
+
+
+def source_feed(previous: dict, generated_at: str, *, key: str, name: str, store: str, url: str, fetch,
+                section="memberFeeds", coverage="public-member-selection") -> dict:
     """Keep a separate source snapshot so deduplication cannot lose fallback data."""
     feed = {"key": key, "name": name, "store": store, "url": url,
-            "coverage": "public-member-selection", "status": "ok", "fetchedAt": generated_at}
+            "coverage": coverage, "status": "ok", "fetchedAt": generated_at}
     try:
         feed["offers"] = fetch(datetime.fromisoformat(generated_at))
         for offer in feed["offers"]:
             offer["cats"] = categorize(offer["heading"])
     except RuntimeError as exc:
-        old = next((f for f in previous.get("memberFeeds", []) if f.get("key") == feed["key"]), {})
+        old = next((f for f in previous.get(section, []) if f.get("key") == feed["key"]), {})
         feed["offers"] = old.get("offers", [])
         feed["status"] = "cached" if feed["offers"] else "unavailable"
         feed["fetchedAt"] = old.get("fetchedAt") if feed["offers"] else None
@@ -470,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bilka-plus", action="store_true", help="include public BilkaToGo Plus prices for Bilka Odense")
     ap.add_argument("--coop-members", action="store_true", help="include public Coop member selections for 365discount and SuperBrugsen")
     ap.add_argument("--lidl-plus", action="store_true", help="include the public weekly Lidl Plus prices, excluding coupons")
+    ap.add_argument("--bilka-store-offers", action="store_true", help="include public ordinary BilkaToGo promotions for Odense, including outside fliers")
     args = ap.parse_args(argv)
 
     previous = {}
@@ -537,7 +546,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.lidl_plus:
         collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         member_feeds.append(lidl_member_feed(previous, collected_at))
-    for feed in member_feeds:
+    offer_feeds = []
+    if args.bilka_store_offers:
+        collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        offer_feeds.append(bilka_store_feed(previous, collected_at))
+    for feed in member_feeds + offer_feeds:
         offers_out = merge_member_offers(offers_out, feed["offers"])
     for entry in stores_out:
         entry["count"] = sum(o["store"] == entry["key"] for o in offers_out)
@@ -565,8 +578,12 @@ def main(argv: list[str] | None = None) -> int:
     }
     if member_feeds:
         payload["memberFeeds"] = member_feeds
-        payload["source"]["name"] = "eTilbudsavis + " + " + ".join(f["name"] for f in member_feeds)
         payload["source"]["coverage"] = "published-fliers-and-public-member-selection"
+    if offer_feeds:
+        payload["offerFeeds"] = offer_feeds
+        payload["source"]["coverage"] = "published-fliers-and-public-selections"
+    if member_feeds or offer_feeds:
+        payload["source"]["name"] = "eTilbudsavis + " + " + ".join(f["name"] for f in member_feeds + offer_feeds)
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"wrote {len(offers_out)} offers to {out}", file=sys.stderr)
     return 0
