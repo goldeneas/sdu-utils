@@ -537,7 +537,8 @@ $("calendar-months").addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   if (button.dataset.date) {
-    $(`${button.dataset.kind}-date`).value = button.dataset.date;
+    const input = $(`${button.dataset.kind}-date`);
+    input.value = input.value === button.dataset.date ? "" : button.dataset.date;
     datesChanged(button.dataset.kind);
     $("calendar-months").querySelector(`[data-kind="${button.dataset.kind}"][data-date="${button.dataset.date}"]`)?.focus();
   } else if (button.dataset.month) {

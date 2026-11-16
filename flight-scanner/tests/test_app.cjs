@@ -513,3 +513,47 @@ test("calendar month navigation crosses years, and scan changes reset dates", as
   await until(() => !d.getElementById("refresh").disabled);
   assert(!d.getElementById("calendar").hidden);
 });
+
+test("clicking a selected calendar day clears only that date and updates fares and results", async (t) => {
+  const data = snapshot(4);
+  data.flights.forEach((f, i) => {
+    f.departure_at = `2030-01-0${1 + (i % 2)}T08:35`;
+    f.return_at = `2030-01-0${i < 2 ? 8 : 9}T18:00`;
+    if (i === 3) f.price = 10;
+  });
+  const app = start(data);
+  t.after(app.close);
+  const { d, count } = app;
+  await until(() => count() === 4);
+  d.querySelector('[data-layout="calendar"]').click();
+  const outbound = () => d.querySelector('[data-kind="outbound"][data-date="2030-01-01"]');
+  const back = () => d.querySelector('[data-kind="return"][data-date="2030-01-08"]');
+  const otherReturnPrice = () => d.querySelector('[data-kind="return"][data-date="2030-01-09"] small').textContent;
+
+  outbound().click();
+  back().click();
+  assert.equal(count(), 1);
+  assert.equal(otherReturnPrice(), "€42");
+
+  outbound().click();
+  assert.equal(d.getElementById("outbound-date").value, "");
+  assert.equal(d.getElementById("return-date").value, "2030-01-08");
+  assert.equal(outbound().getAttribute("aria-pressed"), "false");
+  assert.equal(back().getAttribute("aria-pressed"), "true");
+  assert.equal(d.getElementById("return-date").min, "");
+  assert.equal(d.activeElement, outbound());
+  assert.equal(otherReturnPrice(), "€10");
+  assert.equal(count(), 2);
+
+  outbound().click();
+  back().click();
+  assert.equal(d.getElementById("outbound-date").value, "2030-01-01");
+  assert.equal(d.getElementById("return-date").value, "");
+  assert.equal(outbound().getAttribute("aria-pressed"), "true");
+  assert.equal(back().getAttribute("aria-pressed"), "false");
+  assert.equal(count(), 2);
+
+  outbound().click();
+  assert.equal(count(), 4);
+  assert(d.getElementById("clear-dates").disabled);
+});
