@@ -93,6 +93,10 @@
               Within budget
             </button>
           </div>
+          <div class="view-switch" role="group" aria-label="Display mode">
+            <button type="button" data-layout="list" aria-pressed="true">List</button>
+            <button type="button" data-layout="calendar" aria-pressed="false">Calendar</button>
+          </div>
         </div>
         <div class="filter-panel">
           <fieldset class="trip-filters">
@@ -149,6 +153,22 @@
             </label>
           </div>
         </div>
+        <div class="date-filters">
+          <label>Outbound date <input id="outbound-date" type="date" /></label>
+          <span class="date-arrow" aria-hidden="true">→</span>
+          <label>Return date <input id="return-date" type="date" /></label>
+          <button id="clear-dates" class="quiet" type="button" disabled>Clear dates</button>
+          <p class="muted">Leave a date empty to explore all available days.</p>
+        </div>
+        <section id="calendar" class="fare-calendar" aria-label="Flight price calendar" hidden>
+          <div class="calendar-intro">
+            <div><p class="eyebrow">Find your dates</p><h3>A little flexibility. A better fare.</h3></div>
+            <span class="calendar-key"><span class="dot" aria-hidden="true"></span> Lowest price in the month</span>
+          </div>
+          <p id="calendar-explainer" class="muted">Each day shows the lowest round-trip price per person from this scan. Choose an outbound day to compare return fares.</p>
+          <div id="calendar-months" class="calendar-months"></div>
+          <p class="calendar-footnote muted">Outbound prices compare all return dates. Return prices follow your selected outbound date. Airport, direct-flight and budget filters apply. A dash means no fare was saved for that day; prices are not a live search.</p>
+        </section>
         <p id="result-count" class="result-count muted" aria-live="polite"></p>
         <div id="results" class="results" aria-live="polite" aria-busy="true">
           <div class="empty">

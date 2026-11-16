@@ -37,6 +37,9 @@ const PAGE_SIZE = 40;
 let loadSequence = 0;
 let selectedScan = "";
 let loadFailed = false;
+let layout = "list";
+const calendarMonths = { outbound: "", return: "" };
+const calendarRanges = { outbound: null, return: null };
 
 function today() {
   const d = new Date();
@@ -196,12 +199,91 @@ function allFlights(data) {
     },
   );
 }
+function dateKey(value) {
+  return String(value).slice(0, 10);
+}
+function monthOffset(month, offset) {
+  const [year, number] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, number - 1 + offset, 1));
+  return date.toISOString().slice(0, 7);
+}
+function calendarBounds(kind) {
+  if (calendarRanges[kind]) return calendarRanges[kind];
+  let first = "", last = "";
+  for (const f of allFlights(snapshot)) {
+    const month = (kind === "outbound" ? f.departure_at : f.return_at).slice(0, 7);
+    if (!first || month < first) first = month;
+    if (!last || month > last) last = month;
+  }
+  if (kind === "outbound" || !first) {
+    const from = snapshot.search.departure_from.slice(0, 7);
+    const to = snapshot.search.departure_to.slice(0, 7);
+    if (!first || from < first) first = from;
+    if (!last || to > last) last = to;
+  }
+  return (calendarRanges[kind] = [first, last]);
+}
+function renderCalendars(flights) {
+  $("calendar").hidden = layout !== "calendar";
+  $("clear-dates").disabled = !$("outbound-date").value && !$("return-date").value;
+  $("return-date").min = $("outbound-date").value;
+  if (layout !== "calendar") return;
+  $("calendar-explainer").textContent =
+    "Each day shows the lowest round-trip price per person from this scan. " +
+    ($("outbound-date").value
+      ? `Return fares are for departure on ${day($("outbound-date").value)} ${$("outbound-date").value.slice(0, 4)}.`
+      : "Choose an outbound day to compare return fares.");
+  $("calendar-months").innerHTML = ["outbound", "return"].map((kind) => {
+    const bounds = calendarBounds(kind);
+    const month = calendarMonths[kind] || bounds[0];
+    calendarMonths[kind] = month;
+    const [year, number] = month.split("-").map(Number);
+    const monthName = new Date(Date.UTC(year, number - 1, 1)).toLocaleDateString("en-GB", {
+      month: "long", year: "numeric", timeZone: "UTC",
+    });
+    const prices = new Map();
+    for (const f of flights) {
+      if (kind === "return" && $("outbound-date").value &&
+          dateKey(f.departure_at) !== $("outbound-date").value) continue;
+      const key = dateKey(kind === "outbound" ? f.departure_at : f.return_at);
+      prices.set(key, Math.min(prices.get(key) ?? Infinity, f.price));
+    }
+    const monthPrices = [...prices].filter(([key]) => key.startsWith(month)).map(([, price]) => price);
+    const lowest = Math.min(...monthPrices);
+    const offset = (new Date(Date.UTC(year, number - 1, 1)).getUTCDay() + 6) % 7;
+    const days = new Date(Date.UTC(year, number, 0)).getUTCDate();
+    const label = kind === "outbound" ? "Outbound" : "Return";
+    let cells = '<span class="calendar-blank" aria-hidden="true"></span>'.repeat(offset);
+    for (let n = 1; n <= days; n++) {
+      const key = `${month}-${String(n).padStart(2, "0")}`;
+      const price = prices.get(key);
+      const selected = $(`${kind}-date`).value === key;
+      const disabled = kind === "return" && $("outbound-date").value && key < $("outbound-date").value;
+      const fullDate = new Date(`${key}T12:00:00Z`).toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+      });
+      cells += `<button type="button" class="calendar-day${price === lowest ? " lowest-fare" : ""}" data-date="${key}" data-kind="${kind}" aria-pressed="${selected}" aria-label="${escapeHTML(`${label} ${fullDate}, ${price === undefined ? "no saved fare" : `round trip from ${money(price)}`}`)}" ${disabled ? "disabled" : ""}><span>${n}</span><small>${price === undefined ? "—" : escapeHTML(money(price))}</small></button>`;
+    }
+    return `<div class="calendar-month"><p class="calendar-leg">${label}${kind === "return" && $("outbound-date").value ? ` · from ${escapeHTML(day($("outbound-date").value))}` : " · any dates"}</p><div class="month-heading"><button type="button" class="quiet" data-month="${kind}" data-step="-1" aria-label="Previous ${kind} month" ${month <= bounds[0] ? "disabled" : ""}>←</button><h4>${escapeHTML(monthName)}</h4><button type="button" class="quiet" data-month="${kind}" data-step="1" aria-label="Next ${kind} month" ${month >= bounds[1] ? "disabled" : ""}>→</button></div><div class="calendar-grid"><div class="weekdays" aria-hidden="true">${["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span>${d}</span>`).join("")}</div>${cells}</div></div>`;
+  }).join("");
+}
+function datesChanged(kind) {
+  const value = $(`${kind}-date`).value;
+  if (value) calendarMonths[kind] = value.slice(0, 7);
+  if (kind === "outbound" && value) {
+    if ($("return-date").value && $("return-date").value < value)
+      $("return-date").value = "";
+    if (!$("return-date").value) calendarMonths.return = value.slice(0, 7);
+  }
+  page = 1;
+  render();
+}
 function render() {
   renderNotice();
   if (!snapshot) return;
   const s = snapshot.search;
   const raw = allFlights(snapshot);
-  const flights = raw.filter(
+  const filtered = raw.filter(
     (f) =>
       (!$("origin").value || f.origin === $("origin").value) &&
       (!$("destination").value || f.destination === $("destination").value) &&
@@ -211,6 +293,11 @@ function render() {
         (f.return_destination || f.origin) === $("return-destination").value) &&
       (!$("direct-only").checked || (f.out_stops === 0 && f.in_stops === 0)) &&
       (view !== "budget" || f.price <= s.max_price),
+  );
+  renderCalendars(filtered);
+  const flights = filtered.filter((f) =>
+    (!$("outbound-date").value || dateKey(f.departure_at) === $("outbound-date").value) &&
+    (!$("return-date").value || dateKey(f.return_at) === $("return-date").value),
   );
   flights.sort(
     $("sort").value === "date"
@@ -250,7 +337,7 @@ function render() {
   else if (raw.length)
     $("results").innerHTML = empty(
       "No matches for these filters",
-      "Try more airports, include connecting flights, or choose All flights to include every price.",
+      "Try other dates or airports, include connecting flights, or choose All flights to include every price.",
     );
   else
     $("results").innerHTML = empty(
@@ -270,6 +357,8 @@ function updateFilters(id, codes, fallback) {
 }
 function showSnapshot(data) {
   snapshot = data;
+  calendarRanges.outbound = null;
+  calendarRanges.return = null;
   const s = data.search;
   $("origin-summary").textContent = s.origins
     .map((code) => AIRPORTS[code] || code)
@@ -388,6 +477,12 @@ async function load() {
     if (sequence !== loadSequence) return;
     if (!validSnapshot(data)) throw new Error("Invalid flight snapshot");
     loadFailed = false;
+    if (selectedScan !== scan) {
+      $("outbound-date").value = "";
+      $("return-date").value = "";
+      calendarMonths.outbound = "";
+      calendarMonths.return = "";
+    }
     selectedScan = scan;
     showSnapshot(data);
   } catch {
@@ -420,6 +515,38 @@ document.querySelectorAll("[data-view]").forEach((button) =>
     render();
   }),
 );
+document.querySelectorAll("[data-layout]").forEach((button) =>
+  button.addEventListener("click", () => {
+    layout = button.dataset.layout;
+    document.querySelectorAll("[data-layout]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === button)),
+    );
+    render();
+  }),
+);
+["outbound", "return"].forEach((kind) =>
+  $(`${kind}-date`).addEventListener("change", () => datesChanged(kind)),
+);
+$("clear-dates").addEventListener("click", () => {
+  $("outbound-date").value = "";
+  $("return-date").value = "";
+  page = 1;
+  render();
+});
+$("calendar-months").addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button || button.disabled) return;
+  if (button.dataset.date) {
+    $(`${button.dataset.kind}-date`).value = button.dataset.date;
+    datesChanged(button.dataset.kind);
+    $("calendar-months").querySelector(`[data-kind="${button.dataset.kind}"][data-date="${button.dataset.date}"]`)?.focus();
+  } else if (button.dataset.month) {
+    const kind = button.dataset.month;
+    calendarMonths[kind] = monthOffset(calendarMonths[kind], Number(button.dataset.step));
+    render();
+    $("calendar-months").querySelector(`[data-month="${kind}"][data-step="${button.dataset.step}"]`)?.focus();
+  }
+});
 [
   "origin",
   "destination",

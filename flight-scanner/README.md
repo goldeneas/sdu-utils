@@ -18,6 +18,16 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
   browser filters work with existing saved scans and do not trigger a new search.
 - Sort by price or departure date. Results are paginated in groups of 40;
   pagination does not cap or discard results.
+- Switch between **List** and **Calendar**. Each outbound day shows the lowest
+  saved round-trip price across all return dates; choosing an outbound date
+  updates the return calendar to prices for that departure. Select a return day
+  to see the matching date pair below. The lowest fare in each month is highlighted.
+  Both calendars respect airport, direct-flight and budget filters. A dash means
+  no matching fare was saved, not that flights are sold out.
+- Enter either or both dates directly in either view; **Clear dates** restores
+  all days. Dates remain selected when switching views or refreshing, and reset
+  when choosing another scan. Calendar prices come from the selected saved scan;
+  selecting dates does not run a live search.
 - **Scan:** choose the latest scan or an earlier saved scan. Daily and manual runs
   are retained separately, including multiple runs on the same day.
 - See local flight times, stops, nights, fare sources and booking links. Different

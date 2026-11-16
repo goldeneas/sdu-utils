@@ -391,3 +391,125 @@ test("service worker caches latest, history index and compressed scans without t
   assert(!stores.has("flight-scanner-old"));
   assert(stores.has("flight-scanner-data"));
 });
+
+test("calendar groups all quotes by day and uses round-trip minima beyond the first page", async (t) => {
+  const data = snapshot();
+  data.flights[120].price = 5;
+  const app = start(data);
+  t.after(app.close);
+  const { d, count } = app;
+  await until(() => count() === 40);
+  assert(d.getElementById("calendar").hidden);
+  d.querySelector('[data-layout="calendar"]').click();
+  assert(!d.getElementById("calendar").hidden);
+  const outbound = d.querySelector('[data-kind="outbound"][data-date="2030-01-01"]');
+  assert.equal(outbound.querySelector("small").textContent, "€5");
+  assert(outbound.classList.contains("lowest-fare"));
+  assert.equal(d.querySelectorAll('[data-kind="outbound"]').length, 31);
+  outbound.click();
+  assert.equal(count(), 7);
+  assert.equal(d.getElementById("outbound-date").value, "2030-01-01");
+  assert.equal(d.querySelector('[data-kind="return"][data-date="2030-01-28"] small').textContent, "€5");
+  assert.equal(d.querySelector('[data-kind="outbound"][data-date="2030-01-01"]').getAttribute("aria-pressed"), "true");
+  d.querySelector('[data-layout="list"]').click();
+  assert(d.getElementById("calendar").hidden);
+  assert.equal(count(), 7);
+  d.getElementById("clear-dates").click();
+  assert.equal(count(), 40);
+  assert.match(d.getElementById("result-count").textContent, /137 matching/);
+});
+
+test("selecting outbound and return dates shows only that pair and supports empty dates", async (t) => {
+  const data = snapshot(4);
+  const dates = [
+    ["2030-01-01", "2030-01-08", 100],
+    ["2030-01-01", "2030-01-09", 60],
+    ["2030-01-02", "2030-01-08", 80],
+    ["2030-01-02", "2030-02-03", 40],
+  ];
+  data.flights.forEach((f, i) => {
+    f.departure_at = `${dates[i][0]}T08:35`;
+    f.return_at = `${dates[i][1]}T18:00`;
+    f.price = dates[i][2];
+  });
+  const app = start(data);
+  t.after(app.close);
+  const { d, change, count } = app;
+  await until(() => count() === 4);
+  d.querySelector('[data-layout="calendar"]').click();
+  d.querySelector('[data-kind="outbound"][data-date="2030-01-01"]').click();
+  assert.equal(count(), 2);
+  assert.equal(d.querySelector('[data-kind="return"][data-date="2030-01-08"] small').textContent, "€100");
+  assert.equal(d.querySelector('[data-kind="return"][data-date="2030-01-09"] small').textContent, "€60");
+  d.querySelector('[data-kind="return"][data-date="2030-01-09"]').click();
+  assert.equal(count(), 1);
+  assert.match(d.querySelector(".ticket .price").textContent, /€60/);
+  change("return-date", "2030-01-10");
+  assert.equal(count(), 0);
+  assert.match(d.getElementById("results").textContent, /No matches/);
+  // The outbound calendar stays explorable even when the selected pair has no quote.
+  assert.equal(d.querySelector('[data-kind="outbound"][data-date="2030-01-02"] small').textContent, "€40");
+  change("outbound-date", "2030-01-12");
+  assert.equal(d.getElementById("return-date").value, "");
+  assert(d.querySelector('[data-kind="return"][data-date="2030-01-11"]').disabled);
+  d.getElementById("clear-dates").click();
+  assert.equal(count(), 4);
+});
+
+test("calendar prices follow airport, direct-flight and budget filters", async (t) => {
+  const data = snapshot(4);
+  data.flights.forEach((f) => (f.departure_at = "2030-01-01T08:35"));
+  data.flights[0].price = 150;
+  data.flights[1].price = 20;
+  data.flights[2].price = 80;
+  data.flights[3].price = 10;
+  data.flights[3].in_stops = 1;
+  const app = start(data);
+  t.after(app.close);
+  const { d, w, change, count } = app;
+  await until(() => count() === 4);
+  d.querySelector('[data-layout="calendar"]').click();
+  const price = () => d.querySelector('[data-kind="outbound"][data-date="2030-01-01"] small').textContent;
+  assert.equal(price(), "€10");
+  d.getElementById("direct-only").checked = true;
+  d.getElementById("direct-only").dispatchEvent(new w.Event("change"));
+  assert.equal(price(), "€20");
+  change("origin", "CPH");
+  assert.equal(price(), "€80");
+  change("destination", "NAP");
+  assert.equal(price(), "€150");
+  d.querySelector('[data-view="budget"]').click();
+  assert.equal(price(), "—");
+  assert.equal(count(), 0);
+});
+
+test("calendar month navigation crosses years, and scan changes reset dates", async (t) => {
+  const data = snapshot(2);
+  data.search.departure_from = "2029-12-01";
+  data.search.departure_to = "2030-01-31";
+  data.flights[0].departure_at = "2029-12-31T08:35";
+  const app = start(data);
+  t.after(app.close);
+  const { d, state, change, count } = app;
+  await until(() => count() === 2 && d.querySelectorAll("#scan option").length === 2);
+  d.querySelector('[data-layout="calendar"]').click();
+  assert.match(d.querySelector(".month-heading h4").textContent, /December 2029/);
+  assert(d.querySelector('[data-month="outbound"][data-step="-1"]').disabled);
+  d.querySelector('[data-month="outbound"][data-step="1"]').click();
+  assert.match(d.querySelector(".month-heading h4").textContent, /January 2030/);
+  assert(d.querySelector('[data-month="outbound"][data-step="1"]').disabled);
+  change("outbound-date", "2030-01-02");
+  assert.equal(count(), 1);
+  d.getElementById("refresh").click();
+  await until(() => !d.getElementById("refresh").disabled);
+  assert.equal(d.getElementById("outbound-date").value, "2030-01-02");
+  change("scan", HISTORY_FILE);
+  await until(() => d.getElementById("result-count").textContent.includes("53 matching"));
+  assert.equal(d.getElementById("outbound-date").value, "");
+  assert.equal(d.getElementById("return-date").value, "");
+  assert.match(d.querySelector(".month-heading h4").textContent, /January 2030/);
+  state.fail = true;
+  d.getElementById("refresh").click();
+  await until(() => !d.getElementById("refresh").disabled);
+  assert(!d.getElementById("calendar").hidden);
+});
