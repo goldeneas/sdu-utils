@@ -1,15 +1,16 @@
 # flier-summary
 
 A phone-first web app (PWA) that collects this week's supermarket offers in **Odense** from
-**Netto, 365discount, Bilka, SuperBrugsen and Lidl** in one list, and lets you **star** the products you like.
+**Netto, 365discount, Bilka, SuperBrugsen, Lidl and REMA 1000** in one list, and lets you **star** the products you like.
 
 - **Offers** tab: everything valid today, or "Coming up" for fliers that start in the next days. Filter by store,
   search ("kaffe", "kylling", ...), sort by most recent first (the default, based on the offer’s start date), store, biggest discount, lowest price or name. Tap a product to open its page with a big, zoomable picture, the full text, dates and similar offers.
   **Featured for you** at the top shows today's offers that match your stars (product stars first, then watch words),
   and matching cards in the list get a gold outline. **Category chips** (Protein, Meat & fish, Dairy & eggs, ...) come
   from keywords in the offer name, because the flier API has no categories; odd products end up in "Other".
+  Select **Food** to see offers classified as food or drinks.
 - **Starred** tab: the products you starred. Stars remember the *product name*, not this week's offer, so a starred
-  item lights up under "On sale now" whenever any of the five stores has it in a flier again (the red badge on the
+  item lights up under "On sale now" whenever any of the stores has it in a flier again (the red badge on the
   tab counts these). Items not on sale show where and for how much you last saw them.
 - **Watch words**: on the Starred tab you can type a word like `Zoégas` or `oksemørbrad` to match every offer that
   contains it, even ones you have never seen.
@@ -27,7 +28,7 @@ A phone-first web app (PWA) that collects this week's supermarket offers in **Od
 ## Where the offers come from
 
 `scraper/fetch_offers.py` reads the public (unofficial, undocumented) API behind [etilbudsavis.dk](https://etilbudsavis.dk),
-which publishes the fliers of all five chains. It asks for offers valid around Odense (15 km radius) and writes a
+which publishes the fliers of these chains. It asks for offers valid around Odense (15 km radius) and writes a
 small `data/offers.json` that the app loads. Only the Python standard library is used.
 
 ### Public member offers

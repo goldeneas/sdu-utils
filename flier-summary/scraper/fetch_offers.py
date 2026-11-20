@@ -41,6 +41,7 @@ STORES = [
     {"key": "bilka", "name": "Bilka", "id": "93f13", "match": ["bilka"]},
     {"key": "superbrugsen", "name": "SuperBrugsen", "id": "0b1e8", "match": ["superbrugsen"]},
     {"key": "lidl", "name": "Lidl", "id": "71c90", "match": ["lidl"]},
+    {"key": "rema1000", "name": "REMA 1000", "id": "11deC", "match": ["rema 1000", "rema1000"]},
 ]
 
 PAGE_LIMIT = 100  # the API rejects larger pages

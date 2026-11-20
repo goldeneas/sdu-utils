@@ -112,8 +112,14 @@
   // ---------------------------------------------------------------- categories
   // Each offer has cats like ['dairy', 'protein'] (keyword based, see the scraper). The first
   // entry is its main category; 'protein' is an extra tag. Offers without a main one are 'other'.
+  const foodCats = ['meat', 'dairy', 'produce', 'bakery', 'drinks', 'snacks', 'pantry'];
   const mainCat = (o) => (o.cats || []).find((c) => c !== 'protein') || 'other';
-  const inCat = (o, cat) => cat === 'all' || (cat === 'protein' ? (o.cats || []).includes('protein') : mainCat(o) === cat);
+  function inCat(o, cat) {
+    if (cat === 'all') return true;
+    if (cat === 'food') return foodCats.includes(mainCat(o));
+    if (cat === 'protein') return (o.cats || []).includes('protein');
+    return mainCat(o) === cat;
+  }
 
   // ---------------------------------------------------------------- dates & money
   const now = () => new Date();
@@ -395,11 +401,12 @@
     const names = Object.fromEntries((state.data.categories || []).map((c) => [c.key, c.name]));
     if (!Object.keys(names).length) { $('#cats-box').hidden = true; return; }
     $('#cats-box').hidden = false;
-    // Food first; household, non-food and other last. Unknown keys from a newer scraper go before them.
-    const known = ['protein', 'meat', 'dairy', 'produce', 'bakery', 'drinks', 'snacks', 'pantry', 'household', 'nonfood'];
+    const first = ['food', 'protein', ...foodCats];
+    const last = ['household', 'nonfood', 'other'];
+    const known = [...first, ...last];
     const extra = Object.keys(names).filter((k) => !known.includes(k));
-    const keys = ['all', ...known.slice(0, 8), ...extra, 'household', 'nonfood', 'other'];
-    names.all = 'All'; names.other = 'Other';
+    const keys = ['all', ...first, ...extra, ...last];
+    names.all = 'All'; names.food = 'Food'; names.other = 'Other';
     for (const key of keys) {
       const n = key === 'all' ? pool.length : pool.filter((o) => inCat(o, key)).length;
       const on = state.prefs.cat === key;

@@ -187,7 +187,8 @@ class IntegrationTest(unittest.TestCase):
             data = json.loads(out.read_text())
         self.assertEqual([f["status"] for f in data["memberFeeds"]], ["unavailable", "ok", "ok"])
         self.assertEqual(len(data["offers"]), 11)
-        self.assertEqual([s["count"] for s in data["stores"]], [0, 0, 0, 5, 6])
+        self.assertEqual({s["key"]: s["count"] for s in data["stores"] if s["count"]},
+                         {"superbrugsen": 5, "lidl": 6})
 
     def test_diagnostic_retains_html_and_reports_validation_failures(self):
         with tempfile.TemporaryDirectory() as tmp:
