@@ -40,6 +40,9 @@ let loadFailed = false;
 let layout = "list";
 const calendarMonths = { outbound: "", return: "" };
 const calendarRanges = { outbound: null, return: null };
+let dateGroups = [];
+let selectedGroup = null;
+let offerPage = 1;
 
 function today() {
   const d = new Date();
@@ -202,6 +205,38 @@ function allFlights(data) {
 function dateKey(value) {
   return String(value).slice(0, 10);
 }
+function groupDates(flights) {
+  const groups = new Map();
+  for (const f of flights) {
+    const key = `${dateKey(f.departure_at)}/${dateKey(f.return_at)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(f);
+  }
+  return [...groups.values()].map((offers) => offers.sort((a, b) =>
+    a.price - b.price || a.departure_at.localeCompare(b.departure_at) || a.return_at.localeCompare(b.return_at),
+  ));
+}
+function pairLabel(f) {
+  return `${day(f.departure_at)} ${f.departure_at.slice(0, 4)} → ${day(f.return_at)} ${f.return_at.slice(0, 4)}`;
+}
+function dateGroup(offers, index) {
+  const f = offers[0];
+  return `<button type="button" class="date-group" data-group="${index}" aria-haspopup="dialog"><span class="ticket-head"><span><span class="ticket-label">${escapeHTML(pairLabel(f))}</span><span class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</span><span class="airline">${escapeHTML(`${f.origin} → ${f.destination} · ${f.airline}`)}</span></span><span class="price"><small>From</small><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></span></span><span class="group-foot"><span>${offers.length.toLocaleString()} offer${offers.length === 1 ? "" : "s"} · ${escapeHTML(f.nights)} nights${dateKey(f.departure_at) < today() ? " · Departure has passed" : ""}</span><span>View offers <span aria-hidden="true">↗</span></span></span></button>`;
+}
+function renderOffers() {
+  if (!selectedGroup) return;
+  const pages = Math.max(1, Math.ceil(selectedGroup.length / PAGE_SIZE));
+  offerPage = Math.min(Math.max(1, offerPage), pages);
+  const start = (offerPage - 1) * PAGE_SIZE;
+  $("offers-title").textContent = pairLabel(selectedGroup[0]);
+  $("offers-count").textContent = `${selectedGroup.length.toLocaleString()} matching offers · Lowest price first · Current filters apply`;
+  $("offers-results").innerHTML = selectedGroup.slice(start, start + PAGE_SIZE)
+    .map((f, i) => ticket(f, start + i)).join("");
+  $("offers-pagination").hidden = pages <= 1;
+  $("offers-previous").disabled = offerPage === 1;
+  $("offers-next").disabled = offerPage === pages;
+  $("offers-page-status").textContent = `Page ${offerPage} of ${pages.toLocaleString()}`;
+}
 function monthOffset(month, offset) {
   const [year, number] = month.split("-").map(Number);
   const date = new Date(Date.UTC(year, number - 1 + offset, 1));
@@ -281,6 +316,9 @@ function datesChanged(kind) {
 function render() {
   renderNotice();
   if (!snapshot) return;
+  if ($("offers-dialog").open) $("offers-dialog").close();
+  selectedGroup = null;
+  $("offers-results").replaceChildren();
   const s = snapshot.search;
   const raw = allFlights(snapshot);
   const filtered = raw.filter(
@@ -299,18 +337,20 @@ function render() {
     (!$("outbound-date").value || dateKey(f.departure_at) === $("outbound-date").value) &&
     (!$("return-date").value || dateKey(f.return_at) === $("return-date").value),
   );
-  flights.sort(
+  dateGroups = groupDates(flights);
+  dateGroups.sort(
     $("sort").value === "date"
       ? (a, b) =>
-          a.departure_at.localeCompare(b.departure_at) || a.price - b.price
+          dateKey(a[0].departure_at).localeCompare(dateKey(b[0].departure_at)) ||
+          dateKey(a[0].return_at).localeCompare(dateKey(b[0].return_at)) || a[0].price - b[0].price
       : (a, b) =>
-          a.price - b.price || a.departure_at.localeCompare(b.departure_at),
+          a[0].price - b[0].price || a[0].departure_at.localeCompare(b[0].departure_at),
   );
-  const pages = Math.max(1, Math.ceil(flights.length / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(dateGroups.length / PAGE_SIZE));
   page = Math.min(Math.max(1, page), pages);
   const start = (page - 1) * PAGE_SIZE;
   $("result-count").textContent = flights.length
-    ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, flights.length)} of ${flights.length.toLocaleString()} matching round trips · ${raw.length.toLocaleString()} saved in this scan${view === "budget" ? ` · Up to ${money(s.max_price)}` : " · All prices"}`
+    ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, dateGroups.length)} of ${dateGroups.length.toLocaleString()} date pairs · ${flights.length.toLocaleString()} matching round trips · ${raw.length.toLocaleString()} saved in this scan${view === "budget" ? ` · Up to ${money(s.max_price)}` : " · All prices"}`
     : `0 matching round trips · ${raw.length.toLocaleString()} saved in this scan`;
   const cheapest = flights.reduce(
     (best, f) => Math.min(best, f.price),
@@ -325,9 +365,9 @@ function render() {
   $("next-page").disabled = page === pages;
   $("page-status").textContent = `Page ${page} of ${pages.toLocaleString()}`;
   if (flights.length)
-    $("results").innerHTML = flights
+    $("results").innerHTML = dateGroups
       .slice(start, start + PAGE_SIZE)
-      .map((f, index) => ticket(f, start + index))
+      .map((offers, index) => dateGroup(offers, start + index))
       .join("");
   else if (snapshot.status === "unavailable")
     $("results").innerHTML = empty(
@@ -562,6 +602,17 @@ $("calendar-months").addEventListener("click", (event) => {
   }),
 );
 $("scan").addEventListener("change", load);
+$("results").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-group]");
+  if (!button) return;
+  selectedGroup = dateGroups[Number(button.dataset.group)];
+  offerPage = 1;
+  renderOffers();
+  $("offers-dialog").showModal();
+});
+$("offers-close").addEventListener("click", () => $("offers-dialog").close());
+$("offers-previous").addEventListener("click", () => { offerPage--; renderOffers(); });
+$("offers-next").addEventListener("click", () => { offerPage++; renderOffers(); });
 $("previous-page").addEventListener("click", () => {
   page--;
   render();

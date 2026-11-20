@@ -16,8 +16,13 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
   different airports on the return trip.
 - **Direct flights only (both ways)** requires zero stops on both legs. These
   browser filters work with existing saved scans and do not trigger a new search.
-- Sort by price or departure date. Results are paginated in groups of 40;
-  pagination does not cap or discard results.
+- The list shows **one entry per outbound/return date pair**, with the lowest
+  round-trip price among offers matching the current filters. Click an entry to
+  open all its offers, including different times, airlines and routes, with
+  booking links. Offers within a date pair are ordered by price.
+- Sort date pairs by their lowest price or departure/return date. Both the list
+  of date pairs and the offers within a pair have pages of 40; pagination does
+  not cap or discard results. Changing filters updates the groups and minima.
 - Switch between **List** and **Calendar**. Each outbound day shows the lowest
   saved round-trip price across all return dates; choosing an outbound date
   updates the return calendar to prices for that departure. Select a return day

@@ -81,6 +81,8 @@ function start(data = snapshot()) {
     Blob,
     TextDecoder,
   });
+  w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  w.HTMLDialogElement.prototype.close = function () { this.open = false; };
   w.fetch = async (url, options) => {
     assert.equal(options.cache, "no-cache");
     if (state.fail) throw new Error("offline");
@@ -109,7 +111,7 @@ function start(data = snapshot()) {
     d,
     state,
     close: () => w.close(),
-    count: () => d.querySelectorAll(".ticket").length,
+    count: () => Number((d.getElementById("result-count").textContent.match(/([\d,]+) matching round trips/)?.[1] || "0").replaceAll(",", "")),
     change: (id, value) => {
       d.getElementById(id).value = value;
       d.getElementById(id).dispatchEvent(new w.Event("change"));
@@ -117,11 +119,20 @@ function start(data = snapshot()) {
   };
 }
 
+function manyPairs() {
+  const data = snapshot();
+  data.flights.forEach((f, i) => {
+    f.departure_at = new Date(Date.UTC(2030, 0, 1 + i)).toISOString().slice(0, 16);
+    f.return_at = new Date(Date.UTC(2030, 0, 8 + i)).toISOString().slice(0, 16);
+  });
+  return data;
+}
+
 test("all results are reachable with pagination; filters and sorting use the full set", async (t) => {
-  const app = start();
+  const app = start(manyPairs());
   t.after(app.close);
   const { d, state, change, count } = app;
-  await until(() => count() === 40);
+  await until(() => count() === 137);
   assert.match(
     d.getElementById("result-count").textContent,
     /137 matching round trips/,
@@ -130,7 +141,7 @@ test("all results are reachable with pagination; filters and sorting use the ful
   assert.match(d.getElementById("page-status").textContent, /Page 2 of 4/);
   d.getElementById("next-page").click();
   d.getElementById("next-page").click();
-  assert.equal(count(), 17);
+  assert.equal(d.querySelectorAll(".date-group").length, 17);
   assert(d.getElementById("next-page").disabled);
   change("origin", "MMX");
   assert.match(d.getElementById("result-count").textContent, /68 matching/);
@@ -145,7 +156,7 @@ test("all results are reachable with pagination; filters and sorting use the ful
         a.departure_at.localeCompare(b.departure_at) || a.price - b.price,
     );
   assert.match(
-    d.querySelector(".ticket .price").textContent,
+    d.querySelector(".date-group .price").textContent,
     new RegExp(String(expected[0].price)),
   );
   change("origin", "");
@@ -163,21 +174,20 @@ test("compressed history loads without a scan and retains departed flights", asy
   const { d, state, change, count } = app;
   state.history.flights.forEach((f) => (f.departure_at = "2020-01-01T08:35"));
   await until(
-    () => d.querySelectorAll("#scan option").length === 2 && count() === 40,
+    () => d.querySelectorAll("#scan option").length === 2 && count() === 137,
   );
   change("scan", HISTORY_FILE);
   await until(() =>
     d.getElementById("result-count").textContent.includes("53 matching"),
   );
-  assert.equal(count(), 40);
-  assert.match(d.querySelector(".ticket").textContent, /Departure has passed/);
-  d.getElementById("next-page").click();
-  assert.equal(count(), 13);
+  assert.equal(count(), 53);
+  assert.equal(d.querySelectorAll(".date-group").length, 1);
+  assert.match(d.querySelector(".date-group").textContent, /Departure has passed/);
   change("scan", "");
   await until(() =>
     d.getElementById("result-count").textContent.includes("137 matching"),
   );
-  assert.equal(count(), 40);
+  assert.equal(count(), 137);
   state.decodedHistory = true;
   change("scan", HISTORY_FILE);
   await until(() =>
@@ -226,7 +236,7 @@ test("all four airport selectors combine with direct-only filtering on both legs
   direct.checked = true;
   direct.dispatchEvent(new w.Event("change"));
   assert.equal(count(), 1);
-  assert.match(d.querySelector(".ticket .price").textContent, /40/);
+  assert.match(d.querySelector(".date-group .price").textContent, /40/);
   direct.checked = false;
   direct.dispatchEvent(new w.Event("change"));
   assert.equal(count(), 4);
@@ -234,7 +244,7 @@ test("all four airport selectors combine with direct-only filtering on both legs
 });
 
 test("return airport choices come from archived results and filters reset pagination", async (t) => {
-  const app = start();
+  const app = start(manyPairs());
   t.after(app.close);
   const { d, w, state, change, count } = app;
   state.history.flights.forEach((flight) => {
@@ -242,7 +252,7 @@ test("return airport choices come from archived results and filters reset pagina
     flight.return_destination = "BLL";
   });
   await until(
-    () => d.querySelectorAll("#scan option").length === 2 && count() === 40,
+    () => d.querySelectorAll("#scan option").length === 2 && count() === 137,
   );
   d.getElementById("next-page").click();
   assert.match(d.getElementById("page-status").textContent, /Page 2 of 4/);
@@ -282,7 +292,7 @@ test("invalid or failed refresh preserves the current set and escapes provider c
     d.querySelectorAll('.ticket img, a[href^="javascript:"]').length,
     0,
   );
-  assert.match(d.querySelector(".ticket").textContent, /<img src=x/);
+  assert.match(d.querySelector(".date-group").textContent, /<img src=x/);
   state.fail = true;
   d.getElementById("refresh").click();
   await until(() =>
@@ -398,7 +408,7 @@ test("calendar groups all quotes by day and uses round-trip minima beyond the fi
   const app = start(data);
   t.after(app.close);
   const { d, count } = app;
-  await until(() => count() === 40);
+  await until(() => count() === 137);
   assert(d.getElementById("calendar").hidden);
   d.querySelector('[data-layout="calendar"]').click();
   assert(!d.getElementById("calendar").hidden);
@@ -415,7 +425,7 @@ test("calendar groups all quotes by day and uses round-trip minima beyond the fi
   assert(d.getElementById("calendar").hidden);
   assert.equal(count(), 7);
   d.getElementById("clear-dates").click();
-  assert.equal(count(), 40);
+  assert.equal(count(), 137);
   assert.match(d.getElementById("result-count").textContent, /137 matching/);
 });
 
@@ -443,7 +453,7 @@ test("selecting outbound and return dates shows only that pair and supports empt
   assert.equal(d.querySelector('[data-kind="return"][data-date="2030-01-09"] small').textContent, "€60");
   d.querySelector('[data-kind="return"][data-date="2030-01-09"]').click();
   assert.equal(count(), 1);
-  assert.match(d.querySelector(".ticket .price").textContent, /€60/);
+  assert.match(d.querySelector(".date-group .price").textContent, /€60/);
   change("return-date", "2030-01-10");
   assert.equal(count(), 0);
   assert.match(d.getElementById("results").textContent, /No matches/);
@@ -556,4 +566,49 @@ test("clicking a selected calendar day clears only that date and updates fares a
   outbound().click();
   assert.equal(count(), 4);
   assert(d.getElementById("clear-dates").disabled);
+});
+
+test("one entry per date pair exposes every matching offer, including different hours and routes", async (t) => {
+  const data = snapshot(83);
+  data.flights.forEach((f, i) => {
+    f.departure_at = `2030-01-13T${i % 2 ? '19:45' : '08:35'}`;
+    f.return_at = '2030-01-21T18:00';
+  });
+  data.flights[80].price = 5;
+  data.flights.push({ ...data.flights[0], departure_at: '2030-01-14T08:35', price: 20 });
+  const app = start(data);
+  t.after(app.close);
+  const { d, change, count } = app;
+  await until(() => count() === 84);
+  assert.equal(d.querySelectorAll('.date-group').length, 2);
+  assert.match(d.querySelector('.date-group .price').textContent, /€5/);
+  assert.match(d.querySelector('.date-group').textContent, /83 offers/);
+  assert.equal(d.querySelectorAll('.ticket').length, 0);
+  d.querySelector('.date-group .price').click();
+  assert(d.getElementById('offers-dialog').open);
+  assert.match(d.getElementById('offers-title').textContent, /13 Jan 2030 → 21 Jan 2030/);
+  assert.equal(d.querySelectorAll('#offers-results .ticket').length, 40);
+  assert.match(d.querySelector('#offers-results .ticket .price').textContent, /€5/);
+  assert.match(d.getElementById('offers-results').textContent, /19:45/);
+  assert.match(d.getElementById('offers-results').textContent, /08:35/);
+  assert(d.querySelector('#offers-results a[href^="https:"]'));
+  d.getElementById('offers-next').click();
+  assert.equal(d.querySelectorAll('#offers-results .ticket').length, 40);
+  d.getElementById('offers-next').click();
+  assert.equal(d.querySelectorAll('#offers-results .ticket').length, 3);
+  assert(d.getElementById('offers-next').disabled);
+  d.getElementById('offers-previous').click();
+  assert.match(d.getElementById('offers-page-status').textContent, /Page 2 of 3/);
+  d.getElementById('offers-close').click();
+  assert(!d.getElementById('offers-dialog').open);
+  d.querySelector('.date-group').click();
+  assert.match(d.getElementById('offers-page-status').textContent, /Page 1 of 3/);
+  change('origin', 'MMX');
+  assert(!d.getElementById('offers-dialog').open);
+  assert.equal(d.querySelectorAll('.date-group').length, 1);
+  assert.match(d.querySelector('.date-group .price').textContent, /€41/);
+  d.querySelector('.date-group').click();
+  assert.match(d.getElementById('offers-count').textContent, /41 matching offers/);
+  assert(!d.getElementById('offers-results').textContent.includes('CPH'));
+  assert.equal(data.flights.length, 84);
 });

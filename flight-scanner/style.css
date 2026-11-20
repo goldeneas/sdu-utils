@@ -919,3 +919,47 @@ footer summary {
   .fare-calendar { padding: 16px 12px; }
   .calendar-day small { font-size: 0.64rem; }
 }
+
+.date-group {
+  display: block;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: 0;
+}
+.date-group:hover { border-color: var(--accent); }
+.date-group:first-child { border-top: 3px solid var(--accent); }
+.date-group .destination-name, .date-group .airline { display: block; }
+.date-group .ticket-label { line-height: 1.7; }
+.group-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 22px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+#offers-dialog {
+  width: min(1100px, calc(100% - 24px));
+  max-height: 90dvh;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+}
+#offers-dialog::backdrop { background: #17271dcc; }
+.offers-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.offers-heading .eyebrow { color: var(--accent); }
+#offers-count { font-size: 0.8rem; line-height: 1.6; margin: 16px 0 22px; }
+@media (max-width: 650px) {
+  #offers-dialog { padding: 20px 12px; }
+  .offers-heading h2 { font-size: 1.2rem; }
+  .group-foot { padding: 15px 21px; }
+}

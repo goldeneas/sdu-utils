@@ -190,6 +190,19 @@
           <button id="next-page" class="quiet" type="button">Next →</button>
         </nav>
       </section>
+      <dialog id="offers-dialog" aria-labelledby="offers-title">
+        <div class="offers-heading">
+          <div><p class="eyebrow">All offers for these dates</p><h2 id="offers-title"></h2></div>
+          <button id="offers-close" type="button" class="quiet" autofocus>Close ✕</button>
+        </div>
+        <p id="offers-count" class="muted" role="status"></p>
+        <div id="offers-results" class="results"></div>
+        <nav id="offers-pagination" class="pagination" aria-label="Offer pages" hidden>
+          <button id="offers-previous" type="button" class="quiet">← Previous</button>
+          <span id="offers-page-status" class="muted" role="status"></span>
+          <button id="offers-next" type="button" class="quiet">Next →</button>
+        </nav>
+      </dialog>
       <footer>
         <div>
           <p class="footer-brand">
