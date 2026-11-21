@@ -5,6 +5,7 @@ import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findChrome } from "./chrome.mjs";
+import { closePreview } from "./preview.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = path.join(root, "dist", "Nicola_Picarella_CV.pdf");
@@ -30,7 +31,7 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto(server.resolvedUrls.local[0], { waitUntil: "networkidle0" });
+  await page.goto(server.resolvedUrls.local[0], { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".sheet .name");
   await page.evaluate(() => document.fonts.ready);
   if (errors.length) throw new Error(errors.join("\n"));
@@ -46,6 +47,9 @@ try {
   rmSync(outFile, { force: true });
   throw error;
 } finally {
-  await browser?.close();
-  await new Promise((resolve, reject) => server.httpServer.close(error => error ? reject(error) : resolve()));
+  try {
+    await browser?.close();
+  } finally {
+    await closePreview(server);
+  }
 }

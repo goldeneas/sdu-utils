@@ -8,6 +8,7 @@ import test from "node:test";
 import puppeteer from "puppeteer-core";
 import { preview } from "vite";
 import { findChrome } from "../scripts/chrome.mjs";
+import { closePreview } from "../scripts/preview.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const filename = "Nicola_Picarella_CV.pdf";
@@ -15,24 +16,33 @@ const cv = JSON.parse(await readFile(path.join(root, "cv.json"), "utf8"));
 
 for (const base of ["/sdu-utils/cv-maker/", "/cv-maker/"]) {
   test(`Read-only CV and real PDF download at ${base}`, { timeout: 30000 }, async t => {
+    let server, browser;
     const directory = await mkdtemp(path.join(tmpdir(), "cv-maker-download-"));
-    t.after(() => rm(directory, { recursive: true, force: true }));
-    const server = await preview({
+    t.after(async () => {
+      try {
+        await browser?.close();
+      } finally {
+        try {
+          if (server) await closePreview(server);
+        } finally {
+          await rm(directory, { recursive: true, force: true });
+        }
+      }
+    });
+    server = await preview({
       root, base, logLevel: "silent",
       preview: { host: "127.0.0.1", port: 0, open: false },
     });
-    t.after(() => new Promise(resolve => server.httpServer.close(resolve)));
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       executablePath: findChrome(), headless: true, args: ["--no-sandbox"],
     });
-    t.after(() => browser.close());
     const page = await browser.newPage();
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     page.on("response", response => {
       if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`);
     });
-    const response = await page.goto(server.resolvedUrls.local[0], { waitUntil: "networkidle0" });
+    const response = await page.goto(server.resolvedUrls.local[0], { waitUntil: "domcontentloaded" });
     assert.equal(response.status(), 200);
     await page.waitForSelector(".sheet .name");
     assert.equal(await page.$eval(".name", node => node.textContent), cv.basics.name);
