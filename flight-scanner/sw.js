@@ -19,7 +19,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
       await cache.addAll(
-        SHELL.map((path) => new Request(path, { cache: "reload" })),
+        SHELL.map((path) => new Request(new URL(path, self.registration.scope), { cache: "reload" })),
       );
       // Only the compact index is prefetched for a first offline visit.
       const dataCache = await caches.open(DATA_CACHE);
