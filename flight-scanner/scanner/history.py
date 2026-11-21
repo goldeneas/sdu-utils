@@ -14,6 +14,22 @@ from pathlib import Path
 from .publish import load_previous
 
 BRANCH = "flight-data"
+KEEP_SCANS = 3
+
+
+def prune_history(directory: Path) -> None:
+    """Retain the newest three scans and remove older payloads from the branch."""
+    path = directory / "index.json"
+    if not path.exists():
+        return
+    index = json.loads(path.read_text())
+    index["scans"].sort(key=lambda entry: (entry["generated_at"], entry["file"]), reverse=True)
+    index["scans"] = index["scans"][:KEEP_SCANS]
+    keep = {entry["file"] for entry in index["scans"]}
+    for file in (directory / "scans").glob("*.json.gz"):
+        if f"scans/{file.name}" not in keep:
+            file.unlink()
+    path.write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
 def results_count(snapshot: dict) -> int:
@@ -38,6 +54,7 @@ def save_scan(snapshot: dict, directory: Path, run_id: str) -> bool:
     name = stamp.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"-{run_id}.json.gz"
     target = directory / "scans" / name
     if target.exists():
+        prune_history(directory)
         return False
     target.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
@@ -53,6 +70,7 @@ def save_scan(snapshot: dict, directory: Path, run_id: str) -> bool:
     })
     index["scans"].sort(key=lambda entry: (entry["generated_at"], entry["file"]), reverse=True)
     index_path.write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")) + "\n")
+    prune_history(directory)
     return True
 
 
@@ -102,6 +120,8 @@ def preserve_history(repository: Path, output: Path, previous_path: str | None =
                     save_scan(snapshot, checkout, run_id)
                 payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
                 (checkout / "latest.json.gz").write_bytes(gzip.compress(payload, mtime=0))
+
+            prune_history(checkout)
 
             # Stage before pushing, so a failed archive push still leaves a recoverable artifact.
             history = output / "history"

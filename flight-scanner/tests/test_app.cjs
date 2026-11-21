@@ -73,6 +73,8 @@ function start(data = snapshot()) {
     history: snapshot(53),
     fail: false,
     decodedHistory: false,
+    details: new Map(),
+    requests: [],
   };
   Object.assign(w, {
     AbortSignal,
@@ -85,6 +87,13 @@ function start(data = snapshot()) {
   w.HTMLDialogElement.prototype.close = function () { this.open = false; };
   w.fetch = async (url, options) => {
     assert.equal(options.cache, "no-cache");
+    state.requests.push(url);
+    if (state.details.has(url)) {
+      if (state.fail) throw new Error("offline");
+      if (state.detailsWait) await state.detailsWait;
+      const rows = state.details.get(url);
+      return new Response(gzipSync(JSON.stringify(rows)));
+    }
     if (state.fail) throw new Error("offline");
     if (url === "data/history/index.json")
       return Response.json({
@@ -98,11 +107,11 @@ function start(data = snapshot()) {
           },
         ],
       });
-    if (url === `data/history/${HISTORY_FILE}`)
+    if (url === `data/browser/history/${HISTORY_FILE.slice("scans/".length).replace(/\.gz$/, "")}`)
       return state.decodedHistory
         ? Response.json(state.history)
-        : new Response(gzipSync(JSON.stringify(state.history)));
-    assert.equal(url, "data/flights.json");
+        : Response.json(state.history);
+    assert.equal(url, "data/browser/latest.json");
     return Response.json(state.data);
   };
   w.eval(readFileSync(join(root, "app.js"), "utf8"));
@@ -168,7 +177,7 @@ test("all results are reachable with pagination; filters and sorting use the ful
   assert.match(d.getElementById("result-count").textContent, /137 matching/);
 });
 
-test("compressed history loads without a scan and retains departed flights", async (t) => {
+test("compact history loads without a scan and retains departed flights", async (t) => {
   const app = start();
   t.after(app.close);
   const { d, state, change, count } = app;
@@ -323,6 +332,8 @@ test("service worker caches latest, history index and compressed scans without t
   const scope = "https://example.com/sdu-utils/flight-scanner/",
     handlers = {},
     stores = new Map();
+  const fetched = [];
+  const prefetched = [];
   const urlOf = (r) => new URL(typeof r === "string" ? r : r.url, scope).href;
   const storage = {
     open: async (name) => {
@@ -330,9 +341,10 @@ test("service worker caches latest, history index and compressed scans without t
       const m = stores.get(name);
       return {
         addAll: async () => {},
-        add: async () => {},
+        add: async (key) => prefetched.push(urlOf(key)),
         put: async (key, res) => m.set(urlOf(key), res.clone()),
         match: async (key) => m.get(urlOf(key))?.clone(),
+        delete: async (key) => m.delete(urlOf(key)),
       };
     },
     keys: async () => [...stores.keys()],
@@ -347,6 +359,7 @@ test("service worker caches latest, history index and compressed scans without t
     caches: storage,
     fetch: async (req) => {
       if (!online) throw new Error("offline");
+      fetched.push(req.url);
       return req.url.endsWith(".gz")
         ? new Response(gzipSync(JSON.stringify(snapshot(53))))
         : Response.json(snapshot());
@@ -359,6 +372,11 @@ test("service worker caches latest, history index and compressed scans without t
     },
   };
   vm.runInNewContext(readFileSync(join(root, "sw.js"), "utf8"), context);
+  let installation;
+  handlers.install({ waitUntil: (p) => (installation = p) });
+  await installation;
+  assert(prefetched.some((url) => url.endsWith("data/browser/latest.json")));
+  assert(!prefetched.some((url) => url.endsWith("data/flights.json")));
   const request = async (path, navigate = false) => {
     let promise;
     handlers.fetch({
@@ -372,7 +390,7 @@ test("service worker caches latest, history index and compressed scans without t
     return promise;
   };
   assert.equal(
-    (await (await request("data/flights.json")).json()).flights.length,
+    (await (await request("data/browser/latest.json")).json()).flights.length,
     137,
   );
   await request("data/history/index.json");
@@ -381,7 +399,7 @@ test("service worker caches latest, history index and compressed scans without t
   );
   online = false;
   assert.equal(
-    (await (await request("data/flights.json")).json()).flights.length,
+    (await (await request("data/browser/latest.json")).json()).flights.length,
     137,
   );
   assert((await request("data/history/index.json")).ok);
@@ -392,14 +410,19 @@ test("service worker caches latest, history index and compressed scans without t
     zipped,
   );
   assert.equal(await request("../central-canteen/app.js"), undefined);
+  assert.equal(await request("data/flights.json"), undefined);
+  assert(!fetched.some((url) => url.endsWith("data/flights.json")));
   await storage.open("central-canteen-v1");
   await storage.open("flight-scanner-old");
+  const dataCache = await storage.open("flight-scanner-data");
+  await dataCache.put("data/flights.json", Response.json(snapshot()));
   let activation;
   handlers.activate({ waitUntil: (p) => (activation = p) });
   await activation;
   assert(stores.has("central-canteen-v1"));
   assert(!stores.has("flight-scanner-old"));
   assert(stores.has("flight-scanner-data"));
+  assert.equal(await dataCache.match("data/flights.json"), undefined);
 });
 
 test("calendar groups all quotes by day and uses round-trip minima beyond the first page", async (t) => {
@@ -611,4 +634,43 @@ test("one entry per date pair exposes every matching offer, including different 
   assert.match(d.getElementById('offers-count').textContent, /41 matching offers/);
   assert(!d.getElementById('offers-results').textContent.includes('CPH'));
   assert.equal(data.flights.length, 84);
+});
+
+test("compact scans load details only on demand, preserve counts, release memory and allow retry", async (t) => {
+  const full = snapshot(3);
+  full.flights[1] = { ...full.flights[0], price: 50, departure_at: '2030-01-01T19:45' };
+  const file = 'scans/0123456789abcdef01234567/2030-01-01_2030-01-28/0.json.gz';
+  const data = { ...full, browser_version: 1, total_count: 3,
+    flights: [{ ...full.flights[0], offer_count: 2 }, { ...full.flights[2], offer_count: 1 }],
+    detail_files: { '2030-01-01_2030-01-28': [file] } };
+  const app = start(data);
+  t.after(app.close);
+  const { d, state, count } = app;
+  state.details.set(`data/browser/${file}`, full.flights.slice(0, 2));
+  await until(() => count() === 3);
+  assert.equal(d.querySelectorAll('.date-group').length, 2);
+  assert.match(d.querySelector('.date-group').textContent, /2 offers/);
+  assert(!state.requests.some((url) => url.includes('/scans/')));
+  d.querySelector('.date-group').click();
+  await until(() => d.querySelectorAll('.ticket').length === 2);
+  assert.match(d.getElementById('offers-results').textContent, /19:45/);
+  d.getElementById('offers-close').click();
+  assert.equal(d.querySelectorAll('.ticket').length, 0);
+  state.fail = true;
+  d.querySelector('.date-group').click();
+  await until(() => d.getElementById('offers-count').textContent.includes('Couldn’t load'));
+  assert.equal(d.querySelectorAll('.ticket').length, 0);
+  d.getElementById('offers-close').click();
+  state.fail = false;
+  let resume;
+  state.detailsWait = new Promise(resolve => { resume = resolve; });
+  d.querySelector('.date-group').click();
+  d.getElementById('offers-close').click();
+  resume();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(d.querySelectorAll('.ticket').length, 0);
+  state.detailsWait = null;
+  d.querySelector('.date-group').click();
+  await until(() => d.querySelectorAll('.ticket').length === 2);
+  assert.equal(count(), 3);
 });

@@ -109,3 +109,20 @@ def test_previous_compressed_snapshot_is_validated(tmp_path):
     assert load_previous(str(path)) is None
     path.write_bytes(gzip.compress(json.dumps(data).encode())[:12])
     assert load_previous(str(path)) is None
+
+
+def test_history_keeps_only_three_newest_payloads_even_after_old_import(tmp_path):
+    from scanner.history import prune_history
+    for day in (12, 10, 14, 11, 13):
+        save_scan(snapshot(day=day), tmp_path, str(day))
+    index = json.loads((tmp_path / "index.json").read_text())
+    assert len(index["scans"]) == 3
+    assert [row["generated_at"] for row in index["scans"]] == sorted(
+        [snapshot(day=day)["generated_at"] for day in (12, 13, 14)], reverse=True)
+    assert {"scans/" + p.name for p in (tmp_path / "scans").glob("*.json.gz")} == {
+        row["file"] for row in index["scans"]}
+    # Clean already-existing archives too, including a failed/no-new-data run.
+    extra = tmp_path / "scans/orphan.json.gz"
+    extra.write_bytes(b"old")
+    prune_history(tmp_path)
+    assert not extra.exists()

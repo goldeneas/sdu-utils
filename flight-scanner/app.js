@@ -43,6 +43,8 @@ const calendarRanges = { outbound: null, return: null };
 let dateGroups = [];
 let selectedGroup = null;
 let offerPage = 1;
+let detailSequence = 0;
+let detailController = null;
 
 function today() {
   const d = new Date();
@@ -113,6 +115,13 @@ function validSnapshot(data) {
     Object.values(data.per_airport).every(
       (rows) => Array.isArray(rows) && rows.every(validFlight),
     ) &&
+    (data.browser_version === undefined || (data.browser_version === 1 &&
+      Number.isSafeInteger(data.total_count) && data.total_count >= 0 &&
+      data.flights.every((f) => Number.isSafeInteger(f.offer_count) && f.offer_count > 0) &&
+      offerCount(data.flights) === data.total_count && data.detail_files &&
+      Object.entries(data.detail_files).every(([pair, files]) =>
+        /^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/.test(pair) &&
+        Array.isArray(files) && files.length > 0 && files.every(safeDetailFile)))) &&
     Array.isArray(data.search?.origins) &&
     Array.isArray(data.search?.destinations) &&
     Number.isFinite(data.search.max_price)
@@ -154,7 +163,7 @@ function renderNotice() {
   else if (loadFailed && snapshot)
     notes.push("Couldn’t refresh. Showing your last loaded results.");
   if (snapshot) {
-    if (!Array.isArray(snapshot.flights))
+    if (!Array.isArray(snapshot.flights) || snapshot.complete_results === false)
       notes.push(
         "This older scan contains only saved highlights. Full results are kept from the next successful scan onward.",
       );
@@ -205,6 +214,72 @@ function allFlights(data) {
 function dateKey(value) {
   return String(value).slice(0, 10);
 }
+function offerCount(flights) {
+  return flights.reduce((count, f) => count + (f.offer_count ?? 1), 0);
+}
+function safeDetailFile(file) {
+  return typeof file === "string" && /^scans\/[a-f0-9]{24}\/\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\/\d+\.json\.gz$/.test(file);
+}
+function matchesFilters(f) {
+  return (!$("origin").value || f.origin === $("origin").value) &&
+    (!$("destination").value || f.destination === $("destination").value) &&
+    (!$("return-origin").value || (f.return_origin || f.destination) === $("return-origin").value) &&
+    (!$("return-destination").value || (f.return_destination || f.origin) === $("return-destination").value) &&
+    (!$("direct-only").checked || (f.out_stops === 0 && f.in_stops === 0)) &&
+    (view !== "budget" || f.price <= snapshot.search.max_price);
+}
+async function readJSON(response, compressed = false) {
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!compressed) return response.json();
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  return bytes[0] === 0x1f && bytes[1] === 0x8b
+    ? new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).json()
+    : JSON.parse(new TextDecoder().decode(bytes));
+}
+function releaseOffers() {
+  detailSequence++;
+  detailController?.abort();
+  selectedGroup = null;
+  $("offers-results").replaceChildren();
+}
+async function openOffers(group) {
+  releaseOffers();
+  const sequence = detailSequence;
+  offerPage = 1;
+  $("offers-title").textContent = pairLabel(group[0]);
+  $("offers-count").textContent = "Loading offers for these dates…";
+  $("offers-pagination").hidden = true;
+  $("offers-dialog").showModal();
+  if (snapshot.browser_version !== 1) {
+    selectedGroup = group;
+    renderOffers();
+    return;
+  }
+  detailController = new AbortController();
+  try {
+    const pair = `${dateKey(group[0].departure_at)}_${dateKey(group[0].return_at)}`;
+    const files = snapshot.detail_files[pair];
+    if (!Array.isArray(files)) throw new Error("Missing offer files");
+    const offers = [];
+    for (const file of files) {
+      const response = await fetch(`data/browser/${file}`, {
+        cache: "no-cache", signal: detailController.signal,
+      });
+      const rows = await readJSON(response, true);
+      if (sequence !== detailSequence) return;
+      if (!Array.isArray(rows) || !rows.every((f) => validFlight(f) &&
+          `${dateKey(f.departure_at)}_${dateKey(f.return_at)}` === pair))
+        throw new Error("Invalid offers");
+      for (const f of rows) if (matchesFilters(f)) offers.push(f);
+    }
+    if (offers.length !== offerCount(group)) throw new Error("Incomplete offers");
+    selectedGroup = offers.sort((a, b) => a.price - b.price || a.departure_at.localeCompare(b.departure_at));
+    renderOffers();
+  } catch {
+    if (sequence === detailSequence)
+      $("offers-count").textContent = "Couldn’t load all offers. Check your connection, then close and reopen these dates to retry. Previously opened dates are available offline.";
+  }
+}
 function groupDates(flights) {
   const groups = new Map();
   for (const f of flights) {
@@ -221,7 +296,8 @@ function pairLabel(f) {
 }
 function dateGroup(offers, index) {
   const f = offers[0];
-  return `<button type="button" class="date-group" data-group="${index}" aria-haspopup="dialog"><span class="ticket-head"><span><span class="ticket-label">${escapeHTML(pairLabel(f))}</span><span class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</span><span class="airline">${escapeHTML(`${f.origin} → ${f.destination} · ${f.airline}`)}</span></span><span class="price"><small>From</small><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></span></span><span class="group-foot"><span>${offers.length.toLocaleString()} offer${offers.length === 1 ? "" : "s"} · ${escapeHTML(f.nights)} nights${dateKey(f.departure_at) < today() ? " · Departure has passed" : ""}</span><span>View offers <span aria-hidden="true">↗</span></span></span></button>`;
+  const count = offerCount(offers);
+  return `<button type="button" class="date-group" data-group="${index}" aria-haspopup="dialog"><span class="ticket-head"><span><span class="ticket-label">${escapeHTML(pairLabel(f))}</span><span class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</span><span class="airline">${escapeHTML(`${f.origin} → ${f.destination} · ${f.airline}`)}</span></span><span class="price"><small>From</small><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></span></span><span class="group-foot"><span>${count.toLocaleString()} offer${count === 1 ? "" : "s"} · ${escapeHTML(f.nights)} nights${dateKey(f.departure_at) < today() ? " · Departure has passed" : ""}</span><span>View offers <span aria-hidden="true">↗</span></span></span></button>`;
 }
 function renderOffers() {
   if (!selectedGroup) return;
@@ -317,21 +393,10 @@ function render() {
   renderNotice();
   if (!snapshot) return;
   if ($("offers-dialog").open) $("offers-dialog").close();
-  selectedGroup = null;
-  $("offers-results").replaceChildren();
+  releaseOffers();
   const s = snapshot.search;
   const raw = allFlights(snapshot);
-  const filtered = raw.filter(
-    (f) =>
-      (!$("origin").value || f.origin === $("origin").value) &&
-      (!$("destination").value || f.destination === $("destination").value) &&
-      (!$("return-origin").value ||
-        (f.return_origin || f.destination) === $("return-origin").value) &&
-      (!$("return-destination").value ||
-        (f.return_destination || f.origin) === $("return-destination").value) &&
-      (!$("direct-only").checked || (f.out_stops === 0 && f.in_stops === 0)) &&
-      (view !== "budget" || f.price <= s.max_price),
-  );
+  const filtered = raw.filter(matchesFilters);
   renderCalendars(filtered);
   const flights = filtered.filter((f) =>
     (!$("outbound-date").value || dateKey(f.departure_at) === $("outbound-date").value) &&
@@ -350,8 +415,8 @@ function render() {
   page = Math.min(Math.max(1, page), pages);
   const start = (page - 1) * PAGE_SIZE;
   $("result-count").textContent = flights.length
-    ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, dateGroups.length)} of ${dateGroups.length.toLocaleString()} date pairs · ${flights.length.toLocaleString()} matching round trips · ${raw.length.toLocaleString()} saved in this scan${view === "budget" ? ` · Up to ${money(s.max_price)}` : " · All prices"}`
-    : `0 matching round trips · ${raw.length.toLocaleString()} saved in this scan`;
+    ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, dateGroups.length)} of ${dateGroups.length.toLocaleString()} date pairs · ${offerCount(flights).toLocaleString()} matching round trips · ${(snapshot.total_count ?? raw.length).toLocaleString()} saved in this scan${view === "budget" ? ` · Up to ${money(s.max_price)}` : " · All prices"}`
+    : `0 matching round trips · ${(snapshot.total_count ?? raw.length).toLocaleString()} saved in this scan`;
   const cheapest = flights.reduce(
     (best, f) => Math.min(best, f.price),
     Infinity,
@@ -497,23 +562,10 @@ async function load() {
   $("results").setAttribute("aria-busy", "true");
   try {
     const response = await fetch(
-      scan ? `data/history/${scan}` : "data/flights.json",
+      scan ? `data/browser/history/${scan.slice("scans/".length).replace(/\.gz$/, "")}` : "data/browser/latest.json",
       { cache: "no-cache", signal: AbortSignal.timeout(60000) },
     );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    let data;
-    if (scan) {
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      // Some hosts decode Content-Encoding before fetch exposes the response body.
-      data =
-        bytes[0] === 0x1f && bytes[1] === 0x8b
-          ? await new Response(
-              new Blob([bytes])
-                .stream()
-                .pipeThrough(new DecompressionStream("gzip")),
-            ).json()
-          : JSON.parse(new TextDecoder().decode(bytes));
-    } else data = await response.json();
+    const data = await readJSON(response);
     if (sequence !== loadSequence) return;
     if (!validSnapshot(data)) throw new Error("Invalid flight snapshot");
     loadFailed = false;
@@ -605,12 +657,13 @@ $("scan").addEventListener("change", load);
 $("results").addEventListener("click", (event) => {
   const button = event.target.closest("[data-group]");
   if (!button) return;
-  selectedGroup = dateGroups[Number(button.dataset.group)];
-  offerPage = 1;
-  renderOffers();
-  $("offers-dialog").showModal();
+  openOffers(dateGroups[Number(button.dataset.group)]);
 });
-$("offers-close").addEventListener("click", () => $("offers-dialog").close());
+$("offers-close").addEventListener("click", () => {
+  $("offers-dialog").close();
+  releaseOffers();
+});
+$("offers-dialog").addEventListener("close", releaseOffers);
 $("offers-previous").addEventListener("click", () => { offerPage--; renderOffers(); });
 $("offers-next").addEventListener("click", () => { offerPage++; renderOffers(); });
 $("previous-page").addEventListener("click", () => {
@@ -630,6 +683,8 @@ window.addEventListener("online", () => {
   load();
   loadHistory();
 });
-window.addEventListener("pageshow", render);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) render();
+});
 load();
 loadHistory();

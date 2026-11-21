@@ -203,6 +203,10 @@ jobs:
             fi
           fi
 
+      - name: Build memory-bounded flight browser data
+        run: python -m scanner.browser ../_site/flight-scanner/data
+        working-directory: flight-scanner
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

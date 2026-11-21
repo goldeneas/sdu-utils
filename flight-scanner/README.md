@@ -39,7 +39,9 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
 - See local flight times, stops, nights, fare sources and booking links. Different
   return airports and separate tickets are explicitly marked.
 - Install from the browser menu, or Safari → Share → Add to Home Screen on iPhone.
-  The app and last downloaded results are available offline.
+  The app and last downloaded price index are available offline. Flight details
+  are downloaded only when opening a date pair; previously downloaded details
+  can also be read offline. Opening new dates requires a connection.
 - Refresh reloads the selected scan. Departed flights stay accessible and are
   labelled for reference. Previously opened scans can be read offline.
 
@@ -64,14 +66,15 @@ are included in the flight app's web directory. The repository root page is
 unchanged.
 
 Complete snapshots are compressed and committed to the dedicated **`flight-data`**
-branch, with a history index. No date-based pruning is performed, and source code
-on `main` is unaffected by data updates. The flight job has repository contents
+branch, with a history index. Only the **three newest saved scans** are retained
+in that index and in the branch's current scan files; older files are removed.
+Source code on `main` is unaffected by data updates. The flight job has repository contents
 write permission for this archive; the deployment job retains read-only contents
-access. Pages publishes the index and compressed scans so the app can load any
-saved scan without contacting a fare provider. Artifacts are kept for 90 days
+access. Pages publishes compact browser indexes and compressed detail chunks
+for the retained scans without contacting a fare provider. Artifacts are kept for 90 days
 as an additional recovery copy, independently of the durable data branch.
 
-Full history begins with the first scan after this update. The last published
+Full snapshots begin with the first scan after the history update. The last published
 snapshot is imported when available. Older snapshots contain only the highlights
 that were previously saved; the app labels those snapshots explicitly.
 
@@ -138,3 +141,12 @@ The app stays buildless; Node 24 and jsdom are used only for automated tests.
 The internal Pages job reads `PREVIOUS_FLIGHTS_PATH` for failed-scan fallback,
 writes to `data/flights.json`, and uses `scanner.history` to archive results and
 stage `data/history/index.json` and `data/history/scans/*.json.gz` for Pages.
+
+The deploy job runs `python -m scanner.browser ../_site/flight-scanner/data` after
+restoring scan data. It creates `data/browser/latest.json`, compact history
+indexes and compressed chunks of at most 200 complete offers each. Index rows
+combine only offers with identical dates, airport filters, stops, currency and
+budget tier; each preserves its exact count and minimum. The phone never parses
+the full scan to draw the list/calendar. It fetches one selected date pair's
+chunks sequentially and releases details on close. The service worker caches
+bytes without parsing a second copy and never prefetches complete scans.

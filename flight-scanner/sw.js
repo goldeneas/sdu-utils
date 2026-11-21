@@ -1,5 +1,5 @@
 // Keep this cache scoped to flight-scanner; sibling PWAs share the Pages origin.
-const CACHE = "flight-scanner-v6";
+const CACHE = "flight-scanner-v7";
 // Keep data across app-shell updates, including an update during a failed daily scan.
 const DATA_CACHE = "flight-scanner-data";
 const SHELL = [
@@ -21,13 +21,13 @@ self.addEventListener("install", (event) => {
       await cache.addAll(
         SHELL.map((path) => new Request(path, { cache: "reload" })),
       );
-      // A first deployment might not have any flight data yet.
-      await caches
-        .open(DATA_CACHE)
-        .then((dataCache) =>
-          dataCache.add(new Request(DATA, { cache: "reload" })),
-        )
-        .catch(() => {});
+      // Only the compact index is prefetched for a first offline visit.
+      const dataCache = await caches.open(DATA_CACHE);
+      await Promise.all(["data/browser/latest.json", "data/history/index.json"].map((path) =>
+        dataCache.add(new Request(new URL(path, self.registration.scope), {
+          cache: "no-cache", signal: AbortSignal.timeout(12000),
+        })).catch(() => {}),
+      ));
       await self.skipWaiting();
     }),
   );
@@ -48,6 +48,10 @@ self.addEventListener("activate", (event) => {
             .map((key) => caches.delete(key)),
         ),
       )
+      .then(async () => {
+        const cache = await caches.open(DATA_CACHE);
+        await cache.delete(DATA);
+      })
       .then(() => self.clients.claim()),
   );
 });
@@ -57,11 +61,11 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || !url.href.startsWith(self.registration.scope))
     return;
   const isLatest = url.origin + url.pathname === DATA;
-  const isHistory = url.pathname.startsWith(
-    new URL("data/history/", self.registration.scope).pathname,
-  );
-  const isData = isLatest || isHistory;
-  const key = isLatest ? DATA : request;
+  // Legacy clients may still request a complete scan. Do not duplicate it in memory.
+  if (isLatest) return;
+  const isHistory = url.pathname === new URL("data/history/index.json", self.registration.scope).pathname;
+  const isData = isHistory || url.pathname.startsWith(new URL("data/browser/", self.registration.scope).pathname);
+  const key = request;
   event.respondWith(
     (async () => {
       const cache = await caches.open(isData ? DATA_CACHE : CACHE);
@@ -71,13 +75,9 @@ self.addEventListener("fetch", (event) => {
           signal: AbortSignal.timeout(isData ? 45000 : 7000),
         });
         if (!response.ok) throw new Error("Unavailable");
-        if (isLatest) {
-          // Do not replace a working offline snapshot with a malformed response.
-          const data = await response.clone().json();
-          if (data.schema_version !== 1 || !Array.isArray(data.top))
-            throw new Error("Invalid snapshot");
-        }
-        await cache.put(key, response.clone()).catch(() => {});
+        // Cache the streamed bytes without parsing another copy of the scan.
+        const stored = cache.put(key, response.clone()).catch(() => {});
+        if (event.waitUntil) event.waitUntil(stored);
         return response;
       } catch {
         return (
