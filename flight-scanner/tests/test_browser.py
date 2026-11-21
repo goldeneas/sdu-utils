@@ -68,3 +68,18 @@ def test_browser_stages_history_legacy_highlights_and_empty_scan(tmp_path):
     latest = json.loads((tmp_path / "browser/latest.json").read_text())
     assert latest["flights"] == [] and latest["detail_files"] == {}
     assert latest["status"] == "unavailable"
+
+
+def test_weekend_summaries_preserve_distinct_local_arrival_days(tmp_path):
+    data = scan()
+    first = {**data["flights"][0], "price": 80, "arrival_out": "2030-01-14T00:15"}
+    second = {**first, "price": 30, "arrival_out": "2030-01-13T23:00"}
+    data["flights"] = [first, second]
+    source = tmp_path / "flights.json"
+    source.write_text(json.dumps(data))
+    build_scan(source, tmp_path, tmp_path / "latest.json")
+    summary = json.loads((tmp_path / "latest.json").read_text())
+    assert summary["weekend_version"] == 1
+    assert len(summary["flights"]) == 2
+    assert {row["arrival_out"][:10] for row in summary["flights"]} == {"2030-01-13", "2030-01-14"}
+    assert sum(row["offer_count"] for row in summary["flights"]) == 2

@@ -61,7 +61,7 @@ async function until(condition) {
   }
   assert(condition(), "UI did not reach the expected state");
 }
-function start(data = snapshot()) {
+function start(data = snapshot(), preferences) {
   const dom = new JSDOM(readFileSync(join(root, "index.html"), "utf8"), {
     url: "https://example.com/sdu-utils/flight-scanner/",
     runScripts: "outside-only",
@@ -114,6 +114,7 @@ function start(data = snapshot()) {
     assert.equal(url, "data/browser/latest.json");
     return Response.json(state.data);
   };
+  if (preferences) w.localStorage.setItem("flight-scanner-weekends", JSON.stringify(preferences));
   w.eval(readFileSync(join(root, "app.js"), "utf8"));
   return {
     w,
@@ -673,4 +674,122 @@ test("compact scans load details only on demand, preserve counts, release memory
   d.querySelector('.date-group').click();
   await until(() => d.querySelectorAll('.ticket').length === 2);
   assert.equal(count(), 3);
+});
+
+function weekendData() {
+  const data = snapshot(7);
+  const rows = [
+    ['2030-01-04', '2030-01-04', '2030-01-13', 110],
+    ['2030-01-03', '2030-01-03', '2030-01-13', 30],
+    ['2030-01-05', '2030-01-05', '2030-01-13', 10],
+    ['2030-01-11', '2030-01-11', '2030-01-20', 70],
+    ['2030-01-04', '2030-01-04', '2030-01-06', 1],
+    ['2020-01-03', '2020-01-03', '2020-01-12', 1],
+    ['2030-01-03', '2030-01-04', '2030-01-13', 80],
+  ];
+  data.flights.forEach((f, i) => Object.assign(f, {
+    origin: i === 3 ? 'MMX' : 'CPH', destination: 'FCO', return_origin: 'FCO', return_destination: 'CPH',
+    departure_at: `${rows[i][0]}T18:00`, arrival_out: `${rows[i][1]}T23:00`,
+    return_at: `${rows[i][2]}T12:00`, price: rows[i][3],
+  }));
+  return data;
+}
+
+test('weekend accounting handles travel switches, boundaries, Sunday and consecutive weekends', async t => {
+  async function trip(from,to) {
+    const data=snapshot(1);
+    data.flights[0].departure_at=from+'T18:00';
+    data.flights[0].return_at=to+'T08:00';
+    const app=start(data);
+    t.after(app.close);
+    await until(()=>app.count()===1);
+    app.change('search-mode','double-weekend');
+    return app;
+  }
+  for (const [from,to] of [['2030-01-04','2030-01-13'],['2029-12-28','2030-01-06'],['2032-02-27','2032-03-07'],['2027-03-26','2027-04-04']]) {
+    const app=await trip(from,to);
+    assert.equal(app.count(),1);
+    assert.match(app.d.querySelector('.weekend-score').textContent,/6 weekend days · 4 weekdays/);
+  }
+  assert.equal((await trip('2030-01-04','2030-01-06')).count(),0);
+  assert.equal((await trip('2030-01-04','2030-01-20')).count(),0);
+  const app=await trip('2030-01-04','2030-01-13');
+  const score=()=>app.d.querySelector('.weekend-score').textContent;
+  const check=(id,value)=>{app.d.getElementById(id).checked=value;app.d.getElementById(id).dispatchEvent(new app.w.Event('change'));};
+  check('weekend-arrival',false);
+  assert.match(score(),/5 weekend days · 4 weekdays/);
+  check('weekend-departure',false);
+  assert.match(score(),/4 weekend days · 4 weekdays/);
+  app.change('weekend-start','6');
+  assert.match(score(),/3 weekend days · 6 weekdays/);
+  check('weekend-arrival',true);
+  check('weekend-departure',true);
+  app.change('weekend-start','0');
+  assert.match(score(),/2 weekend days · 8 weekdays/);
+  check('weekend-departure',false);
+  assert.equal(app.count(),0);
+});
+
+test('double weekend ranks balance before price, uses destination arrival and preserves filters and details', async t => {
+  const app = start(weekendData());
+  t.after(app.close);
+  const { d, change, count } = app;
+  await until(() => count() === 7);
+  change('sort','date');
+  change('search-mode','double-weekend');
+  assert.equal(count(),5);
+  assert.equal(d.querySelectorAll('.date-group').length,4);
+  assert(d.getElementById('sort').disabled);
+  assert.equal(d.getElementById('sort').value,'weekend');
+  assert.match(d.querySelector('.date-group').textContent,/6 weekend days · 4 weekdays/);
+  assert.match(d.querySelector('.date-group .price').textContent,/€70/);
+  const overnight = d.querySelectorAll('.date-group')[1];
+  assert.match(overnight.textContent,/€80/); // €30 arrives a day earlier and costs an extra weekday.
+  overnight.click();
+  assert.match(d.querySelector('.ticket .price').textContent,/€80/);
+  assert.match(d.querySelectorAll('.ticket')[1].textContent,/€30/);
+  assert.match(d.querySelectorAll('.ticket')[1].textContent,/6 weekend days · 5 weekdays/);
+  d.getElementById('offers-close').click();
+  change('origin','CPH');
+  assert.equal(count(),4);
+  d.querySelector('[data-view="budget"]').click();
+  assert.equal(count(),3);
+  change('outbound-date','2030-01-03');
+  assert.equal(count(),2);
+  change('search-mode','all');
+  assert(!d.getElementById('sort').disabled);
+  assert.equal(d.getElementById('sort').value,'date');
+  assert.match(d.querySelector('.date-group .price').textContent,/€30/);
+});
+
+test('weekend preferences persist and old compact indexes request an online refresh', async t => {
+  const prefs = { mode:'double-weekend',start:'6',arrival:false,departure:true };
+  const app = start(weekendData(),prefs);
+  t.after(app.close);
+  await until(() => app.count() === 5);
+  assert(!app.d.getElementById('weekend-settings').hidden);
+  assert.equal(app.d.getElementById('weekend-start').value,'6');
+  assert(!app.d.getElementById('weekend-arrival').checked);
+  app.change('weekend-start','5');
+  assert.equal(JSON.parse(app.w.localStorage.getItem('flight-scanner-weekends')).start,'5');
+  const full = weekendData();
+  const file = 'scans/0123456789abcdef01234567/2030-01-03_2030-01-13/0.json.gz';
+  const old = { ...full, browser_version:1,total_count:2,
+    flights: [full.flights[1],full.flights[6]].map(f=>({...f,offer_count:1})),
+    detail_files:{'2030-01-03_2030-01-13':[file]} };
+  app.state.data = old;
+  app.d.getElementById('refresh').click();
+  await until(()=>!app.d.getElementById('refresh').disabled);
+  assert.equal(app.count(),0);
+  assert.match(app.d.getElementById('notice').textContent,/Refresh while online/);
+  app.state.data = {...old,weekend_version:1};
+  app.state.details.set(`data/browser/${file}`,[full.flights[1],full.flights[6]]);
+  app.d.getElementById('weekend-arrival').checked=true;
+  app.d.getElementById('refresh').click();
+  await until(()=>!app.d.getElementById('refresh').disabled);
+  assert.equal(app.count(),2);
+  assert.match(app.d.querySelector('.date-group .price').textContent,/€80/);
+  app.d.querySelector('.date-group').click();
+  await until(()=>app.d.querySelectorAll('.ticket').length===2);
+  assert.match(app.d.querySelector('.ticket .price').textContent,/€80/);
 });

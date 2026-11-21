@@ -11,6 +11,19 @@ After deployment: <https://goldeneas.github.io/sdu-utils/flight-scanner/>.
 - **All flights:** every matching round trip found by the scan, including prices
   above budget and alternatives that share an outbound or return flight.
 - **Within budget:** an optional browser filter, with no result-count limit.
+- **Double weekend:** an additional search mode for future trips with credited
+  days in exactly two consecutive weekends. Choose the weekend start day
+  (Friday by default); weekends end on Sunday. Separate switches control whether
+  the arrival day and the departure day earn weekend credit, both on by default.
+  Weekdays at home still count, and excluded weekend travel days are not counted
+  as weekdays. These preferences are saved on the device.
+- Double weekend ranks offers by **most weekend days, fewest weekdays, then
+  lowest price**. Each date pair shows its best-ranked fare and day counts;
+  cheaper alternatives with fewer weekend days remain in its offer details.
+  Counting uses local destination arrival through local return departure,
+  including partial travel days. If arrival is unknown, outbound departure date
+  is used. Existing airport, budget and calendar filters still apply; the mode
+  searches the selected saved scan and does not run a new provider search.
 - Filter the full set independently by **outbound departure**, **outbound arrival**,
   **return departure** and **return arrival** airports, including itineraries with
   different airports on the return trip.
@@ -145,8 +158,8 @@ stage `data/history/index.json` and `data/history/scans/*.json.gz` for Pages.
 The deploy job runs `python -m scanner.browser ../_site/flight-scanner/data` after
 restoring scan data. It creates `data/browser/latest.json`, compact history
 indexes and compressed chunks of at most 200 complete offers each. Index rows
-combine only offers with identical dates, airport filters, stops, currency and
-budget tier; each preserves its exact count and minimum. The phone never parses
+combine only offers with identical dates, local arrival day, airport filters,
+stops, currency and budget tier; each preserves its exact count and minimum. The phone never parses
 the full scan to draw the list/calendar. It fetches one selected date pair's
 chunks sequentially and releases details on close. The service worker caches
 bytes without parsing a second copy and never prefetches complete scans.

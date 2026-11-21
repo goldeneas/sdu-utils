@@ -45,6 +45,8 @@ let selectedGroup = null;
 let offerPage = 1;
 let detailSequence = 0;
 let detailController = null;
+const weekendCache = new Map();
+let regularSort = "price";
 
 function today() {
   const d = new Date();
@@ -151,7 +153,7 @@ function ticket(f, index) {
   const booking = separate
     ? link(f.link, "Outbound") + link(f.return_link, "Return")
     : link(f.link, "Check flight");
-  return `<article class="ticket"><div class="ticket-head"><div><p class="ticket-label">${index === 0 && $("sort").value === "price" ? "Best in this view" : `${escapeHTML(f.nights)} nights away`}</p><h3 class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</h3><p class="airline">${escapeHTML(f.airline)}</p></div><div class="price"><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></div></div><div class="itinerary">${leg(f)}${leg(f, true)}</div>${f.open_jaw ? '<p class="ticket-warning">Different airports on the return trip. Plan your ground transport.</p>' : ""}${f.departure_at.slice(0, 10) < today() ? '<p class="ticket-warning">Departure has passed · saved for reference.</p>' : ""}<div class="ticket-foot"><div class="ticket-tags"><span>${escapeHTML(f.nights)} nights · ${escapeHTML(SOURCES[f.source] || f.source)}</span><span>${separate ? "Two separate tickets" : "Round-trip booking"}${above ? ' · <span class="over-budget">Above deal budget</span>' : ""}</span></div><div class="booking">${booking || '<span class="muted">Link unavailable</span>'}</div></div></article>`;
+  return `<article class="ticket"><div class="ticket-head"><div><p class="ticket-label">${index === 0 && $("sort").value === "price" ? "Best in this view" : `${escapeHTML(f.nights)} nights away`}</p><h3 class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</h3><p class="airline">${escapeHTML(f.airline)}</p></div><div class="price"><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></div></div>${doubleWeekendMode() ? `<p class="weekend-ticket-score">${weekendScore(f)}</p>` : ""}<div class="itinerary">${leg(f)}${leg(f, true)}</div>${f.open_jaw ? '<p class="ticket-warning">Different airports on the return trip. Plan your ground transport.</p>' : ""}${f.departure_at.slice(0, 10) < today() ? '<p class="ticket-warning">Departure has passed · saved for reference.</p>' : ""}<div class="ticket-foot"><div class="ticket-tags"><span>${escapeHTML(f.nights)} nights · ${escapeHTML(SOURCES[f.source] || f.source)}</span><span>${separate ? "Two separate tickets" : "Round-trip booking"}${above ? ' · <span class="over-budget">Above deal budget</span>' : ""}</span></div><div class="booking">${booking || '<span class="muted">Link unavailable</span>'}</div></div></article>`;
 }
 function empty(title, message) {
   return `<div class="empty"><span class="empty-icon" aria-hidden="true">↗</span><h3>${escapeHTML(title)}</h3><p>${escapeHTML(message)}</p></div>`;
@@ -163,6 +165,8 @@ function renderNotice() {
   else if (loadFailed && snapshot)
     notes.push("Couldn’t refresh. Showing your last loaded results.");
   if (snapshot) {
+    if (doubleWeekendMode() && snapshot.browser_version === 1 && snapshot.weekend_version !== 1)
+      notes.push("This cached index needs an update for weekend searches. Refresh while online to use Double weekend.");
     if (!Array.isArray(snapshot.flights) || snapshot.complete_results === false)
       notes.push(
         "This older scan contains only saved highlights. Full results are kept from the next successful scan onward.",
@@ -214,6 +218,66 @@ function allFlights(data) {
 function dateKey(value) {
   return String(value).slice(0, 10);
 }
+function doubleWeekendMode() {
+  return $("search-mode").value === "double-weekend";
+}
+function weekendStats(f) {
+  const arrival = dateKey(f.arrival_out || f.departure_at);
+  const departure = dateKey(f.return_at);
+  const key = `${arrival}/${departure}`;
+  if (weekendCache.has(key)) return weekendCache.get(key);
+  const first = Date.parse(`${arrival}T00:00:00Z`) / 86400000;
+  const last = Date.parse(`${departure}T00:00:00Z`) / 86400000;
+  const start = (Number($("weekend-start").value) + 6) % 7;
+  let weekendDays = 0, weekdays = 0;
+  const weekends = new Set();
+  if (Number.isFinite(first) && Number.isFinite(last) && last >= first && last - first <= 366) {
+    for (let n = first; n <= last; n++) {
+      const weekday = ((n + 3) % 7 + 7) % 7; // Monday = 0; calendar dates, no timezone shifts.
+      if (weekday < start) weekdays++;
+      else if ((n !== first || $("weekend-arrival").checked) &&
+               (n !== last || $("weekend-departure").checked)) {
+        weekendDays++;
+        weekends.add(n - weekday);
+      }
+    }
+  }
+  const weeks = [...weekends];
+  const stats = { weekendDays, weekdays, qualifies: weeks.length === 2 && weeks[1] - weeks[0] === 7 };
+  weekendCache.set(key, stats);
+  return stats;
+}
+function weekendScore(f) {
+  if (!doubleWeekendMode()) return "";
+  const stats = weekendStats(f);
+  return `${stats.weekendDays} weekend days · ${stats.weekdays} weekdays at home`;
+}
+function compareOffers(a, b) {
+  if (doubleWeekendMode()) {
+    const x = weekendStats(a), y = weekendStats(b);
+    const balance = y.weekendDays - x.weekendDays || x.weekdays - y.weekdays;
+    if (balance) return balance;
+  }
+  return a.price - b.price || a.departure_at.localeCompare(b.departure_at) || a.return_at.localeCompare(b.return_at);
+}
+function saveWeekendSettings() {
+  try {
+    localStorage.setItem("flight-scanner-weekends", JSON.stringify({
+      mode: $("search-mode").value, start: $("weekend-start").value,
+      arrival: $("weekend-arrival").checked, departure: $("weekend-departure").checked,
+    }));
+  } catch { /* Browsing still works when storage is unavailable. */ }
+}
+function restoreWeekendSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("flight-scanner-weekends"));
+    if (!saved) return;
+    if (["all", "double-weekend"].includes(saved.mode)) $("search-mode").value = saved.mode;
+    if (/^[0-6]$/.test(saved.start)) $("weekend-start").value = String(saved.start);
+    if (typeof saved.arrival === "boolean") $("weekend-arrival").checked = saved.arrival;
+    if (typeof saved.departure === "boolean") $("weekend-departure").checked = saved.departure;
+  } catch { /* Ignore invalid or inaccessible saved preferences. */ }
+}
 function offerCount(flights) {
   return flights.reduce((count, f) => count + (f.offer_count ?? 1), 0);
 }
@@ -221,7 +285,10 @@ function safeDetailFile(file) {
   return typeof file === "string" && /^scans\/[a-f0-9]{24}\/\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\/\d+\.json\.gz$/.test(file);
 }
 function matchesFilters(f) {
-  return (!$("origin").value || f.origin === $("origin").value) &&
+  return (!doubleWeekendMode() || (
+      !(snapshot.browser_version === 1 && snapshot.weekend_version !== 1) &&
+      dateKey(f.departure_at) >= today() && weekendStats(f).qualifies)) &&
+    (!$("origin").value || f.origin === $("origin").value) &&
     (!$("destination").value || f.destination === $("destination").value) &&
     (!$("return-origin").value || (f.return_origin || f.destination) === $("return-origin").value) &&
     (!$("return-destination").value || (f.return_destination || f.origin) === $("return-destination").value) &&
@@ -273,7 +340,7 @@ async function openOffers(group) {
       for (const f of rows) if (matchesFilters(f)) offers.push(f);
     }
     if (offers.length !== offerCount(group)) throw new Error("Incomplete offers");
-    selectedGroup = offers.sort((a, b) => a.price - b.price || a.departure_at.localeCompare(b.departure_at));
+    selectedGroup = offers.sort(compareOffers);
     renderOffers();
   } catch {
     if (sequence === detailSequence)
@@ -287,9 +354,7 @@ function groupDates(flights) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(f);
   }
-  return [...groups.values()].map((offers) => offers.sort((a, b) =>
-    a.price - b.price || a.departure_at.localeCompare(b.departure_at) || a.return_at.localeCompare(b.return_at),
-  ));
+  return [...groups.values()].map((offers) => offers.sort(compareOffers));
 }
 function pairLabel(f) {
   return `${day(f.departure_at)} ${f.departure_at.slice(0, 4)} → ${day(f.return_at)} ${f.return_at.slice(0, 4)}`;
@@ -297,7 +362,7 @@ function pairLabel(f) {
 function dateGroup(offers, index) {
   const f = offers[0];
   const count = offerCount(offers);
-  return `<button type="button" class="date-group" data-group="${index}" aria-haspopup="dialog"><span class="ticket-head"><span><span class="ticket-label">${escapeHTML(pairLabel(f))}</span><span class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</span><span class="airline">${escapeHTML(`${f.origin} → ${f.destination} · ${f.airline}`)}</span></span><span class="price"><small>From</small><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></span></span><span class="group-foot"><span>${count.toLocaleString()} offer${count === 1 ? "" : "s"} · ${escapeHTML(f.nights)} nights${dateKey(f.departure_at) < today() ? " · Departure has passed" : ""}</span><span>View offers <span aria-hidden="true">↗</span></span></span></button>`;
+  return `<button type="button" class="date-group" data-group="${index}" aria-haspopup="dialog"><span class="ticket-head"><span><span class="ticket-label">${escapeHTML(pairLabel(f))}</span><span class="destination-name">${escapeHTML(AIRPORTS[f.destination] || f.destination)}</span><span class="airline">${escapeHTML(`${f.origin} → ${f.destination} · ${f.airline}`)}</span></span><span class="price"><small>${doubleWeekendMode() ? "Best balance from" : "From"}</small><strong>${escapeHTML(money(f.price, f.currency))}</strong><small>round trip / person</small></span></span><span class="group-foot"><span>${count.toLocaleString()} offer${count === 1 ? "" : "s"} · ${escapeHTML(f.nights)} nights${dateKey(f.departure_at) < today() ? " · Departure has passed" : ""}</span>${doubleWeekendMode() ? `<span class="weekend-score">${weekendScore(f)}</span>` : ""}<span>View offers <span aria-hidden="true">↗</span></span></span></button>`;
 }
 function renderOffers() {
   if (!selectedGroup) return;
@@ -305,7 +370,7 @@ function renderOffers() {
   offerPage = Math.min(Math.max(1, offerPage), pages);
   const start = (offerPage - 1) * PAGE_SIZE;
   $("offers-title").textContent = pairLabel(selectedGroup[0]);
-  $("offers-count").textContent = `${selectedGroup.length.toLocaleString()} matching offers · Lowest price first · Current filters apply`;
+  $("offers-count").textContent = `${selectedGroup.length.toLocaleString()} matching offers · ${doubleWeekendMode() ? "Most weekend days, fewest weekdays, then lowest price" : "Lowest price first"} · Current filters apply`;
   $("offers-results").innerHTML = selectedGroup.slice(start, start + PAGE_SIZE)
     .map((f, i) => ticket(f, start + i)).join("");
   $("offers-pagination").hidden = pages <= 1;
@@ -390,6 +455,17 @@ function datesChanged(kind) {
   render();
 }
 function render() {
+  weekendCache.clear();
+  if (doubleWeekendMode() && $("sort").value !== "weekend") {
+    regularSort = $("sort").value;
+    $("sort").value = "weekend";
+  } else if (!doubleWeekendMode() && $("sort").value === "weekend") {
+    $("sort").value = regularSort;
+  }
+  $("weekend-sort").hidden = !doubleWeekendMode();
+  $("weekend-settings").hidden = !doubleWeekendMode();
+  $("weekend-description").hidden = !doubleWeekendMode();
+  $("sort").disabled = doubleWeekendMode();
   renderNotice();
   if (!snapshot) return;
   if ($("offers-dialog").open) $("offers-dialog").close();
@@ -404,6 +480,7 @@ function render() {
   );
   dateGroups = groupDates(flights);
   dateGroups.sort(
+    doubleWeekendMode() ? (a, b) => compareOffers(a[0], b[0]) :
     $("sort").value === "date"
       ? (a, b) =>
           dateKey(a[0].departure_at).localeCompare(dateKey(b[0].departure_at)) ||
@@ -423,7 +500,9 @@ function render() {
   );
   $("best").hidden = !flights.length;
   $("best").textContent = flights.length
-    ? `Round trips from ${money(cheapest)}`
+    ? (doubleWeekendMode()
+      ? `Best weekend balance from ${money(dateGroups[0][0].price)}`
+      : `Round trips from ${money(cheapest)}`)
     : "";
   $("pagination").hidden = pages <= 1;
   $("previous-page").disabled = page === 1;
@@ -442,7 +521,9 @@ function render() {
   else if (raw.length)
     $("results").innerHTML = empty(
       "No matches for these filters",
-      "Try other dates or airports, include connecting flights, or choose All flights to include every price.",
+      doubleWeekendMode()
+        ? "Try different weekend settings, dates or airports, or switch to All trips. Only future trips covering two consecutive weekends match this mode."
+        : "Try other dates or airports, include connecting flights, or choose All flights to include every price.",
     );
   else
     $("results").innerHTML = empty(
@@ -653,6 +734,13 @@ $("calendar-months").addEventListener("click", (event) => {
     render();
   }),
 );
+["search-mode", "weekend-start", "weekend-arrival", "weekend-departure"].forEach((id) =>
+  $(id).addEventListener("change", () => {
+    saveWeekendSettings();
+    page = 1;
+    render();
+  }),
+);
 $("scan").addEventListener("change", load);
 $("results").addEventListener("click", (event) => {
   const button = event.target.closest("[data-group]");
@@ -686,5 +774,7 @@ window.addEventListener("online", () => {
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) render();
 });
+restoreWeekendSettings();
+render();
 load();
 loadHistory();

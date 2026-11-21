@@ -34,11 +34,12 @@ def build_scan(source: Path, root: Path, target: Path):
         # so both the minimum AND the number of matching offers remain exact.
         key = (pair, f["origin"], f["destination"], f.get("return_origin") or f["destination"],
                f.get("return_destination") or f["origin"], f.get("out_stops"), f.get("in_stops"),
-               f["currency"], f["price"] <= data["search"]["max_price"])
+               f["currency"], f["price"] <= data["search"]["max_price"],
+               (f.get("arrival_out") or f["departure_at"])[:10])
         best, count = bins.get(key, (f, 0))
         bins[key] = (f if f["price"] < best["price"] else best, count + 1)
     fields = ("price", "currency", "origin", "destination", "return_origin", "return_destination",
-              "departure_at", "return_at", "nights", "airline", "out_stops", "in_stops")
+              "departure_at", "arrival_out", "return_at", "nights", "airline", "out_stops", "in_stops")
     summaries = [{**{key: best.get(key) for key in fields}, "offer_count": count}
                  for best, count in bins.values()]
     chunks = {}
@@ -52,7 +53,7 @@ def build_scan(source: Path, root: Path, target: Path):
         chunks[pair] = files
     # Never send the entire scan to a phone just to draw the departure board.
     summary = {k: v for k, v in data.items() if k not in ("flights", "top", "per_airport")}
-    summary.update(browser_version=1, complete_results=complete, total_count=len(flights),
+    summary.update(browser_version=1, weekend_version=1, complete_results=complete, total_count=len(flights),
                    flights=summaries, top=[], per_airport={}, detail_files=chunks)
     write_json(target, summary)
     return len(flights), len(summaries)

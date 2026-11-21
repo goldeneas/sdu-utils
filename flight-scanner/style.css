@@ -963,3 +963,28 @@ footer summary {
   .offers-heading h2 { font-size: 1.2rem; }
   .group-foot { padding: 15px 21px; }
 }
+
+.weekend-search { grid-column: 1/-1; }
+.search-mode-label, .weekend-start-label { display: grid; gap: 7px; font-size: 0.78rem; }
+.search-mode-label { max-width: 300px; color: var(--accent); font-weight: 600; }
+#weekend-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 16px;
+  margin: 20px 0 0;
+}
+#weekend-settings legend { color: var(--accent); font-size: 0.78rem; padding: 0 8px; }
+.weekend-start-label { min-width: 150px; }
+#weekend-description { max-width: 800px; font-size: 0.75rem; line-height: 1.7; margin: 12px 0 0; }
+.weekend-score { flex-basis: 100%; font-weight: 650; }
+.weekend-ticket-score { font-size: 0.75rem; color: var(--accent); margin: 0 24px 16px; }
+@media (max-width: 650px) {
+  .search-mode-label { max-width: none; }
+  #weekend-settings { display: grid; gap: 12px; }
+  .weekend-ticket-score { margin-left: 21px; margin-right: 21px; }
+}

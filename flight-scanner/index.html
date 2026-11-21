@@ -99,6 +99,28 @@
           </div>
         </div>
         <div class="filter-panel">
+          <div class="weekend-search">
+            <label class="search-mode-label">Search mode
+              <select id="search-mode" aria-controls="weekend-settings" aria-describedby="weekend-description">
+                <option value="all">All trips</option>
+                <option value="double-weekend">Double weekend</option>
+              </select>
+            </label>
+            <fieldset id="weekend-settings" hidden>
+              <legend>Your weekend</legend>
+              <label class="weekend-start-label">Weekend starts on
+                <select id="weekend-start">
+                  <option value="1">Monday</option><option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option><option value="4">Thursday</option>
+                  <option value="5" selected>Friday</option><option value="6">Saturday</option>
+                  <option value="0">Sunday</option>
+                </select>
+              </label>
+              <label class="direct-filter"><input id="weekend-arrival" type="checkbox" checked />Count arrival day as a weekend day</label>
+              <label class="direct-filter"><input id="weekend-departure" type="checkbox" checked />Count departure day as a weekend day</label>
+            </fieldset>
+            <p id="weekend-description" class="muted" hidden>Weekends end on Sunday. Find future trips covering two consecutive weekends at your destination. Ranked by most weekend days, then fewest weekdays, then lowest price. Each date pair shows its best balance fare; cheaper offers with fewer weekend days remain in its details. Travel-day switches only affect weekend credit. Local arrival dates are used; when arrival is unavailable, the outbound departure date is used.</p>
+          </div>
           <fieldset class="trip-filters">
             <legend>Outbound flight</legend>
             <div class="airport-fields">
@@ -149,6 +171,7 @@
               <select id="sort">
                 <option value="price">Lowest price</option>
                 <option value="date">Soonest departure</option>
+                <option id="weekend-sort" value="weekend" hidden>Best weekend balance</option>
               </select>
             </label>
           </div>
